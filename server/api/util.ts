@@ -63,7 +63,7 @@ export function sanitize(text: unknown, max = 300): string {
     .replace(/sk-ant-[A-Za-z0-9_-]+/g, '[clé masquée]')
     .replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, '[clé masquée]')
     .replace(/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g, '[jeton masqué]')
-    .replace(/(x-api-key|authorization|apikey)\s*[:=]\s*\S+/gi, '$1: [masqué]')
+    .replace(/(x-api-key|authorization|apikey)\s*[:=]\s*(bearer\s+)?\S+/gi, '$1: [masqué]')
     .replace(/\s+/g, ' ')
     .trim()
     .slice(0, max);

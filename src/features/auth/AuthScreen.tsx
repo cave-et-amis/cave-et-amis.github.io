@@ -148,8 +148,8 @@ export function AuthScreen({ api, local, inviteCode }: { api: Api; local: boolea
         </div>
         {local && (
           <Notice tone="gold">
-            Serveur local de test. Avec <code>npm run local -- --demo</code>, des comptes de démonstration existent : alex@demo.local, camille@demo.local,
-            sam@demo.local (mot de passe : demo-cave-2026).
+            Serveur local de test : rien n’est en ligne. Avec <code>npm run local -- --demo</code>, des comptes de démonstration sont créés
+            (identifiants dans le README et le terminal du serveur local).
           </Notice>
         )}
         <p className="small faint center">Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>

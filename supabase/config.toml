@@ -1,0 +1,7 @@
+# Configuration minimale pour la CLI Supabase (déploiement de la fonction serveur).
+# La passerelle ne vérifie pas le jeton : la fonction « cave-api » vérifie elle-même la session de chaque appel
+# (recommandé avec les nouvelles clés publishable / secret de Supabase).
+project_id = "cave-et-amis"
+
+[functions.cave-api]
+verify_jwt = false

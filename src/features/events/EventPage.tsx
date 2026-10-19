@@ -25,7 +25,7 @@ const wineName = (w: EventWine) => `${w.wine_name}${w.wine_vintage ? ` ${w.wine_
 
 export function EventPage({ id }: { id: string }) {
   const store = useStore();
-  const { snapshot, api, run, userId, profileName, friends } = store;
+  const { snapshot, api, run, userId, profileName, friends, reload } = store;
   const actions = useActions();
   const confirm = useConfirm();
   const event = snapshot.events.find((e) => e.id === id);
@@ -34,6 +34,11 @@ export function EventPage({ id }: { id: string }) {
   const [confirming, setConfirming] = useState<EventWine | null>(null);
   const [consuming, setConsuming] = useState<EventWine | null>(null);
   const planned = event?.status === 'planned';
+  // Invitation toute récente : l'événement n'est peut-être pas encore dans les données chargées.
+  const [checked, setChecked] = useState(false);
+  useEffect(() => {
+    if (!event && !checked) void reload().finally(() => setChecked(true));
+  }, [event, checked, reload]);
 
   const refresh = useCallback(async () => {
     if (!event) return;
@@ -57,6 +62,7 @@ export function EventPage({ id }: { id: string }) {
   };
 
   if (!event) {
+    if (!checked) return <InlineLoading />;
     return (
       <EmptyState icon="🔒" title="Événement introuvable" action={<Button onClick={() => go('/evenements')}>Mes événements</Button>}>
         Il a peut-être été supprimé, ou vous n’y participez plus.

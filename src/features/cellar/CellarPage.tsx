@@ -90,7 +90,7 @@ export function CellarPage() {
           ))}
         </div>
         <div className="inline" style={{ flexWrap: 'nowrap' }}>
-          <select className="input" style={{ minHeight: 42, flex: 1, minWidth: 0, padding: '6px 10px' }} aria-label="Trier" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+          <select className="input" style={{ minHeight: 42, flex: 1, minWidth: 0, maxWidth: 320, padding: '6px 10px' }} aria-label="Trier" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}

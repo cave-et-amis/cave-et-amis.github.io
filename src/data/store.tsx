@@ -138,6 +138,15 @@ export function StoreProvider({
       timer = setTimeout(() => void reloadRef.current().catch(() => undefined), 300);
     };
     const onVisible = () => document.visibilityState === 'visible' && soon();
+    // Changement d'écran : données rafraîchies si elles datent de plus de 10 secondes (réponses des amis, invitations…).
+    let last = Date.now();
+    const onRoute = () => {
+      if (Date.now() - last > 10_000) {
+        last = Date.now();
+        soon();
+      }
+    };
+    window.addEventListener('hashchange', onRoute);
     const onOnline = () => {
       setOnline(true);
       soon();
@@ -151,6 +160,7 @@ export function StoreProvider({
       clearTimeout(timer);
       clearInterval(poll);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('hashchange', onRoute);
       window.removeEventListener('online', onOnline);
       window.removeEventListener('offline', onOffline);
     };

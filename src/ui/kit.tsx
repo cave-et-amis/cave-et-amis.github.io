@@ -1,6 +1,9 @@
 /** Composants d'interface réutilisables : boutons, fenêtres, confirmations, notifications, champs. */
 import {
+  cloneElement,
   createContext,
+  isValidElement,
+  type ReactElement,
   useCallback,
   useContext,
   useEffect,
@@ -232,10 +235,26 @@ export function Field({
   children: ReactNode;
   htmlFor?: string;
 }) {
+  const autoId = useId();
+  const labelId = useId();
+  let control = children;
+  let forId = htmlFor;
+  // Champ simple (input, select, textarea) sans identifiant : il est relié automatiquement à son libellé.
+  if (!forId && isValidElement(children) && typeof children.type === 'string' && ['input', 'select', 'textarea'].includes(children.type)) {
+    const props = children.props as { id?: string };
+    forId = props.id ?? autoId;
+    control = cloneElement(children as ReactElement<{ id?: string }>, { id: forId });
+  }
   return (
-    <div className="field">
-      {htmlFor ? <label htmlFor={htmlFor}>{label}</label> : <span className="label">{label}</span>}
-      {children}
+    <div className="field" role={forId ? undefined : 'group'} aria-labelledby={forId ? undefined : labelId}>
+      {forId ? (
+        <label htmlFor={forId}>{label}</label>
+      ) : (
+        <span className="label" id={labelId}>
+          {label}
+        </span>
+      )}
+      {control}
       {hint && !error && <span className="hint">{hint}</span>}
       {error && (
         <span className="error" role="alert">

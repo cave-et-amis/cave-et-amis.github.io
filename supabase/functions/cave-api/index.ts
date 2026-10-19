@@ -114,7 +114,7 @@ function json(body, status, headers) {
 }
 /** Retire de tout message ce qui pourrait ressembler à un secret (clés, jetons) avant journalisation. */
 function sanitize(text, max = 300) {
-	return String(text ?? "").replace(/sk-ant-[A-Za-z0-9_-]+/g, "[clé masquée]").replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, "[clé masquée]").replace(/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g, "[jeton masqué]").replace(/(x-api-key|authorization|apikey)\s*[:=]\s*\S+/gi, "$1: [masqué]").replace(/\s+/g, " ").trim().slice(0, max);
+	return String(text ?? "").replace(/sk-ant-[A-Za-z0-9_-]+/g, "[clé masquée]").replace(/sb_(secret|publishable)_[A-Za-z0-9_-]+/g, "[clé masquée]").replace(/eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]*/g, "[jeton masqué]").replace(/(x-api-key|authorization|apikey)\s*[:=]\s*(bearer\s+)?\S+/gi, "$1: [masqué]").replace(/\s+/g, " ").trim().slice(0, max);
 }
 var AiFailure = class extends Error {
 	code;
@@ -445,74 +445,6 @@ function fold(s) {
 	return (s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 }
 //#endregion
-//#region src/domain/maturity.ts
-var MATURITY_LABELS = {
-	young: "À attendre",
-	ready: "Prêt à boire",
-	soon: "À boire bientôt",
-	past: "À boire sans attendre",
-	unknown: "Maturité inconnue"
-};
-/** Repère général (années après le millésime). Très approximatif : dépend de l'appellation, du producteur, de l'année. */
-function generalWindow(w) {
-	if (!w.vintage) return null;
-	const v = w.vintage;
-	const type = w.wine_type;
-	if (type === "liquoreux" || type === "moelleux") return {
-		from: v + 4,
-		until: v + 25
-	};
-	if (type === "fortifie") return {
-		from: v + 5,
-		until: v + 30
-	};
-	if (type === "effervescent" || w.color === "effervescent") return {
-		from: v + 3,
-		until: v + 12
-	};
-	switch (w.color) {
-		case "rouge": return {
-			from: v + 3,
-			until: v + 12
-		};
-		case "blanc":
-		case "orange": return {
-			from: v + 1,
-			until: v + 6
-		};
-		case "rose": return {
-			from: v,
-			until: v + 2
-		};
-		default: return null;
-	}
-}
-function windowOf(w) {
-	if (w.drink_from || w.drink_until) {
-		const from = w.drink_from ?? Math.min(w.drink_until, w.vintage ?? w.drink_until);
-		return {
-			from,
-			until: w.drink_until ?? Math.max(from + 3, from),
-			origin: w.window_source ?? "personal",
-			approximate: !w.drink_from || !w.drink_until
-		};
-	}
-	const g = generalWindow(w);
-	return g ? {
-		...g,
-		origin: "general",
-		approximate: true
-	} : null;
-}
-function maturityOf(win, year, storage) {
-	if (!win) return "unknown";
-	if (year < win.from) return "young";
-	if (year > win.until) return "past";
-	const soonYears = storage === "piece" ? 2 : 1;
-	if (win.until - year < soonYears) return "soon";
-	return "ready";
-}
-//#endregion
 //#region src/domain/advice.ts
 var LIGHT_RED = /(gamay|pinot|beaujolais|morgon|fleurie|brouilly|chiroubles|juliénas|julienas|saint-amour|regnie|chenas|moulin-a-vent|bourgueil|chinon|saumur|anjou|alsace|loire|trousseau|poulsard|grolleau)/;
 var RICH_WHITE = /(meursault|montrachet|corton|hermitage|condrieu|chateauneuf|chardonnay|viognier|marsanne|roussanne|pessac|graves)/;
@@ -523,6 +455,9 @@ function text$1(w) {
 		w.region,
 		...w.grapes ?? []
 	].filter(Boolean).join(" "));
+}
+function isRichWhite(w) {
+	return w.color === "blanc" && RICH_WHITE.test(text$1(w));
 }
 function isLightRed(w) {
 	return w.color === "rouge" && LIGHT_RED.test(text$1(w));
@@ -591,6 +526,83 @@ function generalAeration(w, year = (/* @__PURE__ */ new Date()).getFullYear()) {
 		return "Ouvrir environ 1 heure avant ; carafer seulement en présence de dépôt.";
 	}
 	return null;
+}
+//#endregion
+//#region src/domain/maturity.ts
+var MATURITY_LABELS = {
+	young: "À attendre",
+	ready: "Prêt à boire",
+	soon: "À boire bientôt",
+	past: "À boire sans attendre",
+	unknown: "Maturité inconnue"
+};
+/** Repère général (années après le millésime). Très approximatif : dépend de l'appellation, du producteur, de l'année. */
+function generalWindow(w) {
+	if (!w.vintage) return null;
+	const v = w.vintage;
+	const type = w.wine_type;
+	if (type === "liquoreux" || type === "moelleux") return {
+		from: v + 4,
+		until: v + 25
+	};
+	if (type === "fortifie") return {
+		from: v + 5,
+		until: v + 30
+	};
+	if (type === "effervescent" || w.color === "effervescent") return {
+		from: v + 3,
+		until: v + 12
+	};
+	switch (w.color) {
+		case "rouge": return isLightRed(w) ? {
+			from: v + 1,
+			until: v + 7
+		} : {
+			from: v + 3,
+			until: v + 12
+		};
+		case "blanc": return isRichWhite(w) ? {
+			from: v + 2,
+			until: v + 10
+		} : {
+			from: v + 1,
+			until: v + 6
+		};
+		case "orange": return {
+			from: v + 1,
+			until: v + 6
+		};
+		case "rose": return {
+			from: v,
+			until: v + 2
+		};
+		default: return null;
+	}
+}
+function windowOf(w) {
+	if (w.drink_from || w.drink_until) {
+		const from = w.drink_from ?? Math.min(w.drink_until, w.vintage ?? w.drink_until);
+		return {
+			from,
+			until: w.drink_until ?? Math.max(from + 3, from),
+			origin: w.window_source ?? "personal",
+			approximate: !w.drink_from || !w.drink_until
+		};
+	}
+	const g = generalWindow(w);
+	return g ? {
+		...g,
+		origin: "general",
+		approximate: true
+	} : null;
+}
+function maturityOf(win, year, storage) {
+	if (!win) return "unknown";
+	if (year < win.from) return "young";
+	if (year > win.until) return "past";
+	const soonYears = storage === "piece" ? 2 : 1;
+	if (win.until - year < soonYears) return "soon";
+	return "ready";
 }
 //#endregion
 //#region server/api/data.ts
