@@ -366,7 +366,8 @@ create table public.event_wines (
   event_id uuid not null references public.events (id) on delete cascade,
   lot_id uuid references public.lots (id) on delete set null,
   owner_id uuid not null references public.profiles (id) on delete cascade,
-  proposed_by uuid not null references public.profiles (id) on delete cascade,
+  -- Personne qui a proposé ou suggéré la bouteille (vide si son compte a été supprimé : la proposition reste).
+  proposed_by uuid references public.profiles (id) on delete set null,
   quantity integer not null check (quantity between 1 and 24),
   status text not null default 'proposed'
     check (status in ('proposed', 'confirmed', 'declined', 'withdrawn', 'released', 'consumed', 'not_consumed')),
@@ -934,6 +935,9 @@ begin
   end if;
   select * into v_mov from movements where request_id = p_request;
   if found then
+    if v_mov.owner_id <> v_me then
+      raise exception 'invalid' using errcode = 'P0001';
+    end if;
     return v_mov;
   end if;
   if p_quantity = v_lot.quantity then
@@ -975,6 +979,9 @@ begin
   perform 1 from lots where id = v_src.lot_id for update;
   select * into v_mov from movements where request_id = p_request;
   if found then
+    if v_mov.owner_id <> v_me then
+      raise exception 'invalid' using errcode = 'P0001';
+    end if;
     return v_mov;
   end if;
   if exists (select 1 from movements where reverses_id = p_movement) then
@@ -1218,6 +1225,9 @@ begin
   end if;
   select * into v_row from event_wines where request_id = p_request;
   if found then
+    if v_row.proposed_by is distinct from v_me or v_row.event_id <> p_event then
+      raise exception 'invalid' using errcode = 'P0001';
+    end if;
     return v_row;
   end if;
   select * into v_event from events where id = p_event for update;
@@ -1542,6 +1552,11 @@ begin
   for r in select * from event_wines where owner_id = v_me and status = 'confirmed' for update loop
     perform release_event_wine(r, 'withdrawn');
   end loop;
+  -- Suppression explicite dans l'ordre (lots, vins, caves) : la suppression en cascade du compte
+  -- se heurterait sinon à la protection « cave non vide ».
+  delete from lots where owner_id = v_me;
+  delete from wines where owner_id = v_me;
+  delete from cellars where owner_id = v_me;
 end $$;
 
 -- ───────────── Assistant IA (appelées par le serveur uniquement, sauf my_ai_status et l'administration) ─────────────
@@ -1661,9 +1676,11 @@ language sql security definer set search_path = public as $$
 $$;
 
 -- Fin de la demande : l'enveloppe restante est rendue.
-create function public.ai_finish(p_usage uuid, p_status text, p_error text) returns void
+-- p_keep : le coût réel d'un appel n'a pas pu être enregistré ; l'enveloppe réservée est comptée comme dépensée (prudence).
+create function public.ai_finish(p_usage uuid, p_status text, p_error text, p_keep boolean default false) returns void
 language sql security definer set search_path = public as $$
-  update ai_usage set status = p_status, reserved_usd = 0, error_code = p_error, finished_at = now()
+  update ai_usage set status = p_status, cost_usd = cost_usd + case when p_keep then reserved_usd else 0 end,
+    reserved_usd = 0, error_code = p_error, finished_at = now()
   where id = p_usage and status = 'reserved'
 $$;
 
@@ -1927,6 +1944,11 @@ create policy ai_messages_own on public.ai_messages for select to authenticated 
 
 grant usage on schema public to anon, authenticated, service_role;
 revoke all on all tables in schema public from anon, authenticated;
+-- Objets créés par de futures migrations : aucun droit implicite (chaque migration accorde explicitement ce qu'il faut).
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges in schema public revoke execute on functions from anon, authenticated;
+-- Le droit d'exécution donné à PUBLIC est global dans PostgreSQL : il se retire sans « in schema ».
+alter default privileges revoke execute on functions from public;
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant all on all tables in schema public to service_role;
 grant execute on all functions in schema public to service_role;

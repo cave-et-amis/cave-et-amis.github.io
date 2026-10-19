@@ -89,6 +89,7 @@ function readEnv(get) {
 		serviceKey: firstKey(get("SUPABASE_SECRET_KEYS")) ?? get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
 		anthropicKey: (get("ANTHROPIC_API_KEY") ?? "").trim() || void 0,
 		anthropicBaseUrl: (get("ANTHROPIC_BASE_URL") ?? "").trim() || void 0,
+		deadlineMs: Number(get("AI_REQUEST_DEADLINE_MS")) > 0 ? Number(get("AI_REQUEST_DEADLINE_MS")) : void 0,
 		allowedOrigins: (get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean)
 	};
 }
@@ -171,8 +172,8 @@ function makeClient(env, fetchImpl) {
 	return new Anthropic({
 		apiKey: env.anthropicKey,
 		baseURL: env.anthropicBaseUrl,
-		maxRetries: 1,
-		timeout: 12e4,
+		maxRetries: 0,
+		timeout: 9e4,
 		...fetchImpl ? { fetch: fetchImpl } : {}
 	});
 }
@@ -210,7 +211,12 @@ var Meter = class {
 	calls = 0;
 	searches = 0;
 	prepaid = 0;
-	constructor(svc, client, settings, userId, action) {
+	/** Un règlement n'a pas pu être enregistré : l'enveloppe sera comptée comme dépensée. */
+	unsettled = false;
+	/** Heure limite de la demande (les fonctions serveur sont interrompues au-delà d'un temps maximal). */
+	deadline;
+	constructor(svc, client, settings, userId, action, deadline = Date.now() + 14e4) {
+		this.deadline = deadline;
 		this.svc = svc;
 		this.client = client;
 		this.settings = settings;
@@ -279,12 +285,14 @@ var Meter = class {
 	async call(params, o = {}) {
 		if (!this.usageId) throw new AiFailure("internal", "Demande non ouverte");
 		if (this.calls >= this.settings.max_api_calls) throw new AiFailure("call_limit");
+		const remaining = this.deadline - Date.now();
+		if (remaining < 25e3) throw new AiFailure("call_limit", "Temps maximal de la demande bientôt atteint");
 		const bound = this.bound(params, o);
 		await this.reserve(bound);
 		this.calls += 1;
 		let message;
 		try {
-			message = await this.client.messages.create(params);
+			message = await this.client.messages.create(params, { timeout: Math.min(9e4, remaining - 5e3) });
 		} catch (e) {
 			const timedOut = e instanceof Anthropic.APIConnectionTimeoutError;
 			await this.settle(timedOut ? bound : 0, bound, null);
@@ -296,7 +304,7 @@ var Meter = class {
 		return message;
 	}
 	async settle(cost, release, usage) {
-		await this.svc.rpc("ai_settle", {
+		const { error } = await this.svc.rpc("ai_settle", {
 			p_usage: this.usageId,
 			p_cost: cost,
 			p_release: release,
@@ -306,13 +314,15 @@ var Meter = class {
 			p_cache_write: usage?.cache_creation_input_tokens ?? 0,
 			p_searches: usage?.server_tool_use?.web_search_requests ?? 0
 		});
+		if (error) this.unsettled = true;
 	}
 	async finish(ok, error) {
 		if (!this.usageId) return;
 		await this.svc.rpc("ai_finish", {
 			p_usage: this.usageId,
 			p_status: ok ? "done" : "failed",
-			p_error: error ?? null
+			p_error: error ?? null,
+			p_keep: this.unsettled
 		});
 		this.usageId = null;
 	}
@@ -611,12 +621,22 @@ async function all(q) {
 	if (error) throw new AiFailure("internal", sanitize(error.message));
 	return data ?? [];
 }
+/** Lecture par pages de 1 000 lignes (limite de l'API Supabase), jusqu'à un plafond raisonnable. */
+async function paged(page, max = 5e3) {
+	const out = [];
+	for (let from = 0; from < max; from += 1e3) {
+		const rows = await all(() => page(from, from + 999));
+		out.push(...rows);
+		if (rows.length < 1e3) break;
+	}
+	return out;
+}
 async function loadCellar(sb) {
 	const [wines, lots, cellars, locations] = await Promise.all([
-		all(() => sb.from("wines").select("*").order("name").limit(2e3)),
-		all(() => sb.from("lots").select("*").limit(4e3)),
-		all(() => sb.from("cellars").select("*")),
-		all(() => sb.from("locations").select("*"))
+		paged((a, b) => sb.from("wines").select("*").order("name").order("id").range(a, b)),
+		paged((a, b) => sb.from("lots").select("*").order("id").range(a, b)),
+		paged((a, b) => sb.from("cellars").select("*").order("id").range(a, b)),
+		paged((a, b) => sb.from("locations").select("*").order("id").range(a, b))
 	]);
 	return {
 		wines,
@@ -727,7 +747,7 @@ function searchWines(data, year, q) {
 async function wineDetails(sb, data, wineId, year) {
 	const w = data.wines.find((x) => x.id === wineId);
 	if (!w) return { error: "Vin introuvable dans la cave de la personne." };
-	const [tastings, prices] = await Promise.all([all(() => sb.from("tastings").select("*").eq("wine_id", wineId).order("tasted_on", { ascending: false }).limit(5)), all(() => sb.from("market_prices").select("*").eq("wine_id", wineId).order("checked_at", { ascending: false }).limit(3))]);
+	const [tastings, prices] = await Promise.all([all(() => sb.from("tastings").select("*").eq("wine_id", wineId).eq("user_id", w.owner_id).order("tasted_on", { ascending: false }).limit(5)), all(() => sb.from("market_prices").select("*").eq("wine_id", wineId).order("checked_at", { ascending: false }).limit(3))]);
 	return {
 		...compactWine(w, data, year, true),
 		my_tastings: tastings.map(compactTasting),
@@ -765,8 +785,8 @@ function compactTasting(t) {
 		rebuy: t.rebuy || void 0
 	};
 }
-async function listTastings(sb, q) {
-	const rows = await all(() => sb.from("tastings").select("*").order("tasted_on", { ascending: false }).limit(300));
+async function listTastings(sb, userId, q) {
+	const rows = await all(() => sb.from("tastings").select("*").eq("user_id", userId).order("tasted_on", { ascending: false }).limit(300));
 	const words = fold(q.query ?? "").split(/\s+/).filter(Boolean);
 	const filtered = rows.filter((t) => !q.min_rating || (t.rating ?? 0) >= q.min_rating).filter((t) => !words.length || words.every((x) => fold([
 		t.wine_name,
@@ -1263,7 +1283,7 @@ var ToolBox = class {
 			case "get_wine_details":
 				if (!isUuid(i.wine_id)) return JSON.stringify({ error: "wine_id invalide" });
 				return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year));
-			case "list_my_tastings": return JSON.stringify(await listTastings(this.user, i));
+			case "list_my_tastings": return JSON.stringify(await listTastings(this.user, this.userId, i));
 			case "search_friends_wines": return JSON.stringify(await friendsWines(this.user, i));
 			case "get_event":
 				if (!isUuid(i.event_id)) return JSON.stringify({ error: "event_id invalide" });
@@ -1912,7 +1932,7 @@ function createApiHandler(env, deps = {}) {
 		return {
 			s,
 			client,
-			meter: new Meter(svc, client, s, userId, action)
+			meter: new Meter(svc, client, s, userId, action, Date.now() + (env.deadlineMs ?? 14e4))
 		};
 	}
 	/** `estimate` null : le travail ouvre lui-même la demande (meter.start) une fois la première requête construite. */
@@ -1980,7 +2000,7 @@ function createApiHandler(env, deps = {}) {
 				if (!isUuid(body.wine_id)) throw new AiFailure("invalid");
 				const { data: wine } = await user.from("wines").select("*").eq("id", body.wine_id).maybeSingle();
 				if (!wine) throw new AiFailure("not_found");
-				const volume = Number.isInteger(body.volume_ml) ? Number(body.volume_ml) : 750;
+				const volume = Number.isInteger(body.volume_ml) && Number(body.volume_ml) >= 50 && Number(body.volume_ml) <= 3e4 ? Number(body.volume_ml) : 750;
 				const currency = await profileCurrency(user, userId);
 				const s = await settings();
 				return { result: await metered(userId, "price", (m) => m.estimate({
@@ -1999,11 +2019,15 @@ function createApiHandler(env, deps = {}) {
 				if (body.confirm !== "SUPPRIMER") throw new AiFailure("invalid");
 				const { error } = await user.rpc("prepare_account_deletion");
 				if (error) throw new AiFailure("internal", sanitize(error.message));
-				const [{ data: wines }, { data: tastings }] = await Promise.all([user.from("wines").select("label_photo, bottle_photo"), user.from("tastings").select("photo")]);
-				const paths = [...(wines ?? []).flatMap((w) => [w.label_photo, w.bottle_photo]), ...(tastings ?? []).map((t) => t.photo)].filter((p) => Boolean(p));
-				if (paths.length) await user.storage.from("photos").remove(paths);
 				const del = await svc.auth.admin.deleteUser(userId);
 				if (del.error) throw new AiFailure("internal", sanitize(del.error.message));
+				for (let i = 0; i < 20; i++) {
+					const { data: files } = await svc.storage.from("photos").list(userId, { limit: 1e3 });
+					const names = (files ?? []).map((f) => `${userId}/${f.name}`);
+					if (!names.length) break;
+					await svc.storage.from("photos").remove(names);
+					if (names.length < 1e3) break;
+				}
 				return { deleted: true };
 			}
 			default: throw new AiFailure("invalid");

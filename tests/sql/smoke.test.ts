@@ -27,3 +27,13 @@ describe('installation de la base', () => {
     expect(grants.rows).toEqual([]);
   });
 });
+
+describe('migrations futures', () => {
+  it('une table ou une fonction ajoutée plus tard n’est accessible à personne sans droit explicite', async () => {
+    const db = await createDb();
+    const user = await createUser(db, 'Bruno');
+    await db.exec(`create table public.future_table (id int); create function public.future_fn() returns int language sql as 'select 1';`);
+    await expect(as(db, user, `select * from future_table`)).rejects.toThrow(/permission denied/);
+    await expect(as(db, user, `select future_fn()`)).rejects.toThrow(/permission denied/);
+  });
+});

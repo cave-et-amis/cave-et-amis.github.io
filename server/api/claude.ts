@@ -46,8 +46,9 @@ export function makeClient(env: ApiEnv, fetchImpl?: typeof fetch) {
   return new Anthropic({
     apiKey: env.anthropicKey,
     baseURL: env.anthropicBaseUrl,
-    maxRetries: 1,
-    timeout: 120_000,
+    // Aucune nouvelle tentative automatique : un appel relancé pourrait être facturé deux fois pour une seule enveloppe.
+    maxRetries: 0,
+    timeout: 90_000,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
 }
@@ -89,8 +90,13 @@ export class Meter {
   calls = 0;
   searches = 0;
   private prepaid = 0;
+  /** Un règlement n'a pas pu être enregistré : l'enveloppe sera comptée comme dépensée. */
+  private unsettled = false;
+  /** Heure limite de la demande (les fonctions serveur sont interrompues au-delà d'un temps maximal). */
+  private deadline: number;
 
-  constructor(svc: SupabaseClient, client: Anthropic, settings: AiSettings, userId: string | null, action: Action) {
+  constructor(svc: SupabaseClient, client: Anthropic, settings: AiSettings, userId: string | null, action: Action, deadline = Date.now() + 140_000) {
+    this.deadline = deadline;
     this.svc = svc;
     this.client = client;
     this.settings = settings;
@@ -157,12 +163,14 @@ export class Meter {
   async call(params: Anthropic.Messages.MessageCreateParamsNonStreaming, o: CallOptions = {}): Promise<Anthropic.Messages.Message> {
     if (!this.usageId) throw new AiFailure('internal', 'Demande non ouverte');
     if (this.calls >= this.settings.max_api_calls) throw new AiFailure('call_limit');
+    const remaining = this.deadline - Date.now();
+    if (remaining < 25_000) throw new AiFailure('call_limit', 'Temps maximal de la demande bientôt atteint');
     const bound = this.bound(params, o);
     await this.reserve(bound);
     this.calls += 1;
     let message: Anthropic.Messages.Message;
     try {
-      message = await this.client.messages.create(params);
+      message = await this.client.messages.create(params, { timeout: Math.min(90_000, remaining - 5_000) });
     } catch (e) {
       // Délai dépassé : la requête a pu être traitée et facturée, on compte prudemment toute l'enveloppe.
       const timedOut = e instanceof Anthropic.APIConnectionTimeoutError;
@@ -176,7 +184,7 @@ export class Meter {
   }
 
   private async settle(cost: number, release: number, usage: Anthropic.Messages.Usage | null) {
-    await this.svc.rpc('ai_settle', {
+    const { error } = await this.svc.rpc('ai_settle', {
       p_usage: this.usageId,
       p_cost: cost,
       p_release: release,
@@ -186,11 +194,12 @@ export class Meter {
       p_cache_write: usage?.cache_creation_input_tokens ?? 0,
       p_searches: usage?.server_tool_use?.web_search_requests ?? 0,
     });
+    if (error) this.unsettled = true;
   }
 
   async finish(ok: boolean, error?: string) {
     if (!this.usageId) return;
-    await this.svc.rpc('ai_finish', { p_usage: this.usageId, p_status: ok ? 'done' : 'failed', p_error: error ?? null });
+    await this.svc.rpc('ai_finish', { p_usage: this.usageId, p_status: ok ? 'done' : 'failed', p_error: error ?? null, p_keep: this.unsettled });
     this.usageId = null;
   }
 }

@@ -171,7 +171,7 @@ export type EventWine = {
   event_id: string;
   lot_id: string | null;
   owner_id: string;
-  proposed_by: string;
+  proposed_by: string | null;
   quantity: number;
   status: EventWineStatus;
   reserved_qty: number;

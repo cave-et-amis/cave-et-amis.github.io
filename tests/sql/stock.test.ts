@@ -120,3 +120,15 @@ describe('entrées, sorties, corrections', () => {
     await as(db, bruno, `insert into wines (name, label_photo) values ('X', $1)`, [`${bruno}/photo.jpg`]);
   });
 });
+
+describe('clés d’idempotence', () => {
+  it('la clé d’un autre utilisateur ne renvoie jamais son mouvement', async () => {
+    const { lotId } = await addWine(db, bruno, { name: 'Chablis' }, { quantity: 5 });
+    const { lotId: hers } = await addWine(db, claire, { name: 'Morgon' }, { quantity: 5 });
+    const req = rid();
+    await one(db, bruno, `select record_movement($1, 'consommation', 1, null, null, $2)`, [lotId, req]);
+    await expectError(one(db, claire, `select set_lot_quantity($1, 2, null, $2)`, [hers, req]), /invalid/);
+    await expectError(one(db, claire, `select record_movement($1, 'consommation', 1, null, null, $2)`, [hers, req]), /invalid/);
+    expect((await lotState(db, hers)).quantity).toBe(5);
+  });
+});

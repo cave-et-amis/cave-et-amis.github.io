@@ -586,6 +586,25 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
         }
         return respond(200, out);
       }
+      m = /^object\/list\/([^/]+)$/.exec(path);
+      if (m && method === 'POST') {
+        const bucket = m[1];
+        const body = (await req.json().catch(() => ({}))) as { prefix?: string; limit?: number; offset?: number };
+        const prefix = String(body.prefix ?? '').replace(/\/+$/, '');
+        const rows = await withRole(w, (tx) =>
+          tx.query<{ name: string; id: string }>(
+            `select name, id from storage.objects where bucket_id = $1 and name like $2 order by name limit $3 offset $4`,
+            [bucket, prefix ? `${prefix}/%` : '%', Math.min(Number(body.limit ?? 100), 1000), Number(body.offset ?? 0)],
+          ),
+        );
+        return respond(
+          200,
+          rows.rows
+            .map((r) => ({ ...r, name: prefix ? r.name.slice(prefix.length + 1) : r.name }))
+            .filter((r) => !r.name.includes('/'))
+            .map((r) => ({ name: r.name, id: r.id, metadata: {} })),
+        );
+      }
       m = /^object\/(?:authenticated\/)?([^/]+)\/(.+)$/.exec(path);
       if (m && method === 'GET') {
         const [bucket, name] = [m[1], decodeURIComponent(m[2])];

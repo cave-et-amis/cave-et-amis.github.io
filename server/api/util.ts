@@ -12,6 +12,8 @@ export type ApiEnv = {
   anthropicBaseUrl?: string;
   /** Origines autorisées (CORS). Vide : toutes. */
   allowedOrigins?: string[];
+  /** Durée maximale d'une demande à l'assistant (ms), sous la limite d'exécution des fonctions Supabase. */
+  deadlineMs?: number;
 };
 
 /** Lit la configuration dans les variables d'environnement (Supabase Edge Functions ou serveur local). */
@@ -31,6 +33,7 @@ export function readEnv(get: (name: string) => string | undefined): ApiEnv {
     serviceKey: firstKey(get('SUPABASE_SECRET_KEYS')) ?? get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     anthropicKey: (get('ANTHROPIC_API_KEY') ?? '').trim() || undefined,
     anthropicBaseUrl: (get('ANTHROPIC_BASE_URL') ?? '').trim() || undefined,
+    deadlineMs: Number(get('AI_REQUEST_DEADLINE_MS')) > 0 ? Number(get('AI_REQUEST_DEADLINE_MS')) : undefined,
     allowedOrigins: (get('ALLOWED_ORIGINS') ?? '')
       .split(',')
       .map((s) => s.trim().replace(/\/+$/, ''))

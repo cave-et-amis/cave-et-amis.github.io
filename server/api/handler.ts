@@ -55,7 +55,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
     if (!s.enabled && action !== 'admin_test') throw new AiFailure('ai_disabled');
     const client = makeClient(env, deps.anthropicFetch);
-    return { s, client, meter: new Meter(svc, client, s, userId, action) };
+    return { s, client, meter: new Meter(svc, client, s, userId, action, Date.now() + (env.deadlineMs ?? 140_000)) };
   }
 
   /** `estimate` null : le travail ouvre lui-même la demande (meter.start) une fois la première requête construite. */
@@ -114,7 +114,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         if (!isUuid(body.wine_id)) throw new AiFailure('invalid');
         const { data: wine } = await user.from('wines').select('*').eq('id', body.wine_id).maybeSingle();
         if (!wine) throw new AiFailure('not_found');
-        const volume = Number.isInteger(body.volume_ml) ? Number(body.volume_ml) : 750;
+        const volume = Number.isInteger(body.volume_ml) && Number(body.volume_ml) >= 50 && Number(body.volume_ml) <= 30000 ? Number(body.volume_ml) : 750;
         const currency = await profileCurrency(user, userId);
         const s = await settings();
         const result = await metered(
@@ -131,19 +131,20 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
 
       case 'delete_account': {
         if (body.confirm !== 'SUPPRIMER') throw new AiFailure('invalid');
+        // 1. Libère les réservations et supprime lots, vins et caves (sinon la cascade bute sur « cave non vide »).
         const { error } = await user.rpc('prepare_account_deletion');
         if (error) throw new AiFailure('internal', sanitize(error.message));
-        const [{ data: wines }, { data: tastings }] = await Promise.all([
-          user.from('wines').select('label_photo, bottle_photo'),
-          user.from('tastings').select('photo'),
-        ]);
-        const paths = [
-          ...((wines ?? []) as { label_photo: string | null; bottle_photo: string | null }[]).flatMap((w) => [w.label_photo, w.bottle_photo]),
-          ...((tastings ?? []) as { photo: string | null }[]).map((t) => t.photo),
-        ].filter((p): p is string => Boolean(p));
-        if (paths.length) await user.storage.from('photos').remove(paths);
+        // 2. Supprime le compte (profil, carnet, conversations… en cascade).
         const del = await svc.auth.admin.deleteUser(userId);
         if (del.error) throw new AiFailure('internal', sanitize(del.error.message));
+        // 3. Seulement ensuite : toutes les photos du dossier de la personne, même celles qui ne sont plus reliées à rien.
+        for (let i = 0; i < 20; i++) {
+          const { data: files } = await svc.storage.from('photos').list(userId, { limit: 1000 });
+          const names = (files ?? []).map((f) => `${userId}/${f.name}`);
+          if (!names.length) break;
+          await svc.storage.from('photos').remove(names);
+          if (names.length < 1000) break;
+        }
         return { deleted: true };
       }
 

@@ -99,12 +99,10 @@ describe('assistant : quotas, budget et erreurs', () => {
   it('service indisponible : message simple, rien n’est facturé, nouvelle tentative possible', async () => {
     const env = await makeAiEnv();
     const bruno = await env.signUp('Bruno');
-    env.anthropic.reply(
-      { kind: 'error', status: 529, type: 'overloaded_error', message: 'Overloaded' },
-      { kind: 'error', status: 529, type: 'overloaded_error', message: 'Overloaded' },
-    );
+    // Pas de nouvelle tentative automatique (un appel relancé pourrait être facturé deux fois).
+    env.anthropic.reply({ kind: 'error', status: 529, type: 'overloaded_error', message: 'Overloaded' });
     expect(await call(bruno.sb, { action: 'chat', message: 'Bonjour' })).toMatchObject({ ok: false, code: 'service_unavailable' });
-    env.anthropic.reply({ kind: 'network' }, { kind: 'network' });
+    env.anthropic.reply({ kind: 'network' });
     expect(await call(bruno.sb, { action: 'chat', message: 'Bonjour' })).toMatchObject({ ok: false, code: 'service_unavailable' });
     env.anthropic.reply(ok);
     expect((await call(bruno.sb, { action: 'chat', message: 'Bonjour' })).ok).toBe(true);

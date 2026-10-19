@@ -6,13 +6,22 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 83 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic) | ✔ 83/83 |
+| Vitest : 86 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic) | ✔ 86/86 |
 | Export de production + contrôle des secrets et du code local | ✔ |
 | Playwright (Microsoft Edge) sur l'export de production : 10 parcours téléphone + 1 ordinateur | ✔ 11/11 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
 comportement de l'application (droits, budget, affichage, confirmations), **pas** la qualité des réponses du vrai Claude.
+
+## Relecture de sécurité indépendante
+
+Une relecture dédiée (droits en base, fonction serveur, budget) a confirmé que les fonctions internes ne sont pas appelables
+par les utilisateurs, que les masques de partage sont appliqués et que la clé ne fuit pas. Elle a relevé des défauts, tous
+corrigés et couverts par des tests : suppression d'un compte possédant des bouteilles (échouait), suggestion d'un compte
+supprimé (effaçait la bouteille d'un autre), carnet de l'assistant mélangé aux notes partagées par d'autres, lecture limitée
+à 1 000 lignes, durée maximale d'une demande, nouvelle tentative pouvant être facturée deux fois, clé d'idempotence d'un autre
+utilisateur, droits par défaut des futures migrations.
 
 ## Critères demandés → où ils sont vérifiés
 
@@ -29,6 +38,7 @@ comportement de l'application (droits, budget, affichage, confirmations), **pas*
 | Annulation et libération | e2e + `tests/sql/events` (annulation, désistement d'un invité) |
 | Consommation sans double décompte | e2e (stock baisse une fois, rechargement compris) ; `tests/sql/events` (deuxième confirmation sans effet), `tests/sql/stock` (même clé envoyée deux fois) |
 | Dégustation extérieure sans modification du stock | e2e ; `tests/sql/carnet` |
+| Suppression de compte |  (bouteilles, photos même orphelines, réservations ; les événements des autres restent intacts) |
 | Protection de la clé API | `tests/ai/assistant` et `budget` (clé absente des réponses, des messages au modèle, des erreurs journalisées) ; e2e administration ; export contrôlé (`check-dist`) ; fonction regroupée sans clé |
 | Quotas et budget | `tests/ai/budget` : quota quotidien, quota personnalisé, budget global, **demandes simultanées** (enveloppe réservée), fréquence, blocage, modèle sans tarif ; e2e quota atteint |
 | Fonctionnement manuel sans IA | `tests/ai/assistant` (clé absente) ; e2e (quota atteint : Claire ajoute un vin) |
@@ -57,3 +67,6 @@ Captures d'écran des parcours : `reports/screens/`.
 - Les prix de marché sont relevés par l'assistant sur des pages réellement trouvées ; ils peuvent varier et sont à confirmer
   sur le site marchand.
 - Un compte supprimé supprime aussi les événements qu'il organisait (les réservations des autres sont libérées).
+- Le **premier compte créé** devient administrateur : créez le vôtre dès la mise en ligne, avant de diffuser l'adresse.
+- Une demande à l'assistant est limitée à environ 140 secondes (limite d'exécution des fonctions Supabase) : au-delà,
+  l'assistant s'arrête proprement avec ce qu'il a déjà trouvé.

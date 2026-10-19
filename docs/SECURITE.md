@@ -65,5 +65,8 @@
   absolu, fixez une limite de dépense dans la console Anthropic.
 - Le coût affiché est une **estimation** (tarifs saisis par l'administrateur) ; la facture Anthropic fait foi.
 - Une demande interrompue (serveur arrêté pendant un appel) est close au bout de 10 minutes en comptant toute son enveloppe.
+- Aucune nouvelle tentative automatique d'un appel (elle pourrait être facturée deux fois pour une seule enveloppe) ; une durée
+  maximale par demande (140 s, réglable par ) reste sous la limite d'exécution des fonctions Supabase.
+- Si le coût réel d'un appel ne peut pas être enregistré, l'enveloppe réservée est comptée comme dépensée.
 - Le repli automatique vers un autre modèle en cas de refus (« fallbacks ») n'est **pas** activé : il rendrait le coût d'une
   demande impossible à borner à l'avance.

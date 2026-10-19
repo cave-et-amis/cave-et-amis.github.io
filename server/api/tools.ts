@@ -172,7 +172,7 @@ export class ToolBox {
         if (!isUuid(i.wine_id)) return JSON.stringify({ error: 'wine_id invalide' });
         return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year));
       case 'list_my_tastings':
-        return JSON.stringify(await listTastings(this.user, i as Parameters<typeof listTastings>[1]));
+        return JSON.stringify(await listTastings(this.user, this.userId, i as Parameters<typeof listTastings>[2]));
       case 'search_friends_wines':
         return JSON.stringify(await friendsWines(this.user, i as Parameters<typeof friendsWines>[1]));
       case 'get_event':

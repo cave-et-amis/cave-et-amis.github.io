@@ -16,14 +16,25 @@ async function all<T>(q: () => PromiseLike<{ data: unknown; error: { message: st
   return (data ?? []) as T[];
 }
 
+/** Lecture par pages de 1 000 lignes (limite de l'API Supabase), jusqu'à un plafond raisonnable. */
+async function paged<T>(page: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>, max = 5000): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < max; from += 1000) {
+    const rows = await all<T>(() => page(from, from + 999));
+    out.push(...rows);
+    if (rows.length < 1000) break;
+  }
+  return out;
+}
+
 export type CellarData = { wines: Wine[]; lots: Lot[]; cellars: Cellar[]; locations: Location[] };
 
 export async function loadCellar(sb: SupabaseClient): Promise<CellarData> {
   const [wines, lots, cellars, locations] = await Promise.all([
-    all<Wine>(() => sb.from('wines').select('*').order('name').limit(2000)),
-    all<Lot>(() => sb.from('lots').select('*').limit(4000)),
-    all<Cellar>(() => sb.from('cellars').select('*')),
-    all<Location>(() => sb.from('locations').select('*')),
+    paged<Wine>((a, b) => sb.from('wines').select('*').order('name').order('id').range(a, b)),
+    paged<Lot>((a, b) => sb.from('lots').select('*').order('id').range(a, b)),
+    paged<Cellar>((a, b) => sb.from('cellars').select('*').order('id').range(a, b)),
+    paged<Location>((a, b) => sb.from('locations').select('*').order('id').range(a, b)),
   ]);
   return { wines, lots, cellars, locations };
 }
@@ -118,7 +129,7 @@ export async function wineDetails(sb: SupabaseClient, data: CellarData, wineId: 
   const w = data.wines.find((x) => x.id === wineId);
   if (!w) return { error: 'Vin introuvable dans la cave de la personne.' };
   const [tastings, prices] = await Promise.all([
-    all<Tasting>(() => sb.from('tastings').select('*').eq('wine_id', wineId).order('tasted_on', { ascending: false }).limit(5)),
+    all<Tasting>(() => sb.from('tastings').select('*').eq('wine_id', wineId).eq('user_id', w.owner_id).order('tasted_on', { ascending: false }).limit(5)),
     all<MarketPrice>(() => sb.from('market_prices').select('*').eq('wine_id', wineId).order('checked_at', { ascending: false }).limit(3)),
   ]);
   return {
@@ -155,8 +166,9 @@ export function compactTasting(t: Tasting) {
   };
 }
 
-export async function listTastings(sb: SupabaseClient, q: { query?: string | null; min_rating?: number | null; limit?: number | null }) {
-  const rows = await all<Tasting>(() => sb.from('tastings').select('*').order('tasted_on', { ascending: false }).limit(300));
+export async function listTastings(sb: SupabaseClient, userId: string, q: { query?: string | null; min_rating?: number | null; limit?: number | null }) {
+  // Seulement le carnet de la personne (et non les notes que d'autres participants ont partagées avec un événement).
+  const rows = await all<Tasting>(() => sb.from('tastings').select('*').eq('user_id', userId).order('tasted_on', { ascending: false }).limit(300));
   const words = fold(q.query ?? '')
     .split(/\s+/)
     .filter(Boolean);
