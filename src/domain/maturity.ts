@@ -5,12 +5,17 @@
  * Une conservation à température ambiante raccourcit l'alerte « à boire bientôt ».
  */
 import type { AdviceSource, Color, Storage, WineType } from './types.ts';
+import { isLightRed, isRichWhite } from './advice.ts';
 
 export type Maturity = 'young' | 'ready' | 'soon' | 'past' | 'unknown';
 
 export type WindowInfo = { from: number; until: number; origin: AdviceSource; approximate: boolean };
 
 type WineLike = {
+  name?: string;
+  appellation?: string | null;
+  region?: string | null;
+  grapes?: string[];
   vintage: number | null;
   non_vintage?: boolean;
   color: Color | null;
@@ -37,7 +42,7 @@ export const MATURITY_HINTS: Record<Maturity, string> = {
 };
 
 /** Repère général (années après le millésime). Très approximatif : dépend de l'appellation, du producteur, de l'année. */
-export function generalWindow(w: Pick<WineLike, 'vintage' | 'non_vintage' | 'color' | 'wine_type'>): { from: number; until: number } | null {
+export function generalWindow(w: Pick<WineLike, 'vintage' | 'non_vintage' | 'color' | 'wine_type' | 'name' | 'appellation' | 'region' | 'grapes'>): { from: number; until: number } | null {
   if (!w.vintage) return null;
   const v = w.vintage;
   const type = w.wine_type;
@@ -46,8 +51,9 @@ export function generalWindow(w: Pick<WineLike, 'vintage' | 'non_vintage' | 'col
   if (type === 'effervescent' || w.color === 'effervescent') return { from: v + 3, until: v + 12 };
   switch (w.color) {
     case 'rouge':
-      return { from: v + 3, until: v + 12 };
+      return isLightRed(w) ? { from: v + 1, until: v + 7 } : { from: v + 3, until: v + 12 };
     case 'blanc':
+      return isRichWhite(w) ? { from: v + 2, until: v + 10 } : { from: v + 1, until: v + 6 };
     case 'orange':
       return { from: v + 1, until: v + 6 };
     case 'rose':

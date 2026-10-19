@@ -111,8 +111,9 @@ const server = createServer(async (req, res) => {
       body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body,
     });
     const response = await fake.handle(request);
-    const out: Record<string, string> = { ...CORS };
-    response.headers.forEach((v, k) => (out[k] = v));
+    const out: Record<string, string> = {};
+    for (const [k, v] of Object.entries(CORS)) out[k.toLowerCase()] = v;
+    response.headers.forEach((v, k) => (out[k.toLowerCase()] = v));
     res.writeHead(response.status, out);
     res.end(Buffer.from(await response.arrayBuffer()));
   } catch (e) {

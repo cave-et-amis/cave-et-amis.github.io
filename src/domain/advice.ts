@@ -8,11 +8,11 @@ import { fold } from './wine.ts';
 type WineLike = {
   name?: string;
   color: Color | null;
-  wine_type: WineType | null;
+  wine_type?: WineType | null;
   grapes?: string[];
   appellation?: string | null;
   region?: string | null;
-  vintage: number | null;
+  vintage?: number | null;
 };
 
 const LIGHT_RED = /(gamay|pinot|beaujolais|morgon|fleurie|brouilly|chiroubles|juliénas|julienas|saint-amour|regnie|chenas|moulin-a-vent|bourgueil|chinon|saumur|anjou|alsace|loire|trousseau|poulsard|grolleau)/;
@@ -20,6 +20,10 @@ const RICH_WHITE = /(meursault|montrachet|corton|hermitage|condrieu|chateauneuf|
 
 function text(w: WineLike) {
   return fold([w.name, w.appellation, w.region, ...(w.grapes ?? [])].filter(Boolean).join(' '));
+}
+
+export function isRichWhite(w: WineLike) {
+  return w.color === 'blanc' && RICH_WHITE.test(text(w));
 }
 
 export function isLightRed(w: WineLike) {
