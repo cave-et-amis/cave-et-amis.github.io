@@ -38,7 +38,7 @@ utilisateur, droits par défaut des futures migrations.
 | Annulation et libération | e2e + `tests/sql/events` (annulation, désistement d'un invité) |
 | Consommation sans double décompte | e2e (stock baisse une fois, rechargement compris) ; `tests/sql/events` (deuxième confirmation sans effet), `tests/sql/stock` (même clé envoyée deux fois) |
 | Dégustation extérieure sans modification du stock | e2e ; `tests/sql/carnet` |
-| Suppression de compte |  (bouteilles, photos même orphelines, réservations ; les événements des autres restent intacts) |
+| Suppression de compte | `tests/ai/account` (bouteilles, photos même orphelines, réservations ; les événements des autres restent intacts) |
 | Protection de la clé API | `tests/ai/assistant` et `budget` (clé absente des réponses, des messages au modèle, des erreurs journalisées) ; e2e administration ; export contrôlé (`check-dist`) ; fonction regroupée sans clé |
 | Quotas et budget | `tests/ai/budget` : quota quotidien, quota personnalisé, budget global, **demandes simultanées** (enveloppe réservée), fréquence, blocage, modèle sans tarif ; e2e quota atteint |
 | Fonctionnement manuel sans IA | `tests/ai/assistant` (clé absente) ; e2e (quota atteint : Claire ajoute un vin) |
