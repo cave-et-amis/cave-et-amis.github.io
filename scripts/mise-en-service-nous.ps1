@@ -6,6 +6,7 @@
 # Le secret partagé est tiré au hasard ici, envoyé aux deux projets, puis effacé ; il n'est jamais affiché.
 # Prérequis : les branches main de Cave et de Cocon contiennent l'intégration (déjà fait), les sites sont construits.
 
+param([switch]$Oui)  # -Oui : enchaîne les étapes sans demander confirmation (toute erreur arrête quand même tout).
 $ErrorActionPreference = 'Stop'
 $Cave = Split-Path $PSScriptRoot -Parent
 $Cocon = Join-Path (Split-Path $Cave -Parent) 'Cocon'
@@ -17,6 +18,7 @@ $Backup = Join-Path (Split-Path (Split-Path $Cave -Parent) -Parent) "sauvegardes
 function Step($title) {
   Write-Host ''
   Write-Host "=== $title ===" -ForegroundColor Cyan
+  if ($Oui) { return }
   $answer = Read-Host 'Continuer ? (o pour oui, autre touche pour arrêter)'
   if ($answer -ne 'o') { Write-Host 'Arrêt demandé : rien de plus n''est fait.' -ForegroundColor Yellow; exit 1 }
 }
@@ -108,7 +110,8 @@ GitDo -C $Cave push origin main
 Step '8. Site Nous : déposez le zip sur Netlify (le dossier et la page s''ouvrent)'
 Start-Process explorer.exe "/select,`"$(Join-Path $Cocon 'livraison\nous-site-en-ligne.zip')`""
 Start-Process 'https://app.netlify.com/projects/cocon-famille/deploys'
-Read-Host 'Glissez nous-site-en-ligne.zip dans la zone « drag and drop », attendez « Published », puis appuyez sur Entrée'
+if ($Oui) { Write-Host 'À FAIRE : glissez nous-site-en-ligne.zip dans la zone « drag and drop » de Netlify (page ouverte).' -ForegroundColor Yellow }
+else { Read-Host 'Glissez nous-site-en-ligne.zip dans la zone « drag and drop », attendez « Published », puis appuyez sur Entrée' }
 
 Write-Host ''
 Write-Host 'Mise en service terminée. Vérification : docs/MISE-EN-SERVICE-NOUS.md, étape 6.' -ForegroundColor Green
