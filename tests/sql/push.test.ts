@@ -147,3 +147,20 @@ describe('mise à jour et retour arrière', () => {
     expect(await devices(bruno)).toHaveLength(1);
   });
 });
+
+describe('envoi immédiat (supabase/sql/push-envoi.sql)', () => {
+  it('ne bloque jamais une notification, même sans pg_net ni jeton (intégration Nous retirée)', async () => {
+    const sql = readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'push-envoi.sql'), 'utf8');
+    // Seulement la fonction et son déclencheur : pg_cron et pg_net n'existent pas dans la base de test.
+    await db.exec(sql.slice(sql.indexOf('create or replace function public.push_kick()'), sql.indexOf('-- Filet de sécurité')));
+    expect((await db.query(`select tgname from pg_trigger where tgname = 'push_outbox_kick'`)).rows).toHaveLength(1);
+    await save(bruno);
+    // pg_net absent : l'appel immédiat échoue, la demande de contact et sa mise en file passent quand même.
+    await request(claire, bruno);
+    // Retrait de l'intégration Nous : plus de jeton des tâches planifiées.
+    await db.exec(`drop table public.nous_config cascade`);
+    await request(lea, bruno);
+    expect(await outbox()).toHaveLength(2);
+    expect((await as(db, bruno, `select kind from notifications order by created_at`)).map((r) => r.kind)).toEqual(['friend_request', 'friend_request']);
+  });
+});

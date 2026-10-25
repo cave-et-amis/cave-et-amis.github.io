@@ -164,7 +164,10 @@
 - **Envoi** : chaque notification de l'application est mise en file pour les appareils de sa destinataire (aucune entre
   deux personnes qui se sont bloquées, comme pour la cloche). cave-api la traite, appelée par la base dès la mise en file
   (pg_net) puis chaque minute pour les nouvelles tentatives (pg_cron), avec le jeton des tâches planifiées. Une
-  notification déjà lue dans l'application, ou vieille d'un jour, n'est plus envoyée ; 5 essais au plus.
+  notification déjà lue dans l'application, ou vieille d'un jour, n'est plus envoyée ; 5 essais au plus. L'appel
+  immédiat ne peut jamais empêcher la notification elle-même : en cas d'échec, la tâche planifiée prend le relais. Il
+  utilise le jeton des tâches planifiées de l'intégration Nous : si celle-ci est retirée, les notifications push ne
+  partent plus, sans gêner le reste de l'application.
 
 ## Maîtrise des coûts
 

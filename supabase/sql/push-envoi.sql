@@ -3,25 +3,33 @@
 -- À exécuter UNE fois dans Supabase › SQL Editor, après la migration 20261030000001_notifications_push.sql et après le
 -- déploiement de cave-api. (Ce n'est pas une migration : il dépend de l'adresse du projet et des extensions hébergées.)
 -- Le jeton des tâches planifiées est celui de public.nous_config (déjà utilisé pour Nous) ; il est lu à chaque appel et
--- n'apparaît dans aucune définition. L'offre gratuite de Supabase comprend pg_cron et pg_net.
+-- n'apparaît dans aucune définition. Si l'intégration Nous est retirée (integration-nous-rollback.sql supprime ce
+-- jeton), les notifications push ne partent plus, sans gêner le reste de l'application. Rejouable sans danger.
+-- L'offre gratuite de Supabase comprend pg_cron et pg_net.
 
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
 -- Envoi immédiat : un appel par instruction qui met des notifications en file (pas un par ligne). pg_net envoie la
 -- requête après la validation de la transaction : la fonction trouve donc la file à jour.
+-- Il ne doit jamais empêcher la notification elle-même (jeton absent, pg_net indisponible…) : en cas d'échec, rien
+-- n'est annulé et la tâche planifiée prend le relais.
 create or replace function public.push_kick() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  perform net.http_post(
-    url := 'https://ogkmucrjqomsqtjmkipd.supabase.co/functions/v1/cave-api',
-    headers := jsonb_build_object(
-      'Content-Type', 'application/json',
-      'x-cron-token', (select c.cron_token from public.nous_config c where c.id = 1)
-    ),
-    body := '{"action":"push_flush"}'::jsonb,
-    timeout_milliseconds := 20000
-  );
+  begin
+    perform net.http_post(
+      url := 'https://ogkmucrjqomsqtjmkipd.supabase.co/functions/v1/cave-api',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-cron-token', (select c.cron_token from public.nous_config c where c.id = 1)
+      ),
+      body := '{"action":"push_flush"}'::jsonb,
+      timeout_milliseconds := 20000
+    );
+  exception when others then
+    null;
+  end;
   return null;
 end $$;
 
