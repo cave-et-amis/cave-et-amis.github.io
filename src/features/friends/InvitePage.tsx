@@ -16,7 +16,8 @@ type Accepted = Awaited<ReturnType<ReturnType<typeof useStore>['api']['respondIn
 
 const DETAIL: Record<string, string> = {
   discovery: 'Vous serez en contact : vous pourrez vous inviter à des événements et à des groupes. Aucune cave n’est ouverte ; chacun pourra ouvrir la sienne plus tard.',
-  friend: 'Cette personne vous ouvre sa cave : vous verrez les bouteilles partagées avec ses amis. Votre cave reste privée tant que vous ne l’ouvrez pas.',
+  friend: 'Cette personne vous ouvre sa cave : vous verrez les bouteilles partagées avec ses amis, en lecture seule. Votre cave reste privée tant que vous ne l’ouvrez pas.',
+  selection: 'Cette personne vous montre une sélection de bouteilles de sa cave, en lecture seule. Votre cave reste privée tant que vous ne l’ouvrez pas.',
   group: 'Vous entrerez dans le groupe : vous verrez ses bouteilles, ses soirées et ses envies. Votre cave reste privée.',
   event: 'Vous serez invité à l’événement, avec ses vins prévus. Votre cave reste privée.',
 };
@@ -90,15 +91,20 @@ export function InvitePage({ code: initial }: { code: string }) {
     const name = done.friend_name;
     // Lien « ami » : la cave de la personne qui invite m'est ouverte ; je peux ouvrir la mienne en retour (non coché).
     const offerMine = done.kind === 'friend' && !relation(done.friend_id)?.they_see_mine;
+    const selection = done.kind === 'friend' && info.selection === true;
     return (
       <section className="card stack center">
         <div style={{ fontSize: '2.4rem' }} aria-hidden>
           🥂
         </div>
-        <h2 className="section">{done.kind === 'friend' ? `${name} vous a ouvert sa cave` : `Vous êtes en contact avec ${name}`}</h2>
+        <h2 className="section">
+          {selection ? `${name} vous montre une sélection de sa cave` : done.kind === 'friend' ? `${name} vous a ouvert sa cave` : `Vous êtes en contact avec ${name}`}
+        </h2>
         <p className="muted">
-          {done.kind === 'friend'
-            ? 'Vous voyez maintenant les bouteilles partagées avec ses amis. Votre cave, elle, reste privée.'
+          {selection
+            ? 'Vous voyez maintenant les bouteilles choisies pour vous, en lecture seule. Votre cave, elle, reste privée.'
+            : done.kind === 'friend'
+            ? 'Vous voyez maintenant les bouteilles partagées avec ses amis, en lecture seule. Votre cave, elle, reste privée.'
             : 'Vous pouvez vous inviter à des événements et à des groupes. Aucune cave n’est ouverte.'}
         </p>
         {offerMine && (
@@ -158,7 +164,7 @@ export function InvitePage({ code: initial }: { code: string }) {
         🍷
       </div>
       <h2 className="section">{inviteHeadline(info)}</h2>
-      <p className="muted">{DETAIL[info.kind ?? 'discovery']}</p>
+      <p className="muted">{DETAIL[info.kind === 'friend' && info.selection ? 'selection' : (info.kind ?? 'discovery')]}</p>
       {info.already_friends && (info.kind === 'discovery' || !info.kind) && <Notice tone="info">Vous êtes déjà en contact.</Notice>}
       <Button size="lg" icon={<Check />} loading={busy} onClick={() => void accept()}>
         Accepter

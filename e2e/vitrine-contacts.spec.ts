@@ -5,7 +5,7 @@
  * Fichier nommé pour passer après parcours.spec.ts (le premier compte créé devient administrateur).
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { email, goto, inviteCode, PASSWORD, shot, signUp, toast } from './helpers';
+import { email, goto, inviteCode, PASSWORD, shot, signUp, skipWelcome, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -48,9 +48,10 @@ test('vitrine d’un lien d’événement : inscription, puis arrivée directe s
   // Omar n'a pas de compte : la vitrine dit qui l'invite et à quoi, sans rien d'autre.
   await omar.goto(`/#/ami/${code}`);
   await expect(omar.getByRole('heading', { name: /Nadia vous invite à « Apéro des voisins »/ })).toBeVisible();
-  await expect(omar.getByText('Votre cave, bien rangée')).toBeVisible();
-  await expect(omar.getByRole('button', { name: 'J’ai déjà un compte' })).toBeVisible();
+  await expect(omar.getByText('Organisez votre cave')).toBeVisible();
+  await expect(omar.getByRole('button', { name: 'Me connecter' })).toBeVisible();
   await shot(omar, '12-vitrine-invitation');
+  await skipWelcome(omar);
   await omar.getByRole('button', { name: 'Créer mon compte' }).click();
   await omar.getByLabel('Votre prénom').fill('Omar');
   await omar.getByLabel('Adresse e-mail').fill(email('Omar'));

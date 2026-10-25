@@ -10,8 +10,26 @@
 - **Mon carnet** : dégustations, favoris, liste d'envies, vins possédés.
 
 Le bouton **Ajouter** (en bas à droite sur téléphone, à gauche sur ordinateur) : photographier une étiquette, saisir un vin,
-enregistrer une dégustation, ajouter une envie. L'**assistant** (✦ en haut) et les **réglages** (votre initiale) sont toujours
-accessibles.
+enregistrer une dégustation, ajouter une envie. L'**assistant** (✦ en haut), l'**aide** (« ? » en haut) et les **réglages**
+(votre initiale) sont toujours accessibles.
+
+## Premiers pas : bienvenue, visite guidée, aide
+
+- **Bienvenue** : à la première connexion, « Découvrir l'application » lance la visite guidée, « Commencer directement » la
+  saute. Elle ne s'impose jamais ensuite.
+- **Visite guidée** : chaque étape éclaire un vrai bouton (le reste de l'écran est assombri) et va sur la bonne page :
+  tableau de bord, Ma cave, Ajouter, Lia, Inviter quelqu'un, groupes, événements, (administration, pour l'administrateur),
+  aide. « Suivant », « Précédent », « Passer » à tout moment (au clavier : flèches et Échap) ; « Étape 3 sur 8 » et la barre
+  indiquent où vous en êtes. Interrompue (application fermée), elle se **reprend** depuis l'accueil (« Reprendre », « Plus
+  tard », « Arrêter la visite »).
+- **Astuces** : à la première visite de Ma cave, Amis & Groupes, Groupes, Événements et Mon carnet, une courte astuce
+  (« J'ai compris » la range, « Voir l'aide » ouvre l'aide).
+- **Aide « ? »** : les fiches de la page où vous êtes (étapes courtes, bouton pour ouvrir directement le bon écran), une
+  recherche, « Demander à Lia » et « Revoir la visite guidée ». Une fonction que vous n'avez pas le droit d'utiliser est
+  marquée « Non disponible », avec la raison.
+- **Réglages › Visite guidée et aide** : « Revoir la visite guidée », « Réafficher les astuces ».
+- **Sans compte** : l'écran de connexion propose « Découvrir l'application sans compte », une présentation en cinq écrans
+  (aucune donnée n'y figure).
 
 ## Ajouter des bouteilles
 
@@ -45,20 +63,31 @@ un sens ou dans l'autre) ; un **contact** n'a aucune cave ouverte.
 - **Demander l'accès** à la cave d'un contact : la personne accepte (sa cave vous est ouverte) ou refuse ; pas de nouvelle
   demande pendant 30 jours après un refus.
 
-### Inviter par lien (Amis & Groupes › Invitations)
+### Inviter quelqu'un (Amis & Groupes › « Inviter quelqu'un », ou le raccourci de l'accueil)
 
+Pas besoin d'être déjà amis : la personne reçoit un lien, découvre l'application, crée son compte si besoin, puis accepte.
 Choisissez ce que permet le lien :
 
 | Lien | Ce qu'il fait | Utilisations | Valable |
 |---|---|---|---|
 | **Découvrir l'application** | vous met en contact, sans ouvrir aucune cave | 10 personnes | 30 jours |
-| **Ami, avec accès à ma cave** | contact + votre cave ouverte à la personne (elle peut ouvrir la sienne en retour) | 1 personne | 14 jours |
+| **Voir ma cave** | contact + votre cave ouverte à la personne, **en lecture seule** : toutes vos bouteilles partagées, ou **une sélection** que vous choisissez ; « Restreint » masque prix, quantités et notes ; date de fin facultative | 1 personne | 14 jours |
 | **Rejoindre un de mes groupes** | contact + entrée dans le groupe (administrateur ou gestionnaire) | 20 personnes, 50 membres au plus | 14 jours |
-| **Venir à un de mes événements** | contact + invitation à l'événement (organisateur) | 20 personnes | jusqu'à l'événement |
+| **Venir à un de mes événements** | contact + invitation à l'événement, réponse à donner (organisateur) | 20 personnes | jusqu'à l'événement |
 
-Une personne sans compte voit d'abord une **page de présentation** (« Bruno vous invite à… »), puis crée son compte ; avec un
-lien de groupe ou d'événement, elle arrive directement dessus. Les **liens actifs** indiquent les utilisations restantes et la
-date limite ; « Révoquer » les désactive (les personnes déjà entrées gardent leur place).
+« Pour qui ? » (facultatif) vous aide à vous y retrouver. Le lien se partage par **QR code** (à scanner avec l'appareil
+photo), **WhatsApp**, **SMS**, **e-mail** (le message est prêt, rien n'est envoyé par l'application), « Copier le lien » ou
+le **code** à dicter (« J'ai reçu un code »).
+
+Une personne sans compte voit d'abord la **page du lien** (« Bruno vous invite à… », ce que permet le lien, l'application
+en trois points), puis « Découvrir l'application », « Créer mon compte » ou « Me connecter » ; l'invitation est gardée
+pendant l'inscription. Avec un lien de groupe ou d'événement, elle arrive directement dessus. Un lien révoqué ou expiré
+l'indique, sans rien montrer d'autre.
+
+**Mes invitations** (onglet Invitations) : vos liens (actifs, ou tous), leur état (actif, utilisé, expiré, révoqué), les dates,
+les utilisations, qui les a utilisés ; « Partager » (le même lien, à nouveau), « Gérer l'accès de … » (lien « Voir ma
+cave »), « Révoquer » (les personnes déjà entrées gardent leur place). Les liens créés avant cette version ne peuvent plus
+être réaffichés.
 
 ### Ce que chacun voit de vous
 
@@ -72,6 +101,9 @@ La fiche d'une personne (Amis & Groupes › son nom) a deux onglets :
   - **Exceptions** : « Masquer pour … » une bouteille partagée, ou « Ajouter une bouteille » pour montrer à cette personne
     seulement une bouteille privée. Les exceptions ne concernent que votre cave : un partage dans un groupe ou un vin proposé
     pour un événement restent visibles.
+  - **Ce que … peut voir** : « Toute ma cave partagée » ou « Une sélection » (seulement les bouteilles ajoutées en exception
+    pour cette personne), et une **date de fin** facultative : l'accès se ferme seul ce jour-là au soir (le rouvrir le rend
+    permanent).
   - **Niveau de détail** : « Standard » (les réglages de chaque bouteille) ou « Restreint » (prix, quantités exactes et notes
     toujours masqués pour cette personne).
   - **Actions** : Fermer ma cave à … (la relation, les groupes et les événements restent), Retirer de mes amis (plus aucune
@@ -160,6 +192,12 @@ Exemples : « Quel vin de ma cave ouvrir avec un magret de canard ? », « Quell
 « Dois-je carafer ce vin ? », « Aide-moi à décrire ce que je ressens », « Propose des vins pour notre dîner ».
 Il distingue **vos données**, les **repères généraux** et ses **estimations**, et ne modifie rien sans votre confirmation.
 S'il est indisponible (quota atteint, service en panne), tout le reste de l'application fonctionne normalement.
+
+**Aide avec Cave & Amis** : la rubrique de la page de Lia répond tout de suite aux questions courantes (« Comment ajouter une
+bouteille ? », « Comment inviter quelqu'un sans lui montrer ma cave ? »…), sans compter dans vos demandes. Posée à Lia, une
+question sur l'application reçoit une réponse tirée de l'aide de l'application, en quelques étapes, avec un bouton pour
+ouvrir le bon écran (« Ouvrir les invitations ») : Lia ne fait rien à votre place, n'invente pas de fonction, dit clairement
+ce qui n'existe pas ou ce qui vous est interdit, et ne voit jamais les données des autres au-delà de vos droits.
 
 ## Installer sur le téléphone
 

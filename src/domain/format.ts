@@ -47,6 +47,16 @@ export function currentYear(now = new Date()) {
   return Number(todayIso(now).slice(0, 4));
 }
 
+/** Fin de la journée choisie (AAAA-MM-JJ, heure de l'appareil) : la date de fin d'un accès est incluse. */
+export function endOfDay(day: string) {
+  return new Date(`${day}T23:59:00`).toISOString();
+}
+
+/** Le jour (AAAA-MM-JJ, heure de l'appareil) d'un instant : valeur d'un <input type="date">, réciproque de endOfDay. */
+export function localDay(d = new Date()) {
+  return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n) => String(n).padStart(2, '0')).join('-');
+}
+
 /** Valeur pour <input type="datetime-local"> à partir d'un horodatage (heure de Paris). */
 export function toLocalInput(iso: string) {
   const d = new Date(iso);

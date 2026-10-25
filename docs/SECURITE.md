@@ -42,11 +42,23 @@
   envies communes et leurs participants ne sont lisibles que par ses membres (lecture par des fonctions qui le vérifient).
   Quitter un groupe retire le partage de ses notes et ses « je participe ».
 - Il n'existe aucune « cave publique » : aucune donnée n'est lisible sans compte, à l'exception de la page d'un lien
-  d'invitation valide : le **prénom** de la personne qui invite, le type de lien et, pour un groupe son nom, pour un événement
-  son **titre et sa date** (jamais l'adresse, les invités ni les bouteilles). Codes de 10 caractères conservés hachés ; 20 liens
-  actifs par personne ; « découvrir » : 10 utilisations, 30 jours ; « ami » : usage unique, 14 jours ; groupe et événement :
-  20 utilisations, 14 jours ou jusqu'à l'événement, 50 membres au plus par groupe ; un même compte ne compte qu'une fois ;
-  révocables.
+  d'invitation valide : le **prénom** de la personne qui invite, le type de lien (et, pour un lien « voir ma cave », s'il se
+  limite à une sélection — jamais laquelle) et, pour un groupe son nom, pour un événement son **titre et sa date** (jamais
+  l'adresse, les invités ni les bouteilles). Codes de 10 caractères tirés au hasard (31 signes, environ 8 × 10¹⁴ possibilités),
+  vérifiés par leur empreinte ; depuis la mise à jour « accueil et invitations », le code d'un nouveau lien est aussi gardé
+  pour que **son auteur seul** puisse le réafficher et le repartager (« Mes invitations ») — la personne invitée et les autres
+  comptes ne le lisent jamais ; 20 liens actifs par personne ; « découvrir » : 10 utilisations, 30 jours ; « voir ma cave » :
+  usage unique, 14 jours ; groupe et événement : 20 utilisations, 14 jours ou jusqu'à l'événement, 50 membres au plus par
+  groupe ; un même compte ne compte qu'une fois ; révocables.
+- **Accès limité** (lien « voir ma cave » ou fiche de la personne) : toujours en lecture seule. « Une sélection » ne montre que
+  les bouteilles ajoutées pour cette personne ; une **date de fin** ferme l'accès d'elle-même (la règle de la base compare à
+  l'heure du serveur : aucune tâche planifiée n'est nécessaire). Un nouveau lien ne restreint jamais un accès déjà ouvert ;
+  seule la personne qui ouvre sa cave règle ces limites.
+- **Partage d'un lien** : le QR code est calculé dans le navigateur (bibliothèque libre intégrée au site, aucun service
+  extérieur ne reçoit le lien) ; WhatsApp, SMS et e-mail ouvrent l'application de la personne avec un message prêt : rien
+  n'est envoyé par Cave & Amis.
+- **Préférences** (visite guidée, astuces) : chacun ne modifie que les siennes, par une fonction qui fusionne un petit objet
+  (2 000 octets au plus) sans écraser les autres réglages.
 
 ## Stocks et réservations
 
@@ -76,6 +88,11 @@
   lui-même le libellé ; **rien n'est modifié** tant que vous n'avez pas appuyé sur « Confirmer ».
 - **Prix** : uniquement par la recherche web d'Anthropic ; une offre n'est retenue que si son lien figure parmi les pages
   réellement renvoyées par la recherche, avec le bon millésime et la bonne contenance. Sinon : « prix non vérifié ».
+- **Guider** : les questions sur l'application sont répondues d'après l'**aide intégrée** (fiches écrites à l'avance, les
+  mêmes que l'aide « ? »), sans aucune donnée personnelle. Lia peut seulement proposer un bouton vers un écran prévu par une
+  fiche ; le serveur refuse un écran inconnu ou une fonction que la personne n'a pas le droit d'utiliser (administration,
+  gestion d'un groupe ou d'un événement dont elle n'est pas responsable), et l'application n'affiche ce bouton que pour une
+  adresse de l'aide. Ouvrir un écran ne fait rien d'autre : les droits restent vérifiés par la base.
 - Les étiquettes, notes, commentaires et pages web sont traités comme des **données**, jamais comme des instructions.
 
 ## Maîtrise des coûts

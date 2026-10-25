@@ -4,12 +4,12 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Ban, CalendarPlus, Eye, EyeOff, KeyRound, Lock, Plus, Search, UserMinus, UserX, Users } from 'lucide-react';
-import type { CellarException, Color, DetailLevel, PreviewLot, Relation, RelationOverview, SharedLot } from '../../domain/types';
+import type { AccessScope, CellarException, Color, DetailLevel, PreviewLot, Relation, RelationOverview, SharedLot } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
-import { dateLong, dateShort, deName, money } from '../../domain/format';
+import { dateLong, dateShort, deName, endOfDay, localDay, money } from '../../domain/format';
 import { COLORS, fold, vintageLabel, wineSubtitle, wineTitle } from '../../domain/wine';
-import { Avatar, Button, Check, EmptyState, InlineLoading, Notice, Pill, Segmented, Sheet, Thumb, useConfirm, useToast } from '../../ui/kit';
+import { Avatar, Button, Check, EmptyState, Field, InlineLoading, Notice, Pill, Segmented, Sheet, Thumb, useConfirm, useToast } from '../../ui/kit';
 import { go, routeQuery, useRoute } from '../../ui/router';
 import { SharedItem } from './SharedItem';
 import { AccessBadges } from './FriendsPage';
@@ -129,7 +129,7 @@ function TheirCellar({ rel, name }: { rel: Relation; name: string }) {
 
   return (
     <>
-      <p className="small muted">Les bouteilles que {name} partage avec ses amis.</p>
+      <p className="small muted">Les bouteilles que {name} vous montre, en lecture seule.</p>
       <Notice tone="info">Une bouteille visible n’est pas forcément disponible : pour un dîner, suggérez-la depuis l’événement, son propriétaire confirmera.</Notice>
       <div className="search">
         <Search aria-hidden />
@@ -159,14 +159,14 @@ function TheirCellar({ rel, name }: { rel: Relation; name: string }) {
   );
 }
 
-function originLabel(r: PreviewLot, name: string) {
+function originLabel(r: PreviewLot, name: string, selection: boolean) {
   switch (r.origin) {
     case 'friends':
       return 'Partagé avec mes amis';
     case 'proposable':
       return 'Proposable pour un événement';
     case 'exception':
-      return `Exception pour ${name}`;
+      return selection ? `Sélection pour ${name}` : `Exception pour ${name}`;
     case 'group':
       return `Groupe « ${r.origin_label ?? ''} »`;
     case 'event':
@@ -186,7 +186,10 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
   const [exceptions, setExceptions] = useState<CellarException[]>([]);
   const [adding, setAdding] = useState(false);
   const [tick, setTick] = useState(0);
-  const version = `${rel.they_see_mine}:${rel.detail_level}:${rel.exceptions}:${rel.visible_lots}:${snapshot.lots.length}:${tick}`;
+  const [until, setUntil] = useState(rel.access_expires_at ? localDay(new Date(rel.access_expires_at)) : '');
+  const version = `${rel.they_see_mine}:${rel.detail_level}:${rel.exceptions}:${rel.visible_lots}:${rel.scope}:${rel.access_expires_at}:${snapshot.lots.length}:${tick}`;
+  const selection = rel.scope === 'selection';
+  const ended = !rel.they_see_mine && rel.access_expires_at !== null && new Date(rel.access_expires_at).getTime() <= Date.now();
 
   useEffect(() => {
     let alive = true;
@@ -221,7 +224,8 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
   const shownCount = (k: 'hide_price' | 'hide_quantity' | 'hide_notes') => cellarRows.filter((r) => !r[k]).length;
   const visibility = (k: 'hide_price' | 'hide_quantity' | 'hide_notes') => {
     const n = shownCount(k);
-    return n === 0 ? 'masqués' : n === cellarRows.length ? 'visibles' : `visibles pour ${n} vin${n > 1 ? 's' : ''} sur ${cellarRows.length}`;
+    // « prix masqués », mais « quantités masquées », « notes masquées ».
+    return n === 0 ? (k === 'hide_price' ? 'masqués' : 'masquées') : n === cellarRows.length ? 'visibles' : `visibles pour ${n} vin${n > 1 ? 's' : ''} sur ${cellarRows.length}`;
   };
   const now = Date.now();
   const upcoming = (overview.common_events ?? []).filter((e) => new Date(e.starts_at).getTime() >= now);
@@ -256,7 +260,13 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
           <span>
             <strong>Ma cave</strong>
             <br />
-            <span className="small muted">{rel.they_see_mine ? `Ouverte à ${name}` : `Fermée : ${name} ne voit aucune bouteille de votre cave`}</span>
+            <span className="small muted">
+              {rel.they_see_mine
+                ? `Ouverte à ${name} : ${selection ? 'une sélection' : 'toute votre cave partagée'}${rel.access_expires_at ? `, jusqu’au ${dateLong(rel.access_expires_at)}` : ''}`
+                : ended
+                  ? `L’accès de ${name} a pris fin le ${dateLong(rel.access_expires_at!)}`
+                  : `Fermée : ${name} ne voit aucune bouteille de votre cave`}
+            </span>
           </span>
           <Check checked={rel.they_see_mine} onChange={(v) => void toggleCellar(v)} label={<span className="sr-only">Ma cave ouverte à {name}</span>} />
         </div>
@@ -339,6 +349,61 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
         </div>
       </section>
 
+      {rel.they_see_mine && (
+        <section className="card stack-sm" aria-labelledby="h-access-scope">
+          <h2 id="h-access-scope" className="section">
+            Ce que {name} peut voir
+          </h2>
+          <Segmented<AccessScope>
+            label={`Ce que ${name} peut voir`}
+            value={rel.scope ?? 'shared'}
+            onChange={(scope) =>
+              void act(
+                () => api.setCellarAccessOptions(rel.user_id, { scope }),
+                scope === 'selection' ? `${name} ne voit plus que votre sélection` : `${name} voit toute votre cave partagée`,
+              )
+            }
+            options={[
+              { value: 'shared', label: 'Toute ma cave partagée' },
+              { value: 'selection', label: 'Une sélection' },
+            ]}
+          />
+          <p className="small muted">
+            {selection
+              ? `Seulement les bouteilles choisies pour ${name} (« Ajouter une bouteille » ci-dessous), même privées. Lecture seule.`
+              : `Les bouteilles « Partagé avec mes amis » ou « Proposable », sauf celles masquées pour ${name}. Lecture seule.`}
+          </p>
+          <Field
+            label="Accès jusqu’au (facultatif)"
+            htmlFor="access-until"
+            hint={rel.access_expires_at ? `L’accès prendra fin le ${dateLong(rel.access_expires_at)}.` : 'Sans date : jusqu’à ce que vous fermiez votre cave à cette personne.'}
+          >
+            <div className="inline" style={{ flexWrap: 'nowrap' }}>
+              <input id="access-until" className="input" type="date" min={localDay()} value={until} onChange={(e) => setUntil(e.target.value)} />
+              <Button
+                variant="secondary"
+                disabled={!until}
+                onClick={() => void act(() => api.setCellarAccessOptions(rel.user_id, { expires_at: endOfDay(until) }), `Accès de ${name} jusqu’au ${dateLong(endOfDay(until))}`)}
+              >
+                Enregistrer
+              </Button>
+            </div>
+          </Field>
+          {rel.access_expires_at && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setUntil('');
+                void act(() => api.setCellarAccessOptions(rel.user_id, { expires_at: null }), 'Accès sans date de fin');
+              }}
+            >
+              Retirer la date de fin
+            </Button>
+          )}
+        </section>
+      )}
+
       <section className="card stack-sm" aria-labelledby="h-level">
         <h2 id="h-level" className="section">
           Niveau de détail pour {name}
@@ -387,6 +452,7 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
                 title="Dans ma cave"
                 rows={cellarRows}
                 name={name}
+                selection={selection}
                 action={(r) =>
                   r.origin === 'exception' ? (
                     <Button size="sm" variant="ghost" icon={<EyeOff />} onClick={() => void act(() => api.setCellarException(rel.user_id, r.lot_id!, null), `${lotName(r.lot_id!)} n’est plus montrée à ${name}`)}>
@@ -417,9 +483,13 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
 
       <section className="card stack-sm" aria-labelledby="h-exceptions">
         <h2 id="h-exceptions" className="section">
-          Exceptions pour {name}
+          {selection ? `Votre sélection pour ${name}` : `Exceptions pour ${name}`}
         </h2>
-        <p className="small muted">Bouteille par bouteille, sans toucher au réglage général du lot : masquer une bouteille partagée, ou montrer une bouteille privée à {name} seulement.</p>
+        <p className="small muted">
+          {selection
+            ? `${name} ne voit que les bouteilles choisies ici.`
+            : `Bouteille par bouteille, sans toucher au réglage général du lot : masquer une bouteille partagée, ou montrer une bouteille privée à ${name} seulement.`}
+        </p>
         {exceptions.length > 0 && (
           <div className="list">
             {exceptions.map((e) => (
@@ -444,26 +514,40 @@ function WhatTheySee({ rel, name }: { rel: Relation; name: string }) {
 
       <RelationActions rel={rel} name={name} onChange={() => setTick((t) => t + 1)} />
 
-      {adding && <ExceptionSheet viewer={rel.user_id} name={name} existing={exceptions} onDone={() => setTick((t) => t + 1)} onClose={() => setAdding(false)} />}
+      {adding && (
+        <ExceptionSheet viewer={rel.user_id} name={name} selection={selection} existing={exceptions} onDone={() => setTick((t) => t + 1)} onClose={() => setAdding(false)} />
+      )}
     </>
   );
 }
 
 /** Une partie de l'aperçu (ma cave, un groupe, nos événements) : ce que la personne voit de chaque bouteille. */
-function PreviewList({ title, rows, name, action }: { title: string; rows: PreviewLot[]; name: string; action?: (r: PreviewLot) => ReactNode }) {
+function PreviewList({
+  title,
+  rows,
+  name,
+  selection = false,
+  action,
+}: {
+  title: string;
+  rows: PreviewLot[];
+  name: string;
+  selection?: boolean;
+  action?: (r: PreviewLot) => ReactNode;
+}) {
   return (
     <div className="stack-sm">
       <h3 className="strong small">{title}</h3>
       <div className="list">
         {rows.map((r, i) => (
-          <PreviewItem key={`${r.lot_id ?? r.name}-${r.origin}-${r.origin_id ?? ''}-${i}`} row={r} name={name} action={action?.(r)} />
+          <PreviewItem key={`${r.lot_id ?? r.name}-${r.origin}-${r.origin_id ?? ''}-${i}`} row={r} name={name} selection={selection} action={action?.(r)} />
         ))}
       </div>
     </div>
   );
 }
 
-function PreviewItem({ row, name, action }: { row: PreviewLot; name: string; action?: ReactNode }) {
+function PreviewItem({ row, name, selection, action }: { row: PreviewLot; name: string; selection: boolean; action?: ReactNode }) {
   const { api } = useStore();
   const url = usePhotoUrl(api, row.label_photo);
   const vintage = vintageLabel(row);
@@ -480,7 +564,7 @@ function PreviewItem({ row, name, action }: { row: PreviewLot; name: string; act
           {wineSubtitle(row)}
         </span>
         <span className="badges">
-          <Pill tone={row.origin === 'exception' ? 'gold' : row.origin === 'group' || row.origin === 'event' ? 'info' : undefined}>{originLabel(row, name)}</Pill>
+          <Pill tone={row.origin === 'exception' ? 'gold' : row.origin === 'group' || row.origin === 'event' ? 'info' : undefined}>{originLabel(row, name, selection)}</Pill>
           {isEvent ? (
             <Pill>
               {row.quantity} bouteille{(row.quantity ?? 0) > 1 ? 's' : ''} proposée{(row.quantity ?? 0) > 1 ? 's' : ''}
@@ -504,15 +588,32 @@ function PreviewItem({ row, name, action }: { row: PreviewLot; name: string; act
   );
 }
 
-/** « Ajouter une bouteille » : montrer à cette personne seulement une bouteille privée, ou lui masquer une bouteille partagée. */
-function ExceptionSheet({ viewer, name, existing, onDone, onClose }: { viewer: string; name: string; existing: CellarException[]; onDone: () => void; onClose: () => void }) {
+/**
+ * « Ajouter une bouteille » : montrer à cette personne seulement une bouteille privée (avec un accès limité à une
+ * sélection : n'importe laquelle de mes bouteilles), ou lui masquer une bouteille partagée.
+ */
+function ExceptionSheet({
+  viewer,
+  name,
+  selection,
+  existing,
+  onDone,
+  onClose,
+}: {
+  viewer: string;
+  name: string;
+  selection: boolean;
+  existing: CellarException[];
+  onDone: () => void;
+  onClose: () => void;
+}) {
   const { snapshot, userId, wine, api, run } = useStore();
   const [mode, setMode] = useState<'show' | 'hide'>('show');
   const [q, setQ] = useState('');
   const taken = new Set(existing.map((e) => e.lot_id));
   const lots = snapshot.lots
     .filter((l) => l.owner_id === userId && l.quantity > 0 && !taken.has(l.id))
-    .filter((l) => (mode === 'show' ? l.visibility === 'private' : l.visibility !== 'private'))
+    .filter((l) => (mode === 'show' ? selection || l.visibility === 'private' : l.visibility !== 'private'))
     .map((l) => ({ lot: l, wine: wine(l.wine_id) }))
     .filter((x) => x.wine && fold([x.wine.name, x.wine.producer, x.wine.domaine, x.wine.appellation, vintageLabel(x.wine)].join(' ')).includes(fold(q)))
     .slice(0, 50);

@@ -1,7 +1,11 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, Bell, BookOpen, CalendarHeart, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
+import { ArrowLeft, Bell, BookOpen, CalendarHeart, CircleHelp, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
 import { useStore } from '../data/store';
+import { pageOfRoute } from '../domain/help';
+import { HelpSheet } from '../features/help/HelpSheet';
+import { ResumeTour, TourProvider, useTour } from '../features/tour/Tour';
+import { Discover } from '../features/auth/Discover';
 import { Home } from '../features/home/Home';
 import { CellarPage } from '../features/cellar/CellarPage';
 import { WinePage } from '../features/cellar/WinePage';
@@ -25,7 +29,7 @@ import { CellarsPage } from '../features/settings/CellarsPage';
 import { WhoSeesPage } from '../features/settings/WhoSeesPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { Avatar, Button, EmptyState } from './kit';
-import { go, useRoute, whenHistorySettled } from './router';
+import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 
 type Actions = {
   /** Fenêtre « Ajouter » : photo d'étiquette, saisie, dégustation, envie. */
@@ -34,9 +38,11 @@ type Actions = {
   scanLabel: () => void;
   newTasting: (prefill?: TastingPrefill) => void;
   newWish: (prefill?: WishPrefill) => void;
+  /** Aide de la page en cours (bouton « ? »). */
+  help: () => void;
 };
 
-const ActionsContext = createContext<Actions>({ add: () => {}, newWine: () => {}, scanLabel: () => {}, newTasting: () => {}, newWish: () => {} });
+const ActionsContext = createContext<Actions>({ add: () => {}, newWine: () => {}, scanLabel: () => {}, newTasting: () => {}, newWish: () => {}, help: () => {} });
 
 export function useActions() {
   return useContext(ActionsContext);
@@ -44,9 +50,21 @@ export function useActions() {
 
 type Tab = { path: string; label: string; /** Libellé court de la barre du bas (téléphone). */ short?: string; icon: ReactNode; badge?: number };
 
+/** Repère de la visite guidée pour un onglet (« nav-cave »…). */
+const tourId = (path: string) => `nav-${path.slice(1) || 'accueil'}`;
+
 export function Shell() {
+  return (
+    <TourProvider>
+      <ShellInner />
+    </TourProvider>
+  );
+}
+
+function ShellInner() {
   const store = useStore();
   const { me, snapshot, online, local, userId } = store;
+  const tour = useTour();
   const route = useRoute();
   const [sheet, setSheet] = useState<
     | { kind: 'add' }
@@ -54,6 +72,7 @@ export function Shell() {
     | { kind: 'scan' }
     | { kind: 'tasting'; prefill?: TastingPrefill }
     | { kind: 'wish'; prefill?: WishPrefill }
+    | { kind: 'help' }
     | null
   >(null);
 
@@ -64,6 +83,7 @@ export function Shell() {
       scanLabel: () => whenHistorySettled(() => setSheet({ kind: 'scan' })),
       newTasting: (prefill) => whenHistorySettled(() => setSheet({ kind: 'tasting', prefill })),
       newWish: (prefill) => whenHistorySettled(() => setSheet({ kind: 'wish', prefill })),
+      help: () => whenHistorySettled(() => setSheet({ kind: 'help' })),
     }),
     [],
   );
@@ -72,6 +92,13 @@ export function Shell() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pathOnly]);
+
+  // Accès direct « Ajouter une bouteille » (aide, Lia) : la fenêtre s'ouvre, l'adresse redevient celle de la page.
+  useEffect(() => {
+    if (routeQuery(route).get('ajouter') !== '1') return;
+    go(pathOnly, { replace: true });
+    actions.add();
+  }, [route, pathOnly, actions]);
 
   const seg = pathOnly.split('/').filter(Boolean);
   // Événements où l'on attend ma réponse, ou mes bouteilles suggérées par d'autres : pastille sur l'onglet.
@@ -176,6 +203,24 @@ export function Shell() {
         page = <SettingsPage />;
       }
       break;
+    case 'decouvrir':
+      title = 'Découvrir l’application';
+      back = '/';
+      page = (
+        <Discover
+          actions={
+            <>
+              <Button size="lg" block onClick={() => tour.start(0)}>
+                Faire la visite guidée
+              </Button>
+              <Button variant="secondary" block onClick={() => go('/')}>
+                Revenir à l’accueil
+              </Button>
+            </>
+          }
+        />
+      );
+      break;
     case 'admin':
       title = 'Administration';
       back = '/reglages';
@@ -199,11 +244,11 @@ export function Shell() {
             <img src="./icon.svg" alt="" width={34} height={34} />
             Cave &amp; Amis
           </div>
-          <Button className="add-btn" icon={<Plus />} onClick={actions.add}>
+          <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
             Ajouter un vin
           </Button>
           {tabs.map((t) => (
-            <a key={t.path} href={`#${t.path}`} aria-current={activeTab === t.path ? 'page' : undefined}>
+            <a key={t.path} href={`#${t.path}`} aria-current={activeTab === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
               {t.icon}
               {t.label}
               {!!t.badge && <span className="pill primary" style={{ marginLeft: 'auto' }}>{t.badge}</span>}
@@ -248,19 +293,25 @@ export function Shell() {
                 </span>
               )}
             </a>
+            <button type="button" className="icon-btn" aria-label="Aide de cette page" title="Aide" onClick={actions.help} data-tour="aide">
+              <CircleHelp />
+            </button>
             {seg[0] !== 'assistant' && (
-              <a className="icon-btn accent" href="#/assistant" aria-label="Assistant sommelier" title="Assistant sommelier">
+              <a className="icon-btn accent" href="#/assistant" aria-label="Assistant sommelier" title="Assistant sommelier" data-tour="lia">
                 <Sparkles />
               </a>
             )}
-            <Avatar name={me.display_name} seed={me.id} onClick={() => go('/reglages')} label={`Réglages et compte de ${me.display_name}`} />
+            <span data-tour="reglages" style={{ display: 'inline-flex', borderRadius: '50%' }}>
+              <Avatar name={me.display_name} seed={me.id} onClick={() => go('/reglages')} label={`Réglages et compte de ${me.display_name}`} />
+            </span>
           </div>
         </header>
         <main className="page" id="contenu">
+          {seg[0] === undefined && <ResumeTour />}
           {page}
         </main>
         {!['assistant', 'admin', 'reglages'].includes(seg[0] ?? '') && (
-          <button type="button" className="fab" onClick={actions.add}>
+          <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
             <Plus aria-hidden />
             Ajouter
           </button>
@@ -268,7 +319,14 @@ export function Shell() {
         <nav className="tabbar" aria-label="Navigation principale">
           <div className="tabbar-inner">
             {tabs.map((t) => (
-              <a key={t.path} href={`#${t.path}`} className="tab" aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label} aria-current={activeTab === t.path ? 'page' : undefined}>
+              <a
+                key={t.path}
+                href={`#${t.path}`}
+                className="tab"
+                aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label}
+                aria-current={activeTab === t.path ? 'page' : undefined}
+                data-tour={tourId(t.path)}
+              >
                 {t.icon}
                 <span>{t.short ?? t.label}</span>
                 {!!t.badge && (
@@ -286,6 +344,7 @@ export function Shell() {
       {sheet?.kind === 'scan' && <LabelScanSheet onClose={() => setSheet(null)} />}
       {sheet?.kind === 'tasting' && <TastingFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'wish' && <WishFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'help' && <HelpSheet page={pageOfRoute(route)} onClose={() => setSheet(null)} />}
     </ActionsContext.Provider>
   );
 }

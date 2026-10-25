@@ -2,11 +2,20 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { baseParams, textOf, type Meter } from './claude.ts';
+import { HELP_PAGES, type HelpPage } from '../../src/domain/help.ts';
 import { CHAT_SYSTEM } from './prompts.ts';
-import { CHAT_TOOLS, ToolBox } from './tools.ts';
+import { CHAT_TOOLS, ToolBox, type ChatContext } from './tools.ts';
 import { AiFailure, isUuid, sanitize, todayParis } from './util.ts';
 
-export type ChatInput = { conversation_id?: string | null; message: string; context?: { kind: 'wine' | 'event' | 'group'; id: string } | null };
+export type ChatInput = { conversation_id?: string | null; message: string; context?: ChatContext | null };
+
+/** Contexte accepté : une page connue de l'application, ou une fiche, un événement, un groupe (identifiant). */
+function validContext(c: unknown): ChatContext | null {
+  if (!c || typeof c !== 'object') return null;
+  const { kind, id } = c as { kind?: unknown; id?: unknown };
+  if (kind === 'page') return typeof id === 'string' && Object.hasOwn(HELP_PAGES, id) ? { kind: 'page', id: id as HelpPage } : null;
+  return (kind === 'wine' || kind === 'event' || kind === 'group') && isUuid(id) ? { kind, id } : null;
+}
 
 export type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; created_at: string };
 
@@ -45,7 +54,7 @@ export async function runChat(o: {
       .limit(settings.history_messages);
     history = ((historyRows ?? []) as typeof history).reverse();
   }
-  const context = input.context && isUuid(input.context.id) && ['wine', 'event', 'group'].includes(input.context.kind) ? input.context : null;
+  const context = validContext(input.context);
 
   const box = new ToolBox({ user, svc, meter, userId, currency: o.currency, year: Number(o.now.getFullYear()) });
   const contextNote = await box.contextNote(context);
@@ -76,7 +85,13 @@ ${h.content}`;
   if (!conversationId) {
     const { data, error } = await svc
       .from('ai_conversations')
-      .insert({ user_id: userId, title: sanitize(message, 70) || 'Conversation', context_kind: context?.kind ?? null, context_id: context?.id ?? null })
+      .insert({
+        user_id: userId,
+        title: sanitize(message, 70) || 'Conversation',
+        // La page d'origine ne sert qu'à la première question : elle n'est pas gardée avec la conversation.
+        context_kind: context && context.kind !== 'page' ? context.kind : null,
+        context_id: context && context.kind !== 'page' ? context.id : null,
+      })
       .select('id')
       .single();
     if (error) throw new AiFailure('internal', sanitize(error.message));

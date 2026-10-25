@@ -4,17 +4,24 @@ import { Check as CheckIcon, Plus, X } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { Button, EmptyState } from '../../ui/kit';
 import { go } from '../../ui/router';
+import { useActions } from '../../ui/Shell';
+import { FirstTip } from '../tour/Tour';
 import { GroupAvatar, ROLE_LABELS } from './common';
 import { GroupFormSheet } from './GroupFormSheet';
 
 export function GroupsTab() {
   const { snapshot, api, run } = useStore();
+  const actions = useActions();
   const [creating, setCreating] = useState(false);
   const invited = snapshot.groups.filter((g) => g.my_status === 'invited');
   const mine = snapshot.groups.filter((g) => g.my_status === 'active');
 
   return (
     <>
+      <FirstTip id="groupes" title="Les groupes" onHelp={actions.help}>
+        Un groupe (la famille, les amis du vendredi…) partage quelques bouteilles et prépare ses soirées. On y entre sur invitation, et ses membres
+        ne voient jamais le reste de votre cave.
+      </FirstTip>
       {invited.length > 0 && (
         <section aria-labelledby="h-group-invites">
           <div className="section-title">
@@ -57,7 +64,7 @@ export function GroupsTab() {
           <h2 id="h-groups">Mes groupes</h2>
           <span className="small muted">{mine.length}</span>
         </div>
-        <Button icon={<Plus />} onClick={() => setCreating(true)}>
+        <Button icon={<Plus />} onClick={() => setCreating(true)} data-tour="creer-groupe">
           Créer un groupe
         </Button>
         {mine.length === 0 ? (

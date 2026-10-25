@@ -4,11 +4,11 @@ import type { Api, Snapshot } from './data/api';
 import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { parseMagicLink } from './domain/nous';
-import { AuthScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
+import { AuthScreen, DiscoverScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { Shell } from './ui/Shell';
 import { Button, ConfirmProvider, ToastProvider } from './ui/kit';
-import { go, useRoute } from './ui/router';
+import { go, routeQuery, useRoute } from './ui/router';
 
 export function App({ api, local }: { api: Api; local: boolean }) {
   return (
@@ -99,11 +99,28 @@ function Root({ api, local }: { api: Api; local: boolean }) {
       />
     );
   if (!session) {
+    // « Découvrir l'application » sans compte : en visiteur, ou depuis la page d'un lien d'invitation (code gardé).
+    if (route.startsWith('/decouvrir')) {
+      const code = /^[A-Za-z0-9-]{6,24}$/.exec(routeQuery(route).get('code') ?? '')?.[0] ?? null;
+      return (
+        <DiscoverScreen
+          onChoose={(mode) => {
+            setAuthMode(mode);
+            if (code) {
+              savePendingInvite(code, true);
+              go(`/ami/${code}`, { replace: true });
+            } else go('/', { replace: true });
+          }}
+          onBack={code ? () => go(`/ami/${code}`, { replace: true }) : undefined}
+        />
+      );
+    }
     if (invite && !authMode) {
       return (
         <Showcase
           api={api}
           code={invite}
+          onDiscover={() => go(`/decouvrir?code=${invite}`)}
           onChoose={(mode) => {
             savePendingInvite(invite, true);
             setAuthMode(mode);

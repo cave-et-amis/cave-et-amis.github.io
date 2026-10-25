@@ -82,11 +82,12 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 2. Choisissez le **modèle** (par défaut Claude Opus 5.5), l'**effort**, le **budget mensuel**, les **quotas par personne**,
    la **recherche web** et ses limites. Les tarifs des modèles (dollars par million de jetons) sont pré-remplis d'après la page
    de tarifs d'Anthropic d'octobre 2026 : à mettre à jour s'ils changent. Un modèle sans tarif est refusé.
-3. Invitez vos amis depuis **Amis › Créer un lien d'invitation**.
+3. Invitez vos amis depuis **Amis & Groupes › « Inviter quelqu'un »** (lien, QR code, WhatsApp, SMS ou e-mail).
 
 ## Mettre à jour
 
 - Interface : `npm run package:site`, puis déposez l'archive dans **Netlify › Deploys**.
 - Fonction serveur : `npm run build:function`, puis redéployez `cave-api` (option A ou B).
 - Base : si un **nouveau** fichier apparaît dans `supabase/migrations/`, exécutez-le seul dans le SQL Editor
-  (jamais l'ancien une seconde fois).
+  (jamais l'ancien une seconde fois), **avant** de redéployer la fonction et l'interface. Quand une mise à jour a un script
+  de retour arrière (`supabase/sql/retour-<numéro>.sql`), ses instructions sont en tête du fichier.

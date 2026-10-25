@@ -170,8 +170,12 @@ export type Relation = {
   /** Sa demande pour voir ma cave / la mienne pour voir la sienne. */
   request_in: string | null;
   request_out: string | null;
+  /** Accès que j'ai ouvert : toute ma cave partagée, ou une sélection ; date de fin éventuelle (passée : accès terminé). */
+  scope: AccessScope | null;
+  access_expires_at: string | null;
 };
 export type DetailLevel = 'standard' | 'restricted';
+export type AccessScope = 'shared' | 'selection';
 
 /** Ce que les autres voient de mes bouteilles, et pourquoi (aperçu « Ce que X voit de moi »). */
 export type PreviewOrigin = 'friends' | 'proposable' | 'exception' | 'group' | 'event';
@@ -217,7 +221,12 @@ export type Preferences = {
   advanced?: boolean;
   /** Visibilité proposée par défaut pour les nouveaux lots (toujours « privé » si absent). */
   default_visibility?: Visibility;
+  /** Visite guidée : en cours (avec l'étape atteinte), terminée ou passée. Absente : jamais proposée. */
+  tour?: TourState;
+  /** Astuces de première visite déjà vues (identifiants de page). */
+  tips?: string[];
 };
+export type TourState = { status: 'active' | 'done' | 'skipped'; step: number };
 
 export type Cellar = { id: string; owner_id: string; name: string; storage: Storage; notes: string | null; position: number; created_at: string };
 
@@ -361,7 +370,21 @@ export type FriendInvite = {
   target_id: string | null;
   max_uses: number;
   uses: number;
+  /** Code du lien, gardé pour son auteur (absent pour les liens créés avant cette possibilité). */
+  code: string | null;
+  /** Destinataire indiqué à la création (« Pour Paul »). */
+  note: string | null;
+  /** Lien « voir ma cave » : sélection, niveau de détail, date de fin de l'accès. */
+  options: InviteOptions;
 };
+export type InviteOptions = {
+  scope?: AccessScope;
+  lots?: string[];
+  detail_level?: DetailLevel;
+  access_expires_at?: string | null;
+};
+/** Qui a utilisé un de mes liens (nom masqué si la personne est bloquée). */
+export type InviteRedemption = { invite_id: string; user_id: string; display_name: string | null; redeemed_at: string };
 
 export type EventKind = 'diner' | 'degustation' | 'anniversaire' | 'soiree_theme';
 export type EventStatus = 'planned' | 'cancelled' | 'done';

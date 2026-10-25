@@ -3,18 +3,22 @@
  * propose des actions que vous confirmez vous-même, et cite ses sources pour les prix.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ExternalLink, MessageSquarePlus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { ArrowRight, Check, CircleHelp, ExternalLink, MessageSquarePlus, Send, Sparkles, Trash2, X } from 'lucide-react';
 import type { AiMessage, Conversation } from '../../data/api';
 import { useStore } from '../../data/store';
 import { dateShort, todayIso } from '../../domain/format';
+import { availability, HELP_PAGES, HELP_PATHS, HELP_QUESTIONS, helpTopic, topicsForPage, type HelpPage, type HelpTopic } from '../../domain/help';
 import { wineTitle } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
 import { Markdown } from '../../ui/markdown';
 import { Button, EmptyState, InlineLoading, Notice, useConfirm } from '../../ui/kit';
 import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
+import { HelpTopicItem, useHelpPerms } from '../help/HelpSheet';
 
 type Action =
+  // Accès direct à un écran prévu par une fiche d'aide (navigation seulement).
+  | { id: string; type: 'open'; label: string; path: string }
   | { id: string; type: 'consume'; label: string; lot_id: string; wine_id: string; quantity: number; note: string | null }
   | { id: string; type: 'wishlist'; label: string; item: { wine_name: string; producer: string | null; vintage: number | null; color: string | null; region: string | null; note: string | null } }
   | { id: string; type: 'wine_advice'; label: string; wine_id: string; patch: Record<string, unknown> }
@@ -55,6 +59,10 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
   const contextWine = query.get('vin');
   const contextEvent = query.get('evenement');
   const contextGroup = query.get('groupe');
+  // Ouverte depuis l'aide d'une page (« Demander à Lia ») : Lia sait d'où vient la question.
+  const aide = query.get('aide');
+  const contextPage = aide && Object.hasOwn(HELP_PAGES, aide) ? (aide as HelpPage) : null;
+  const perms = useHelpPerms(!ai.unavailable);
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [loadingConv, setLoadingConv] = useState(false);
@@ -65,6 +73,7 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
   const endRef = useRef<HTMLDivElement>(null);
 
   const context = useMemo(() => {
+    if (contextPage) return { kind: 'page' as const, id: contextPage, label: `Aide : ${HELP_PAGES[contextPage]}` };
     if (contextWine) {
       const w = snapshot.wines.find((x) => x.id === contextWine);
       return w ? { kind: 'wine' as const, id: w.id, label: `Fiche : ${wineTitle(w)}` } : null;
@@ -78,7 +87,9 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
       return g ? { kind: 'group' as const, id: g.id, label: `Groupe : ${g.name}` } : null;
     }
     return null;
-  }, [contextWine, contextEvent, contextGroup, snapshot.wines, snapshot.events, snapshot.groups]);
+  }, [contextPage, contextWine, contextEvent, contextGroup, snapshot.wines, snapshot.events, snapshot.groups]);
+  // Rubrique « Aide avec Cave & Amis » : les fiches de la page d'origine, sinon les questions les plus courantes.
+  const helpTopics = (contextPage ? topicsForPage(contextPage, perms).slice(0, 6) : HELP_QUESTIONS.map(helpTopic)).filter((t): t is HelpTopic => Boolean(t));
 
   useEffect(() => {
     void api
@@ -173,13 +184,46 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
                       'Propose une sélection de vins pour notre prochaine soirée, d’après nos goûts et les bouteilles du groupe.',
                       'Quels vins de nos envies communes iraient avec une raclette ?',
                     ]
-                  : SUGGESTIONS
+                  : context?.kind === 'page'
+                    ? helpTopics
+                        .filter((t) => availability(t, perms).available)
+                        .slice(0, 3)
+                        .map((t) => t.question)
+                    : SUGGESTIONS
             ).map((s) => (
               <button key={s} type="button" disabled={Boolean(unavailable) || sending} onClick={() => void send(s)}>
                 {s}
               </button>
             ))}
           </div>
+          <section className="card stack-sm" aria-labelledby="h-app-help">
+            <div className="inline">
+              <CircleHelp aria-hidden style={{ color: 'var(--primary)' }} />
+              <h2 id="h-app-help" className="section">
+                Aide avec Cave & Amis
+              </h2>
+            </div>
+            <p className="small muted">
+              Les réponses de l’aide de l’application, tout de suite et sans compter dans vos demandes à Lia. Pour une autre question, écrivez-la
+              ci-dessous.
+            </p>
+            <div>
+              {helpTopics.map((t) => (
+                <HelpTopicItem
+                  key={t.id}
+                  topic={t}
+                  perms={perms}
+                  extra={
+                    !unavailable ? (
+                      <Button size="sm" variant="ghost" icon={<Sparkles />} disabled={sending} onClick={() => void send(t.question)}>
+                        Demander à Lia
+                      </Button>
+                    ) : undefined
+                  }
+                />
+              ))}
+            </div>
+          </section>
           {conversations && conversations.length > 0 && (
             <section>
               <div className="section-title">
@@ -295,9 +339,20 @@ function AssistantBubble({ message, onChange }: { message: AiMessage; onChange: 
           ))}
         </div>
       )}
-      {actionsList.map((a) => (
-        <ActionCard key={a.id} action={a} onChange={onChange} />
-      ))}
+      {actionsList.map((a) => (a.type === 'open' ? <OpenCard key={a.id} action={a} /> : <ActionCard key={a.id} action={a} onChange={onChange} />))}
+    </div>
+  );
+}
+
+/** Accès direct proposé par Lia : seulement vers un écran prévu par une fiche d'aide, jamais une adresse libre. */
+function OpenCard({ action }: { action: Extract<Action, { type: 'open' }> }) {
+  if (!HELP_PATHS.has(action.path)) return null;
+  return (
+    <div className="action-card">
+      <span className="small strong">Accès direct</span>
+      <Button size="sm" variant="secondary" icon={<ArrowRight />} onClick={() => go(action.path)}>
+        {action.label}
+      </Button>
     </div>
   );
 }

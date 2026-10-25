@@ -15,8 +15,11 @@ avec un **assistant sommelier (Claude)** dont la clé API, unique, reste sur le 
 - **Amis & Groupes** : recherche des personnes qui l'acceptent, demandes, invitation par lien ou code, blocage,
   notifications. **Inviter sans ouvrir sa cave** : être en contact ne montre aucune bouteille ; chacun **ouvre sa cave** à qui il
   veut (accès à sens unique, refermable), avec des exceptions bouteille par bouteille, un niveau de détail « Restreint »,
-  l'aperçu exact de « Ce que X voit de moi » et la vue « Qui voit ma cave ». Liens d'invitation « découvrir l'application »,
-  « ami », « rejoindre un groupe » ou « venir à un événement », avec page de présentation pour qui n'a pas de compte.
+  l'aperçu exact de « Ce que X voit de moi » et la vue « Qui voit ma cave ». **Inviter quelqu'un** : liens « découvrir
+  l'application », « voir ma cave » (toute la cave partagée ou une **sélection** de bouteilles, en lecture seule, avec une date
+  de fin facultative), « rejoindre un groupe » ou « venir à un événement » ; partage par **QR code**, WhatsApp, SMS, e-mail ou
+  copie ; page du lien pour qui n'a pas de compte ; **Mes invitations** (état, utilisations, qui a rejoint, partager à
+  nouveau, révoquer).
   Chaque lot est **privé**, **partagé avec mes amis** ou **proposable pour un événement**, avec masquage
   indépendant du prix, de la quantité exacte et des notes. **Groupes** (famille, soirées…) avec rôles et invitations : on y rend
   des bouteilles **visibles**, ou on en **met à disposition** une quantité, réservée pour le groupe (« 6 en stock · dont 2 pour
@@ -38,7 +41,10 @@ avec un **assistant sommelier (Claude)** dont la clé API, unique, reste sur le 
 - **Conseils** : moment d'ouverture, garde, température, aération, accords, ordre de service — chaque information indique son
   origine : *source*, *repère général*, *estimation de l'IA* ou *votre choix*.
 - **Assistant Claude** : conversation et accès depuis les fiches et les événements ; lit vos données **avec vos droits** ;
-  propose des actions que **vous confirmez** ; cite ses sources pour les prix.
+  propose des actions que **vous confirmez** ; cite ses sources pour les prix. **Guide de l'application** : rubrique « Aide
+  avec Cave & Amis », réponses tirées de l'aide intégrée (jamais de fonction inventée), avec un bouton vers le bon écran.
+- **Prise en main** : bienvenue à la première connexion, **visite guidée** qui éclaire les vrais boutons (reprise après
+  interruption, à revoir dans les Réglages), astuces de première visite, aide « ? » de chaque page, présentation sans compte.
 - **Administration** : test de la clé (jamais affichée), modèle, activation, quotas par personne, limites de fréquence et de
   taille, budget mensuel avec alertes, consommation globale et par personne, erreurs techniques.
 

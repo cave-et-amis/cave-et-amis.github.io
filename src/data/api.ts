@@ -5,6 +5,7 @@
  */
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type {
+  AccessScope,
   AppNotification,
   Block,
   CaveEvent,
@@ -12,6 +13,8 @@ import type {
   CellarLink,
   DetailLevel,
   InviteKind,
+  InviteOptions,
+  InviteRedemption,
   PreviewLot,
   Relation,
   RelationOverview,
@@ -33,6 +36,7 @@ import type {
   Movement,
   MyGroup,
   Participant,
+  Preferences,
   PriceCheck,
   Profile,
   SharedLot,
@@ -158,6 +162,10 @@ export class Api {
   async updateProfile(id: string, patch: Partial<Pick<Profile, 'display_name' | 'currency' | 'preferences'>>) {
     must(await this.sb.from('profiles').update(patch).eq('id', id));
   }
+  /** Fusionne dans mes préférences, côté base : une préférence n'en écrase jamais une autre. */
+  async mergePreferences(patch: Partial<Preferences>) {
+    return must(await this.sb.rpc('merge_preferences', { p: patch })) as Preferences;
+  }
 
   // ───────────── Chargement ─────────────
 
@@ -174,7 +182,7 @@ export class Api {
       pages<FriendInvite>((a, b) =>
         sb
           .from('friend_invites')
-          .select('id, inviter_id, status, created_at, expires_at, kind, target_id, max_uses, uses')
+          .select('id, inviter_id, status, created_at, expires_at, kind, target_id, max_uses, uses, code, note, options')
           .order('created_at', { ascending: false })
           .range(a, b),
       ),
@@ -296,9 +304,12 @@ export class Api {
 
   // ───────────── Amis ─────────────
 
-  /** Lien d'invitation : « discovery », « friend », ou « group » / « event » avec le groupe ou l'événement visé. */
-  async createInvite(kind: InviteKind, target: string | null = null) {
-    return must(await this.sb.rpc('create_invite', { p_kind: kind, p_target: target })) as {
+  /**
+   * Lien d'invitation : « discovery », « friend » (voir ma cave), ou « group » / « event » avec le groupe ou l'événement
+   * visé. options : note (destinataire) ; pour « friend » : scope, lots, detail_level, access_expires_at.
+   */
+  async createInvite(kind: InviteKind, target: string | null = null, options: InviteOptions & { note?: string | null } = {}) {
+    return must(await this.sb.rpc('create_invite', { p_kind: kind, p_target: target, p_options: options })) as {
       id: string;
       code: string;
       expires_at: string;
@@ -314,9 +325,15 @@ export class Api {
       inviter_name?: string;
       target_label?: string | null;
       target_date?: string | null;
+      /** Lien « voir ma cave » limité à une sélection de bouteilles. */
+      selection?: boolean;
       is_self?: boolean;
       already_friends?: boolean;
     };
+  }
+  /** Qui a utilisé mes liens, et quand. */
+  async myInviteRedemptions() {
+    return (must(await this.sb.rpc('my_invite_redemptions')) ?? []) as InviteRedemption[];
   }
   async respondInvite(code: string, accept: boolean) {
     return must(await this.sb.rpc('respond_friend_invite', { p_code: code, p_accept: accept })) as {
@@ -349,6 +366,10 @@ export class Api {
   }
   async setDetailLevel(user: string, level: DetailLevel) {
     must(await this.sb.rpc('set_cellar_detail_level', { p_user: user, p_level: level }));
+  }
+  /** Réglages de l'accès que j'ai ouvert : toute ma cave partagée ou une sélection, date de fin (null : sans fin). */
+  async setCellarAccessOptions(user: string, p: { scope?: AccessScope; expires_at?: string | null }) {
+    must(await this.sb.rpc('set_cellar_access_options', { p_user: user, p }));
   }
   /** Exception pour une personne sur un de mes lots : « hide », « show », ou null pour la retirer. */
   async setCellarException(user: string, lot: string, mode: 'hide' | 'show' | null) {
