@@ -10,7 +10,8 @@ const extra = process.argv.slice(2);
 
 const children = [
   spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'server/local/main.ts', '--port', port, ...extra], { cwd: root, stdio: 'inherit' }),
-  spawn('npx vite --host', { cwd: root, stdio: 'inherit', shell: true, env: { ...process.env, VITE_LOCAL_API: port } }),
+  // Même Node que ce script (pas de npx) : fonctionne même si Node n'est pas dans le PATH.
+  spawn(process.execPath, [join(root, 'node_modules', 'vite', 'bin', 'vite.js'), '--host'], { cwd: root, stdio: 'inherit', env: { ...process.env, VITE_LOCAL_API: port } }),
 ];
 
 const stop = () => {

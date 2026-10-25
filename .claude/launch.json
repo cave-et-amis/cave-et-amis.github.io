@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "cave-local-demo",
-      "runtimeExecutable": "node",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
       "runtimeArgs": ["scripts/local.mjs", "--demo", "--data", ".local/demo"],
       "port": 5173
     }
