@@ -13,6 +13,8 @@ import type {
   GroupActivity,
   GroupLot,
   GroupMember,
+  GroupNote,
+  GroupWish,
   GroupShare,
   Cellar,
   Dish,
@@ -84,7 +86,7 @@ export type AiStatus = {
 
 export type AiReply = { ok: true; [k: string]: unknown } | { ok: false; code: string; message: string };
 
-export type Conversation = { id: string; title: string; context_kind: 'wine' | 'event' | null; context_id: string | null; created_at: string; updated_at: string };
+export type Conversation = { id: string; title: string; context_kind: 'wine' | 'event' | 'group' | null; context_id: string | null; created_at: string; updated_at: string };
 export type AiMessage = { id: string; conversation_id: string; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; created_at: string };
 
 type Result<T> = { data: T | null; error: unknown };
@@ -372,6 +374,23 @@ export class Api {
   }
   async groupLots(id: string) {
     return must(await this.sb.rpc('group_lots', { p_group: id })) as GroupLot[];
+  }
+  /** Notes de dégustation partagées avec le groupe. */
+  async groupNotes(id: string) {
+    return must(await this.sb.rpc('group_notes', { p_group: id })) as GroupNote[];
+  }
+  /** Envies communes du groupe, les plus suivies d'abord. */
+  async groupWishes(id: string) {
+    return must(await this.sb.rpc('group_wishes_list', { p_group: id })) as GroupWish[];
+  }
+  async addGroupWish(id: string, p: { wine_name: string; producer: string | null; vintage: number | null; color: string | null; note: string | null }) {
+    must(await this.sb.rpc('add_group_wish', { p_group: id, p }));
+  }
+  async voteGroupWish(wish: string, on: boolean) {
+    must(await this.sb.rpc('vote_group_wish', { p_wish: wish, p_on: on }));
+  }
+  async deleteGroupWish(wish: string) {
+    must(await this.sb.rpc('delete_group_wish', { p_wish: wish }));
   }
   async groupActivity(id: string) {
     return must(await this.sb.from('group_activity').select('*').eq('group_id', id).order('created_at', { ascending: false }).limit(100)) as GroupActivity[];

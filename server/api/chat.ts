@@ -6,7 +6,7 @@ import { CHAT_SYSTEM } from './prompts.ts';
 import { CHAT_TOOLS, ToolBox } from './tools.ts';
 import { AiFailure, isUuid, sanitize, todayParis } from './util.ts';
 
-export type ChatInput = { conversation_id?: string | null; message: string; context?: { kind: 'wine' | 'event'; id: string } | null };
+export type ChatInput = { conversation_id?: string | null; message: string; context?: { kind: 'wine' | 'event' | 'group'; id: string } | null };
 
 export type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; created_at: string };
 
@@ -45,7 +45,7 @@ export async function runChat(o: {
       .limit(settings.history_messages);
     history = ((historyRows ?? []) as typeof history).reverse();
   }
-  const context = input.context && isUuid(input.context.id) && ['wine', 'event'].includes(input.context.kind) ? input.context : null;
+  const context = input.context && isUuid(input.context.id) && ['wine', 'event', 'group'].includes(input.context.kind) ? input.context : null;
 
   const box = new ToolBox({ user, svc, meter, userId, currency: o.currency, year: Number(o.now.getFullYear()) });
   const contextNote = await box.contextNote(context);

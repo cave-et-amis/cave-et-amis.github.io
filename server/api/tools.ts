@@ -10,7 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { COLORS } from '../../src/domain/wine.ts';
 import { wineTitle } from '../../src/domain/wine.ts';
 import type { Meter } from './claude.ts';
-import { compactWine, eventDetails, friendsWines, listTastings, loadCellar, searchWines, wineDetails, type CellarData } from './data.ts';
+import { compactWine, eventDetails, friendsWines, groupDetails, listTastings, loadCellar, myGroupAllocations, searchWines, wineDetails, type CellarData } from './data.ts';
 import { lookupPrice, type PriceResult } from './price.ts';
 import { AiFailure, isUuid, sanitize } from './util.ts';
 
@@ -78,6 +78,11 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
   tool('get_event', 'Détails d’un événement auquel la personne participe : menu, participants, vins prévus, ses bouteilles disponibles et celles de ses amis ouvertes aux suggestions.', {
     event_id: str,
   }),
+  tool(
+    'get_group',
+    'Vie d’un groupe dont la personne est membre : membres, bouteilles visibles ou mises à disposition du groupe, goûts des membres (notes partagées), envies communes, soirées.',
+    { group_id: str },
+  ),
   tool('lookup_market_price', 'Recherche web du prix de marché actuel d’un vin de la cave (millésime et contenance exacts), avec sources. Coûteux : seulement si la personne demande un prix.', {
     wine_id: str,
     volume_ml: nullable(int),
@@ -189,6 +194,9 @@ export class ToolBox {
       case 'get_event':
         if (!isUuid(i.event_id)) return JSON.stringify({ error: 'event_id invalide' });
         return JSON.stringify(await eventDetails(this.user, i.event_id, await this.data(), this.year, this.userId));
+      case 'get_group':
+        if (!isUuid(i.group_id)) return JSON.stringify({ error: 'group_id invalide' });
+        return JSON.stringify(await groupDetails(this.user, i.group_id));
       case 'lookup_market_price':
         return this.lookup(i);
       case 'propose_consumption':
@@ -308,15 +316,16 @@ export class ToolBox {
   private async proposeEventWine(i: Record<string, unknown>) {
     const qty = intIn(i.quantity, 1, 24);
     if (!isUuid(i.event_id) || !isUuid(i.lot_id) || !qty) return JSON.stringify({ error: 'Paramètres invalides' });
-    const { data: ev } = await this.user.from('events').select('id, title, status').eq('id', i.event_id).maybeSingle();
-    const event = ev as { id: string; title: string; status: string } | null;
+    const { data: ev } = await this.user.from('events').select('id, title, status, group_id').eq('id', i.event_id).maybeSingle();
+    const event = ev as { id: string; title: string; status: string; group_id: string | null } | null;
     if (!event) return JSON.stringify({ error: 'Événement introuvable.' });
     if (event.status !== 'planned') return JSON.stringify({ error: 'Événement terminé ou annulé.' });
     const data = await this.data();
     // Seulement les bouteilles de la personne : celles d'une cave gérée avec quelqu'un d'autre restent à la personne propriétaire.
     const own = data.lots.find((l) => l.id === i.lot_id && l.owner_id === this.userId);
     if (own) {
-      const available = own.quantity - own.reserved;
+      // Soirée d'un groupe : les bouteilles mises à sa disposition comptent (elles sont prises en premier).
+      const available = own.quantity - own.reserved + ((await myGroupAllocations(this.user, event.group_id)).get(own.id) ?? 0);
       if (qty > available) return JSON.stringify({ error: `Seulement ${available} bouteille(s) disponible(s).` });
       const wine = data.wines.find((w) => w.id === own.wine_id)!;
       return this.propose({
@@ -341,9 +350,15 @@ export class ToolBox {
     });
   }
 
-  /** Contexte d'ouverture (fiche ou événement) : simple rappel, les détails passent par les outils. */
-  async contextNote(context: { kind: 'wine' | 'event'; id: string } | null): Promise<string | null> {
+  /** Contexte d'ouverture (fiche, événement ou groupe) : simple rappel, les détails passent par les outils. */
+  async contextNote(context: { kind: 'wine' | 'event' | 'group'; id: string } | null): Promise<string | null> {
     if (!context || !isUuid(context.id)) return null;
+    if (context.kind === 'group') {
+      const { data: g } = await this.user.from('groups').select('id, name').eq('id', context.id).maybeSingle();
+      if (!g) return null;
+      const group = g as { id: string; name: string };
+      return `La personne a ouvert l’assistant depuis le groupe « ${sanitize(group.name, 60)} » (group_id ${group.id}). Utilise get_group pour ses bouteilles, les goûts des membres et les envies communes.`;
+    }
     if (context.kind === 'wine') {
       const data = await this.data();
       const w = data.wines.find((x) => x.id === context.id);

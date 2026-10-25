@@ -22,6 +22,9 @@
   emplacements, fiches et prix de **cette cave seulement**, jamais les autres caves du propriétaire. Le partage, les groupes,
   les événements et toute suppression restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
   un blocage coupe l'accès immédiatement.
+- **Vie de groupe** : une soirée de groupe n'est visible que de ses participants ; les notes partagées avec un groupe, ses
+  envies communes et leurs participants ne sont lisibles que par ses membres (lecture par des fonctions qui le vérifient).
+  Quitter un groupe retire le partage de ses notes et ses « je participe ».
 - Il n'existe aucune « cave publique » : aucune donnée n'est lisible sans compte, à l'exception de « X vous invite » pour un
   code d'invitation valide (code de 10 caractères, conservé haché, usage unique, 14 jours).
 

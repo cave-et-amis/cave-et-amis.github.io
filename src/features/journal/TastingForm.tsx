@@ -25,6 +25,8 @@ export type TastingPrefill = {
   lots?: Lot[];
   event_id?: string;
   eventWines?: EventWine[];
+  /** Partager la note avec ce groupe (ouverte depuis la page du groupe ou une soirée du groupe). */
+  group_id?: string | null;
   occasion?: Occasion;
   place?: string;
   tasted_on?: string;
@@ -86,6 +88,15 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
   const [favorite, setFavorite] = useState(tasting?.favorite ?? false);
   const [photo, setPhoto] = useState<string | null>(tasting?.photo ?? null);
   const [share, setShare] = useState(tasting?.share_with_event ?? false);
+  // Partage avec un groupe : celui de la page d'origine, ou celui de la soirée.
+  const myGroups = snapshot.groups.filter((g) => g.my_status === 'active');
+  const [groupId, setGroupId] = useState<string>(
+    () =>
+      tasting?.group_id ??
+      prefill?.group_id ??
+      snapshot.events.find((e) => e.id === (tasting?.event_id ?? prefill?.event_id))?.group_id ??
+      '',
+  );
   const [fromCellar, setFromCellar] = useState(false);
   const [lotId, setLotId] = useState('');
   const [busy, setBusy] = useState(false);
@@ -178,6 +189,7 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
       favorite,
       photo,
       share_with_event: Boolean(eventId) && share,
+      group_id: groupId || null,
     };
     const res = await run(
       async () => {
@@ -366,6 +378,18 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
         {!editing && eventId && <p className="small faint">Le stock des bouteilles de l’événement est mis à jour par la confirmation de leurs propriétaires, pas ici.</p>}
         {eventId && (
           <Check checked={share} onChange={setShare} label="Partager cette note avec les participants de l’événement" hint="Sinon, elle reste privée (visible par vous seul)." />
+        )}
+        {myGroups.length > 0 && (
+          <Field label="Partager avec un groupe" hint="Les membres du groupe la verront dans l’onglet Notes du groupe.">
+            <select className="input" value={groupId} onChange={(e) => setGroupId(e.target.value)}>
+              <option value="">Non, elle reste privée</option>
+              {myGroups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {`${g.emoji} ${g.name}`}
+                </option>
+              ))}
+            </select>
+          </Field>
         )}
         {error && (
           <p role="alert" style={{ color: 'var(--danger)', fontWeight: 650 }}>

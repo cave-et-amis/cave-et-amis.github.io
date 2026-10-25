@@ -39,6 +39,21 @@ export function EventPage({ id }: { id: string }) {
   useEffect(() => {
     if (!event && !checked) void reload().finally(() => setChecked(true));
   }, [event, checked, reload]);
+  // Soirée d'un groupe : ses membres sont invitables, même s'ils ne sont pas mes amis.
+  const groupId = event?.group_id ?? null;
+  const group = snapshot.groups.find((g) => g.id === groupId);
+  const [groupMembers, setGroupMembers] = useState<{ id: string; display_name: string }[]>([]);
+  useEffect(() => {
+    if (!groupId || group?.my_status !== 'active') return;
+    let alive = true;
+    void api
+      .groupMembers(groupId)
+      .then((m) => alive && setGroupMembers(m.filter((x) => x.status === 'active').map((x) => ({ id: x.user_id, display_name: x.display_name }))))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [api, groupId, group?.my_status]);
 
   const refresh = useCallback(async () => {
     if (!event) return;
@@ -80,7 +95,9 @@ export function EventPage({ id }: { id: string }) {
   const closed = detail.wines.filter((w) => ['declined', 'withdrawn', 'released'].includes(w.status));
   const myToConsume = detail.wines.filter((w) => w.owner_id === userId && w.status === 'confirmed');
   const canClose = planned && organizer && event.starts_at.slice(0, 10) <= todayIso() && new Date(event.starts_at).getTime() <= Date.now() + 18 * 3600_000;
-  const uninvited = friends.filter((f) => !detail.participants.some((p) => p.user_id === f.id));
+  const uninvited = [...new Map([...friends, ...groupMembers].map((f) => [f.id, f])).values()].filter(
+    (f) => f.id !== userId && !detail.participants.some((p) => p.user_id === f.id),
+  );
   const tastings = detail.tastings;
 
   async function move(index: number, delta: number) {
@@ -101,6 +118,11 @@ export function EventPage({ id }: { id: string }) {
           {event.status === 'cancelled' && <span className="pill danger">Annulé</span>}
           {event.status === 'done' && <span className="pill">Passé</span>}
         </div>
+        {group && (
+          <a className="pill primary" href={`#/groupes/${group.id}`} style={{ alignSelf: 'flex-start' }}>
+            {group.emoji} Soirée du groupe « {group.name} »
+          </a>
+        )}
         <h2 className="title-font" style={{ fontSize: '1.5rem' }}>
           {event.title}
         </h2>
@@ -240,6 +262,11 @@ export function EventPage({ id }: { id: string }) {
                   {w.note && <span className="small muted">« {w.note} »</span>}
                   <span className="inline" style={{ gap: 6, marginTop: 4 }}>
                     {w.status === 'confirmed' && <span className="pill success">Confirmée{event.status === 'planned' ? ', réservée' : ''}</span>}
+                    {w.status === 'confirmed' && w.from_group > 0 && (
+                      <span className="pill gold" title="Si elle n’est pas ouverte, elle revient au groupe">
+                        {w.from_group} prise{w.from_group > 1 ? 's' : ''} sur la mise à disposition du groupe
+                      </span>
+                    )}
                     {w.status === 'consumed' && <span className="pill">Bue : {w.consumed_qty}</span>}
                     {w.status === 'not_consumed' && <span className="pill">Non ouverte</span>}
                   </span>
@@ -348,13 +375,15 @@ export function EventPage({ id }: { id: string }) {
               Proposer une de mes bouteilles
             </Button>
             <Button variant="secondary" icon={<UserPlus />} onClick={() => setSheet('suggest')} disabled={detail.suggestable.length === 0}>
-              Suggérer une bouteille d’un ami
+              {groupId ? 'Suggérer une bouteille du groupe' : 'Suggérer une bouteille d’un ami'}
             </Button>
           </div>
         )}
         {planned && attending && detail.suggestable.length === 0 && (
           <p className="small faint" style={{ marginTop: 6 }}>
-            Aucune bouteille « proposable » chez vos amis participants pour l’instant.
+            {groupId
+              ? 'Aucune bouteille du groupe (ou « proposable » chez vos amis) dont le propriétaire participe, pour l’instant.'
+              : 'Aucune bouteille « proposable » chez vos amis participants pour l’instant.'}
           </p>
         )}
         {closed.length > 0 && (
@@ -482,8 +511,10 @@ export function EventPage({ id }: { id: string }) {
           }}
         />
       )}
-      {sheet === 'propose' && <ProposeSheet eventId={event.id} onDone={() => void refresh()} onClose={() => setSheet(null)} />}
-      {sheet === 'suggest' && <SuggestSheet eventId={event.id} options={detail.suggestable} onDone={() => void refresh()} onClose={() => setSheet(null)} />}
+      {sheet === 'propose' && <ProposeSheet eventId={event.id} groupId={groupId} onDone={() => void refresh()} onClose={() => setSheet(null)} />}
+      {sheet === 'suggest' && (
+        <SuggestSheet eventId={event.id} groupEvent={Boolean(groupId)} options={detail.suggestable} onDone={() => void refresh()} onClose={() => setSheet(null)} />
+      )}
       {confirming && (
         <ConfirmWineSheet
           wine={confirming}
@@ -505,7 +536,7 @@ function InviteSheet({ friends, onClose, onInvite }: { friends: { id: string; di
     <Sheet
       open
       onClose={onClose}
-      title="Inviter des amis"
+      title="Inviter"
       footer={
         <Button disabled={!ids.length} onClick={() => void onInvite(ids)}>
           Inviter {ids.length ? `(${ids.length})` : ''}
@@ -560,7 +591,7 @@ function DishSheet({ onClose, onAdd }: { onClose: () => void; onAdd: (course: Co
   );
 }
 
-function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: () => void; onDone: () => void }) {
+function ProposeSheet({ eventId, groupId, onClose, onDone }: { eventId: string; groupId: string | null; onClose: () => void; onDone: () => void }) {
   const { snapshot, api, run, location, userId } = useStore();
   // Seulement mes propres bouteilles : celles d'une cave gérée avec quelqu'un d'autre restent à la personne propriétaire.
   const rows = useMemo(
@@ -570,16 +601,19 @@ function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: 
         snapshot.lots.filter((l) => l.owner_id === userId),
         snapshot.cellars,
         currentYear(),
-      ).filter((r) => r.available > 0),
+      ),
     [snapshot, userId],
   );
+  // Soirée d'un groupe : les bouteilles mises à sa disposition sont prises en premier.
+  const forGroup = (lot: string) => (groupId ? (snapshot.groupShares.find((s) => s.lot_id === lot && s.group_id === groupId)?.allocated ?? 0) : 0);
+  const free = (l: { id: string; quantity: number; reserved: number }) => l.quantity - l.reserved + forGroup(l.id);
   const [lotId, setLotId] = useState<string>('');
   const [qty, setQty] = useState(1);
   const [bring, setBring] = useState(true);
   const [note, setNote] = useState('');
   const [request] = useState(newId);
   const lot = snapshot.lots.find((l) => l.id === lotId);
-  const max = lot ? lot.quantity - lot.reserved : 1;
+  const max = lot ? free(lot) : 1;
   return (
     <Sheet
       open
@@ -602,7 +636,7 @@ function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: 
         </Button>
       }
     >
-      {rows.length === 0 ? (
+      {!rows.some((r) => r.lots.some((l) => free(l) > 0)) ? (
         <EmptyState icon="🍾" title="Aucune bouteille disponible">
           Toutes vos bouteilles sont déjà réservées, ou votre cave est vide.
         </EmptyState>
@@ -613,11 +647,12 @@ function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: 
               <option value="">Choisir…</option>
               {rows.flatMap((r) =>
                 r.lots
-                  .filter((l) => l.quantity - l.reserved > 0)
+                  .filter((l) => free(l) > 0)
                   .map((l) => (
                     <option key={l.id} value={l.id}>
-                      {r.wine.name} {vintageLabel(r.wine)} — {l.quantity - l.reserved} dispo. ({volumeLabel(l.volume_ml)}
-                      {l.location_id ? `, ${location(l.location_id)?.name}` : ''})
+                      {`${r.wine.name} ${vintageLabel(r.wine)} — ${free(l)} dispo.${forGroup(l.id) ? ` dont ${forGroup(l.id)} du groupe` : ''} (${volumeLabel(l.volume_ml)}${
+                        l.location_id ? `, ${location(l.location_id)?.name}` : ''
+                      })`}
                     </option>
                   )),
               )}
@@ -638,7 +673,19 @@ function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: 
   );
 }
 
-function SuggestSheet({ eventId, options, onClose, onDone }: { eventId: string; options: SuggestableLot[]; onClose: () => void; onDone: () => void }) {
+function SuggestSheet({
+  eventId,
+  groupEvent,
+  options,
+  onClose,
+  onDone,
+}: {
+  eventId: string;
+  groupEvent: boolean;
+  options: SuggestableLot[];
+  onClose: () => void;
+  onDone: () => void;
+}) {
   const { api, run } = useStore();
   const [lotId, setLotId] = useState('');
   const [qty, setQty] = useState(1);
@@ -649,7 +696,7 @@ function SuggestSheet({ eventId, options, onClose, onDone }: { eventId: string; 
     <Sheet
       open
       onClose={onClose}
-      title="Suggérer une bouteille d’un ami"
+      title={groupEvent ? 'Suggérer une bouteille du groupe ou d’un ami' : 'Suggérer une bouteille d’un ami'}
       footer={
         <Button
           disabled={!chosen}
@@ -676,7 +723,14 @@ function SuggestSheet({ eventId, options, onClose, onDone }: { eventId: string; 
                   {o.name} {vintageLabel(o)}
                 </span>
                 <span className="row-sub">
-                  {o.owner_name} · {o.quantity !== null ? `${o.available ?? o.quantity} disponible(s)` : o.in_stock ? 'en stock' : 'déjà réservée'}
+                  {o.owner_name} ·{' '}
+                  {o.for_group
+                    ? `${o.for_group} à disposition du groupe`
+                    : o.quantity !== null
+                      ? `${o.available ?? o.quantity} disponible(s)`
+                      : o.in_stock
+                        ? 'en stock'
+                        : 'déjà réservée'}
                 </span>
               </span>
             </label>
@@ -684,7 +738,7 @@ function SuggestSheet({ eventId, options, onClose, onDone }: { eventId: string; 
         </div>
         {chosen && (
           <Field label="Nombre de bouteilles">
-            <Stepper value={qty} onChange={setQty} min={1} max={chosen.available ?? 6} label="Nombre de bouteilles" />
+            <Stepper value={qty} onChange={setQty} min={1} max={Math.max(1, (chosen.available ?? 6) + (chosen.for_group ?? 0))} label="Nombre de bouteilles" />
           </Field>
         )}
         <Field label="Message (facultatif)" htmlFor="sg-note">
@@ -698,7 +752,9 @@ function SuggestSheet({ eventId, options, onClose, onDone }: { eventId: string; 
 function ConfirmWineSheet({ wine, onClose, onConfirm }: { wine: EventWine; onClose: () => void; onConfirm: (qty: number) => Promise<void> }) {
   const { snapshot } = useStore();
   const lot = snapshot.lots.find((l) => l.id === wine.lot_id);
-  const available = lot ? lot.quantity - lot.reserved : 0;
+  const groupId = snapshot.events.find((e) => e.id === wine.event_id)?.group_id;
+  const forGroup = groupId ? (snapshot.groupShares.find((s) => s.lot_id === wine.lot_id && s.group_id === groupId)?.allocated ?? 0) : 0;
+  const available = lot ? lot.quantity - lot.reserved + forGroup : 0;
   const [qty, setQty] = useState(Math.min(wine.quantity, Math.max(available, 1)));
   return (
     <Sheet
@@ -715,7 +771,10 @@ function ConfirmWineSheet({ wine, onClose, onConfirm }: { wine: EventWine; onClo
         <p>
           <strong>{wineName(wine)}</strong> — {wine.quantity} bouteille(s) demandée(s).
         </p>
-        <p className="muted small">Disponibles dans ce lot : {available} (en tenant compte de vos autres réservations).</p>
+        <p className="muted small">
+          Disponibles dans ce lot : {available} (en tenant compte de vos autres réservations)
+          {forGroup ? `, dont ${forGroup} mise${forGroup > 1 ? 's' : ''} à disposition du groupe : elles sont prises en premier` : ''}.
+        </p>
         {available < 1 ? (
           <Notice tone="warn">Plus aucune bouteille disponible dans ce lot : refusez la suggestion ou libérez une autre réservation.</Notice>
         ) : (

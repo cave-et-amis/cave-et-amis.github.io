@@ -50,6 +50,21 @@ Personne d'autre que vous n'ouvre vos bouteilles : « J'en ai ouvert une » (pag
 seule fois, et l'activité du groupe le garde. Vous pouvez reprendre vos bouteilles à tout moment ; quitter le groupe (ou en
 être retiré) vous les rend automatiquement.
 
+## La vie d'un groupe
+
+La page d'un groupe a six onglets : **Cave**, **Soirées**, **Notes**, **Envies**, **Membres**, **Activité**.
+
+- **Soirées** : « Nouvelle soirée » invite les membres du groupe (même ceux qui ne sont pas vos amis). Chacun peut y
+  suggérer les bouteilles partagées dans le groupe ; leur propriétaire confirme. Une bouteille mise à disposition du groupe
+  est prise en premier sur cette mise à disposition (rien n'est compté deux fois) ; si elle n'est pas ouverte (soirée
+  annulée, bouteille retirée ou rapportée), elle revient au groupe.
+- **Notes** : en notant un vin, choisissez « Partager avec un groupe » ; les membres voient la note, et la moyenne des
+  vins notés plusieurs fois. Quitter le groupe retire le partage.
+- **Envies** : les vins que le groupe aimerait goûter ; « Je participe » montre qui suit l'idée (un futur achat groupé,
+  par exemple), « Dans mes envies » la copie dans votre liste.
+- **Demander à Lia** : l'assistant propose une sélection d'après les bouteilles du groupe, les goûts des membres (leurs
+  notes partagées) et les envies communes ; pour une soirée, ses propositions passent par la confirmation du propriétaire.
+
 ## Gérer une cave à plusieurs
 
 Un couple, une famille : **Réglages › Mes caves › « Associer une personne »**, puis choisissez la personne parmi vos amis :
