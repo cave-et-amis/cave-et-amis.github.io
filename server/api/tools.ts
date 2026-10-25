@@ -42,11 +42,14 @@ const str = { type: 'string' };
 const int = { type: 'integer' };
 const colorEnum = { type: 'string', enum: COLORS.map((c) => c.label) };
 
+/**
+ * Outils non « strict » : l'API limite à 16 paramètres « nullable » l'ensemble des schémas stricts d'une requête,
+ * et ces outils en cumulent davantage. Chaque entrée est donc revérifiée par le serveur (dispatch).
+ */
 function tool(name: string, description: string, properties: Record<string, unknown>): Anthropic.Messages.Tool {
   return {
     name,
     description,
-    strict: true,
     input_schema: { type: 'object', additionalProperties: false, required: Object.keys(properties), properties },
   };
 }
@@ -167,14 +170,22 @@ export class ToolBox {
   private async dispatch(name: string, i: Record<string, unknown>): Promise<string> {
     switch (name) {
       case 'search_my_cellar':
-        return JSON.stringify(searchWines(await this.data(), this.year, i as Parameters<typeof searchWines>[2]));
+        return JSON.stringify(
+          searchWines(await this.data(), this.year, {
+            query: text(i.query, 200),
+            color: text(i.color, 40),
+            maturity: text(i.maturity, 20),
+            include_empty: i.include_empty === true,
+            limit: intIn(i.limit, 1, 60),
+          }),
+        );
       case 'get_wine_details':
         if (!isUuid(i.wine_id)) return JSON.stringify({ error: 'wine_id invalide' });
         return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year));
       case 'list_my_tastings':
-        return JSON.stringify(await listTastings(this.user, this.userId, i as Parameters<typeof listTastings>[2]));
+        return JSON.stringify(await listTastings(this.user, this.userId, { query: text(i.query, 200), min_rating: intIn(i.min_rating, 1, 5), limit: intIn(i.limit, 1, 60) }));
       case 'search_friends_wines':
-        return JSON.stringify(await friendsWines(this.user, i as Parameters<typeof friendsWines>[1]));
+        return JSON.stringify(await friendsWines(this.user, { query: text(i.query, 200), color: text(i.color, 40), limit: intIn(i.limit, 1, 60) }));
       case 'get_event':
         if (!isUuid(i.event_id)) return JSON.stringify({ error: 'event_id invalide' });
         return JSON.stringify(await eventDetails(this.user, i.event_id, await this.data(), this.year, this.userId));

@@ -23,7 +23,7 @@ export type PriceResult = {
   checked_at: string;
 };
 
-const REPORT_TOOL: Anthropic.Messages.Tool = {
+export const REPORT_TOOL: Anthropic.Messages.Tool = {
   name: 'report_offers',
   description: 'Transmet les offres de vente retenues (liens issus de la recherche web uniquement). À appeler une seule fois, à la fin.',
   strict: true,

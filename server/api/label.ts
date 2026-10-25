@@ -13,7 +13,8 @@ const FIELDS = ['name', 'domaine', 'producer', 'cuvee', 'country', 'region', 'ap
 const COLORS = ['rouge', 'blanc', 'rose', 'orange', 'effervescent', 'autre'];
 const TYPES = ['tranquille', 'effervescent', 'moelleux', 'liquoreux', 'fortifie', 'autre'];
 
-const ns = { anyOf: [{ type: 'string' }, { type: 'null' }] };
+// Textes : chaîne vide si inconnu (et non null) ; l'API limite à 16 les paramètres « nullable » d'une requête.
+const ns = { type: 'string' };
 const ni = { anyOf: [{ type: 'integer' }, { type: 'null' }] };
 
 export const LABEL_SCHEMA = {
