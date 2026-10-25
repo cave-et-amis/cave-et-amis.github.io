@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import type { Api, Snapshot } from './data/api';
 import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
+import { parseMagicLink } from './domain/nous';
 import { AuthScreen, NewPasswordScreen } from './features/auth/AuthScreen';
 import { clearPendingInvite, pendingInvite, savePendingInvite } from './features/friends/invite';
 import { Shell } from './ui/Shell';
@@ -62,7 +63,18 @@ function Root({ api, local }: { api: Api; local: boolean }) {
 
   useEffect(() => {
     let alive = true;
-    void api.getSession().then((s) => alive && setSession(s));
+    // Arrivée depuis l'agenda Nous (« Voir dans Cave & Amis ») : jeton retiré de l'adresse, puis connexion directe —
+    // seulement si personne n'est connecté ici (on ne remplace jamais une session ouverte par une autre).
+    const link = parseMagicLink(window.location.href);
+    if (link) window.history.replaceState(window.history.state, '', link.cleanUrl);
+    void (async () => {
+      let s = await api.getSession();
+      if (!s && link?.tokenHash) {
+        const { data, error } = await api.sb.auth.verifyOtp({ type: 'magiclink', token_hash: link.tokenHash });
+        if (!error) s = data.session;
+      }
+      if (alive) setSession(s);
+    })();
     const { data } = api.sb.auth.onAuthStateChange((event, s) => {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
       setSession(s);

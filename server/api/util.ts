@@ -14,6 +14,13 @@ export type ApiEnv = {
   allowedOrigins?: string[];
   /** Durée maximale d'une demande à l'assistant (ms), sous la limite d'exécution des fonctions Supabase. */
   deadlineMs?: number;
+  /** Intégration Nous : secret partagé des requêtes signées (absent : intégration désactivée). */
+  ecosystemSecret?: string;
+  /** Intégration Nous : adresse de la fonction « cave-sync » du projet Nous. */
+  nousFunctionUrl?: string;
+  /** Intégration Nous : adresse du site Nous et de ce site (liens envoyés). */
+  nousAppUrl?: string;
+  caveAppUrl?: string;
 };
 
 /** Lit la configuration dans les variables d'environnement (Supabase Edge Functions ou serveur local). */
@@ -34,6 +41,11 @@ export function readEnv(get: (name: string) => string | undefined): ApiEnv {
     anthropicKey: (get('ANTHROPIC_API_KEY') ?? '').trim() || undefined,
     anthropicBaseUrl: (get('ANTHROPIC_BASE_URL') ?? '').trim() || undefined,
     deadlineMs: Number(get('AI_REQUEST_DEADLINE_MS')) > 0 ? Number(get('AI_REQUEST_DEADLINE_MS')) : undefined,
+    // Un secret trop court équivaut à aucun secret : l'intégration reste désactivée.
+    ecosystemSecret: (get('ECOSYSTEM_SECRET') ?? '').trim().length >= 32 ? (get('ECOSYSTEM_SECRET') ?? '').trim() : undefined,
+    nousFunctionUrl: (get('NOUS_FUNCTION_URL') ?? '').trim() || undefined,
+    nousAppUrl: (get('NOUS_APP_URL') ?? '').trim() || undefined,
+    caveAppUrl: (get('CAVE_APP_URL') ?? '').trim() || undefined,
     allowedOrigins: (get('ALLOWED_ORIGINS') ?? '')
       .split(',')
       .map((s) => s.trim().replace(/\/+$/, ''))

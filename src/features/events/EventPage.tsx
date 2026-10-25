@@ -12,6 +12,7 @@ import { useActions } from '../../ui/Shell';
 import { Avatar, Button, Check as CheckBox, EmptyState, Field, InlineLoading, Notice, Segmented, Sheet, StarsView, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { Stepper } from '../cellar/fields';
+import { NousEventLink } from '../settings/NousSection';
 import { EventFormSheet } from './EventForm';
 
 const RSVP: { value: Exclude<Rsvp, 'pending'>; label: string }[] = [
@@ -117,6 +118,7 @@ export function EventPage({ id }: { id: string }) {
           </p>
         )}
         {event.description && <p style={{ whiteSpace: 'pre-wrap' }}>{event.description}</p>}
+        {me && event.status !== 'done' && <NousEventLink startsAt={event.starts_at} />}
         {organizer && planned && (
           <div className="inline">
             <Button size="sm" variant="secondary" icon={<Pencil />} onClick={() => setSheet('edit')}>

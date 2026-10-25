@@ -4,6 +4,7 @@
  * Toutes les actions exigent une session valide. Les données sont lues avec les droits de la personne
  * connectée ; la clé « service » ne sert qu'à la comptabilité (quotas, budget, erreurs) et à l'enregistrement
  * des conversations et des relevés de prix de cette même personne.
+ * Exceptions, sans session : les requêtes signées du serveur Nous et la tâche planifiée d'envoi vers Nous (nous.ts).
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AI_MESSAGES } from '../../src/domain/errors.ts';
@@ -11,6 +12,7 @@ import { runChat, type ChatInput } from './chat.ts';
 import { makeClient, mapAnthropicError, Meter, type Action, type AiSettings, baseParams, textOf } from './claude.ts';
 import { identifyLabel, readPhoto } from './label.ts';
 import { importPhoto, searchPhotos } from './photos.ts';
+import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
 import { lookupPrice } from './price.ts';
 import { AiFailure, corsHeaders, isUuid, json, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
@@ -22,6 +24,8 @@ export type ApiDeps = {
   anthropicFetch?: typeof fetch;
   /** Transport vers Open Food Facts (tests). */
   webFetch?: typeof fetch;
+  /** Transport vers la fonction « cave-sync » de Nous (tests). */
+  nousFetch?: typeof fetch;
   now?: () => Date;
 };
 
@@ -37,6 +41,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     });
   const now = deps.now ?? (() => new Date());
   const webFetch = deps.webFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));
+  const nous = createNous(env, svc, deps.nousFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)), now);
 
   async function settings(): Promise<AiSettings> {
     const { data, error } = await svc.rpc('ai_config');
@@ -85,6 +90,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
   }
 
   async function handle(action: string, body: Record<string, unknown>, user: SupabaseClient, userId: string): Promise<Record<string, unknown>> {
+    if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
     switch (action) {
       case 'status': {
         const { data, error } = await user.rpc('my_ai_status');
@@ -204,10 +210,38 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
   }
 
+  /** Requêtes sans session : venues du serveur Nous (signées) ou de la tâche planifiée (jeton du cron). */
+  async function serveMachine(req: Request, cors: Record<string, string>): Promise<Response> {
+    const text = await req.text();
+    if (text.length > ECO_MAX_BODY) return json({ ok: false, code: 'invalid' }, 413, cors);
+    let body: Record<string, unknown>;
+    try {
+      body = JSON.parse(text || '{}') as Record<string, unknown>;
+    } catch {
+      return json({ ok: false, code: 'invalid' }, 400, cors);
+    }
+    const cron = req.headers.get('x-cron-token');
+    if (cron !== null) {
+      if (body.action !== 'nous_flush' || !(await nous.cronTokenOk(cron))) return json({ ok: false, code: 'forbidden' }, 403, cors);
+      return json({ ok: true, ...(await nous.flush(100)) }, 200, cors);
+    }
+    if (!env.ecosystemSecret) return json({ ok: false, code: 'integration_disabled' }, 503, cors);
+    if (!(await ecoVerify(env.ecosystemSecret, text, req.headers.get('x-eco-timestamp'), req.headers.get('x-eco-signature'), now().getTime()))) {
+      return json({ ok: false, code: 'bad_signature' }, 401, cors);
+    }
+    try {
+      return json({ ok: true, ...(await nous.handleSigned(body)) }, 200, cors);
+    } catch (e) {
+      const f = e instanceof AiFailure ? e : new AiFailure('internal', (e as Error).message);
+      return json({ ok: false, code: f.code }, 200, cors);
+    }
+  }
+
   return async function serve(req: Request): Promise<Response> {
     const cors = corsHeaders(env, req);
     if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
     if (req.method !== 'POST') return json({ ok: false, code: 'invalid', message: 'Méthode non autorisée' }, 405, cors);
+    if (req.headers.has('x-eco-signature') || req.headers.has('x-cron-token')) return serveMachine(req, cors);
 
     const token = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
     if (!token || token === env.publishableKey || token === env.serviceKey) {

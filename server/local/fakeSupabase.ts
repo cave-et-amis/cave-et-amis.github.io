@@ -299,6 +299,7 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     return res.rows[0]?.body ?? null;
   }
 
+  const magicTokens = new Map<string, string>();
   const findUser = async (where: string, value: string) =>
     (
       await db.query<UserRow>(
@@ -350,7 +351,24 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       return authError(400, 'validation_failed', 'unsupported_grant_type');
     }
 
+    // Lien magique (connexion directe depuis Nous) : jeton à usage unique, gardé en mémoire.
+    if (path === 'verify' && method === 'POST') {
+      const userId = magicTokens.get(String(body.token_hash ?? ''));
+      const user = userId ? await findUser('id = $1', userId) : undefined;
+      if (!user) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
+      magicTokens.delete(String(body.token_hash));
+      return respond(200, makeSession(userJson(user)));
+    }
+
     const w = who(headers);
+    if (path === 'admin/generate_link' && method === 'POST') {
+      if (w.kind !== 'service') return authError(403, 'not_admin', 'User not allowed');
+      const user = await findUser('email = $1', String(body.email ?? '').toLowerCase());
+      if (!user) return authError(404, 'user_not_found', 'User not found');
+      const hashed = Array.from(crypto.getRandomValues(new Uint8Array(28)), (b) => b.toString(16).padStart(2, '0')).join('');
+      magicTokens.set(hashed, user.id);
+      return respond(200, { ...userJson(user), action_link: `local://verify?token=${hashed}`, hashed_token: hashed, verification_type: 'magiclink', redirect_to: '' });
+    }
     const adminUser = /^admin\/users\/([0-9a-f-]{36})$/.exec(path);
     if (adminUser) {
       if (w.kind !== 'service') return authError(403, 'not_admin', 'User not allowed');

@@ -85,6 +85,13 @@ export const AI_MESSAGES: Record<string, string> = {
   not_found: 'Élément introuvable.',
   invalid: 'Demande non valable.',
   internal: 'Une erreur inattendue est survenue côté serveur. Réessayez dans un instant.',
+  integration_disabled: 'La connexion avec l’agenda Nous n’est pas encore activée sur ce serveur.',
+  nous_unavailable: 'L’agenda Nous ne répond pas pour le moment. Réessayez plus tard ; rien n’a été perdu.',
+  not_linked: 'Votre agenda Nous n’est pas relié à ce compte.',
+  already_linked: 'Votre compte est déjà relié à un agenda Nous.',
+  nous_already_linked: 'Ce compte Nous est déjà relié à un autre compte Cave & Amis.',
+  invalid_code: 'Ce lien de connexion n’est plus valable : recommencez depuis Cave & Amis.',
+  too_many_attempts: 'Trop de tentatives de connexion en une heure. Réessayez plus tard.',
 };
 
 export class AppError extends Error {

@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'vitest';
+import { parseMagicLink } from '../src/domain/nous.ts';
+
+const TOKEN = 'a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c';
+
+describe('lien de connexion directe venu de Nous', () => {
+  it('lit le jeton et la destination, puis les retire de l’adresse', () => {
+    const l = parseMagicLink(`https://cave.test/?auth=link&token_hash=${TOKEN}&next=%23%2Fevenements%2F123`);
+    expect(l).toEqual({ tokenHash: TOKEN, next: '#/evenements/123', cleanUrl: 'https://cave.test/#/evenements/123' });
+  });
+
+  it('garde les autres paramètres et la route actuelle si aucune destination', () => {
+    const l = parseMagicLink(`https://cave.test/app/?x=1&auth=link&token_hash=${TOKEN}#/cave`);
+    expect(l).toEqual({ tokenHash: TOKEN, next: null, cleanUrl: 'https://cave.test/app/?x=1#/cave' });
+  });
+
+  it('destination externe ou jeton invalide : ignorés (mais retirés de l’adresse)', () => {
+    expect(parseMagicLink(`https://cave.test/?auth=link&token_hash=${TOKEN}&next=https://ailleurs.test`)?.next).toBeNull();
+    expect(parseMagicLink(`https://cave.test/?auth=link&token_hash=<script>`)).toEqual({ tokenHash: '', next: null, cleanUrl: 'https://cave.test/' });
+  });
+
+  it('adresse ordinaire : rien à faire', () => {
+    expect(parseMagicLink('https://cave.test/#/evenements')).toBeNull();
+    expect(parseMagicLink('https://cave.test/?auth=reset&code=x')).toBeNull();
+    expect(parseMagicLink('pas une adresse')).toBeNull();
+  });
+});

@@ -7,6 +7,7 @@ import { VISIBILITIES } from '../../domain/wine';
 import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
+import { NousSection } from './NousSection';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP', 'CAD'];
 
@@ -77,6 +78,8 @@ export function SettingsPage() {
         </Field>
         <Check checked={Boolean(prefs.advanced)} onChange={(advanced) => void savePrefs({ advanced })} label="Ouvrir d’emblée les champs avancés des formulaires" hint="Pour les amateurs qui renseignent tout (domaine, cépages, conseils…)." />
       </section>
+
+      <NousSection />
 
       <div className="list">
         <a className="row" href="#/reglages/caves">

@@ -32,7 +32,14 @@ var AI_MESSAGES = {
 	forbidden: "Vous n’avez pas les droits pour cette action.",
 	not_found: "Élément introuvable.",
 	invalid: "Demande non valable.",
-	internal: "Une erreur inattendue est survenue côté serveur. Réessayez dans un instant."
+	internal: "Une erreur inattendue est survenue côté serveur. Réessayez dans un instant.",
+	integration_disabled: "La connexion avec l’agenda Nous n’est pas encore activée sur ce serveur.",
+	nous_unavailable: "L’agenda Nous ne répond pas pour le moment. Réessayez plus tard ; rien n’a été perdu.",
+	not_linked: "Votre agenda Nous n’est pas relié à ce compte.",
+	already_linked: "Votre compte est déjà relié à un agenda Nous.",
+	nous_already_linked: "Ce compte Nous est déjà relié à un autre compte Cave & Amis.",
+	invalid_code: "Ce lien de connexion n’est plus valable : recommencez depuis Cave & Amis.",
+	too_many_attempts: "Trop de tentatives de connexion en une heure. Réessayez plus tard."
 };
 //#endregion
 //#region server/api/costs.ts
@@ -91,6 +98,10 @@ function readEnv(get) {
 		anthropicKey: (get("ANTHROPIC_API_KEY") ?? "").trim() || void 0,
 		anthropicBaseUrl: (get("ANTHROPIC_BASE_URL") ?? "").trim() || void 0,
 		deadlineMs: Number(get("AI_REQUEST_DEADLINE_MS")) > 0 ? Number(get("AI_REQUEST_DEADLINE_MS")) : void 0,
+		ecosystemSecret: (get("ECOSYSTEM_SECRET") ?? "").trim().length >= 32 ? (get("ECOSYSTEM_SECRET") ?? "").trim() : void 0,
+		nousFunctionUrl: (get("NOUS_FUNCTION_URL") ?? "").trim() || void 0,
+		nousAppUrl: (get("NOUS_APP_URL") ?? "").trim() || void 0,
+		caveAppUrl: (get("CAVE_APP_URL") ?? "").trim() || void 0,
 		allowedOrigins: (get("ALLOWED_ORIGINS") ?? "").split(",").map((s) => s.trim().replace(/\/+$/, "")).filter(Boolean)
 	};
 }
@@ -2058,6 +2069,292 @@ async function importPhoto(fetchImpl, user, userId, rawCode) {
 		code
 	};
 }
+var enc = new TextEncoder();
+async function hmacHex(secret, message) {
+	const key = await crypto.subtle.importKey("raw", enc.encode(secret), {
+		name: "HMAC",
+		hash: "SHA-256"
+	}, false, ["sign"]);
+	const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(message)));
+	return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+/** Comparaison à temps constant (même longueur attendue : 64 caractères hexadécimaux). */
+function sameText(a, b) {
+	if (a.length !== b.length) return false;
+	let diff = 0;
+	for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+	return diff === 0;
+}
+/** En-têtes d'une requête signée vers l'autre application. */
+async function ecoSign(secret, body, now = Date.now()) {
+	const timestamp = String(now);
+	return {
+		"x-eco-timestamp": timestamp,
+		"x-eco-signature": await hmacHex(secret, `${timestamp}.${body}`)
+	};
+}
+/** Vérifie la signature et la fraîcheur d'une requête venue de l'autre application. */
+async function ecoVerify(secret, body, timestamp, signature, now = Date.now()) {
+	if (!secret || !timestamp || !signature || !/^\d{10,16}$/.test(timestamp) || !/^[0-9a-f]{64}$/.test(signature)) return false;
+	if (Math.abs(now - Number(timestamp)) > 3e5) return false;
+	return sameText(await hmacHex(secret, `${timestamp}.${body}`), signature);
+}
+/** Message d'une exception SQL levée par une fonction (« raise exception 'code' »), sinon null. */
+function sqlCode(error) {
+	const m = error?.message ?? "";
+	return /^[a-z_]{3,40}$/.test(m) ? m : null;
+}
+function createNous(env, svc, fetchImpl, now) {
+	const enabled = () => Boolean(env.ecosystemSecret && env.nousFunctionUrl);
+	const caveAppUrl = env.caveAppUrl ?? "https://cave-et-amis.github.io/";
+	const nousAppUrl = env.nousAppUrl ?? "https://cocon-famille.netlify.app/";
+	/** Requête signée vers la fonction « cave-sync » de Nous. */
+	async function callNous(payload) {
+		if (!enabled()) throw new AiFailure("integration_disabled");
+		const body = JSON.stringify(payload);
+		let res;
+		try {
+			res = await fetchImpl(env.nousFunctionUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					...await ecoSign(env.ecosystemSecret, body, now().getTime())
+				},
+				body,
+				signal: AbortSignal.timeout(15e3)
+			});
+		} catch (e) {
+			throw new AiFailure("nous_unavailable", sanitize(e.message));
+		}
+		const data = await res.json().catch(() => null);
+		if (!data || typeof data.ok !== "boolean") throw new AiFailure("nous_unavailable", `HTTP ${res.status}`);
+		return data;
+	}
+	async function linkOf(userId) {
+		const { data } = await svc.from("nous_links").select("*").eq("user_id", userId).maybeSingle();
+		return data;
+	}
+	async function rpc(fn, args) {
+		const { data, error } = await svc.rpc(fn, args);
+		if (error) throw new AiFailure(sqlCode(error) ?? "internal", sanitize(error.message));
+		return data;
+	}
+	/** Lien magique à usage unique : seule l'empreinte du jeton est renvoyée (jamais de mot de passe). */
+	async function loginTokenFor(userId) {
+		const { data: u, error } = await svc.auth.admin.getUserById(userId);
+		if (error || !u?.user?.email) throw new AiFailure("not_found");
+		const { data, error: linkError } = await svc.auth.admin.generateLink({
+			type: "magiclink",
+			email: u.user.email
+		});
+		const hashed = data?.properties?.hashed_token;
+		if (linkError || !hashed) throw new AiFailure("internal", sanitize(linkError?.message ?? "Lien de connexion indisponible"));
+		return hashed;
+	}
+	async function sendRow(r) {
+		if (r.op === "unlink") return callNous({
+			action: "link.revoked",
+			cave_user_id: r.user_id,
+			nous_user_id: r.nous_user_id
+		});
+		const version = await rpc("nous_version", {});
+		const event = r.op === "upsert" ? await rpc("nous_event_payload", {
+			p_event: r.event_id,
+			p_user: r.user_id
+		}) : null;
+		if (!event) return callNous({
+			action: "event.remove",
+			cave_user_id: r.user_id,
+			nous_user_id: r.nous_user_id,
+			event_id: r.event_id,
+			version
+		});
+		return callNous({
+			action: "event.upsert",
+			cave_user_id: r.user_id,
+			nous_user_id: r.nous_user_id,
+			event_id: r.event_id,
+			version,
+			event: {
+				...event,
+				url: `${caveAppUrl}#/evenements/${r.event_id}`
+			}
+		});
+	}
+	/** Traite les envois dus. Nous ne connaît plus la liaison : elle est retirée ici aussi (sans renvoyer d'annonce). */
+	async function flush(limit = 50) {
+		if (!enabled()) return {
+			sent: 0,
+			failed: 0,
+			disabled: true
+		};
+		const rows = await rpc("nous_outbox_claim", { p_limit: limit });
+		let sent = 0;
+		let failed = 0;
+		for (const r of rows ?? []) try {
+			const res = await sendRow(r);
+			if (res.ok || r.op === "unlink" && res.code === "not_linked") {
+				await svc.rpc("nous_outbox_done", {
+					p_id: r.id,
+					p_generation: r.generation,
+					p_ok: true,
+					p_error: null
+				});
+				sent++;
+			} else if (res.code === "not_linked") {
+				await svc.rpc("nous_link_revoked", {
+					p_user: r.user_id,
+					p_nous_user: r.nous_user_id
+				});
+				await svc.rpc("nous_outbox_done", {
+					p_id: r.id,
+					p_generation: r.generation,
+					p_ok: true,
+					p_error: null
+				});
+			} else {
+				await svc.rpc("nous_outbox_done", {
+					p_id: r.id,
+					p_generation: r.generation,
+					p_ok: false,
+					p_error: sanitize(res.code ?? "refusé")
+				});
+				failed++;
+			}
+		} catch (e) {
+			const f = e instanceof AiFailure ? e : new AiFailure("internal", e.message);
+			await svc.rpc("nous_outbox_done", {
+				p_id: r.id,
+				p_generation: r.generation,
+				p_ok: false,
+				p_error: sanitize(`${f.code} ${f.detail ?? ""}`)
+			});
+			failed++;
+		}
+		return {
+			sent,
+			failed
+		};
+	}
+	async function handleUser(action, body, user, userId) {
+		switch (action) {
+			case "nous_status": {
+				const link = await linkOf(userId);
+				return {
+					enabled: enabled(),
+					app_url: nousAppUrl,
+					link: link ? {
+						nous_display_name: link.nous_display_name,
+						sync_enabled: link.sync_enabled,
+						linked_at: link.linked_at
+					} : null
+				};
+			}
+			case "nous_link_start": {
+				if (!enabled()) throw new AiFailure("integration_disabled");
+				const { data, error } = await user.rpc("nous_link_create");
+				if (error) throw new AiFailure(sqlCode(error) ?? "internal", sanitize(error.message));
+				return { url: `${nousAppUrl}?cave_link=${encodeURIComponent(String(data))}` };
+			}
+			case "nous_unlink": {
+				const { error } = await user.rpc("nous_unlink");
+				if (error) throw new AiFailure(sqlCode(error) ?? "internal", sanitize(error.message));
+				await flush(20).catch(() => void 0);
+				return { unlinked: true };
+			}
+			case "nous_set_sync": {
+				const { error } = await user.rpc("nous_set_sync", { p_enabled: body.enabled === true });
+				if (error) throw new AiFailure(sqlCode(error) ?? "internal", sanitize(error.message));
+				await flush(50).catch(() => void 0);
+				return { sync_enabled: body.enabled === true };
+			}
+			case "nous_flush": return flush(20);
+			case "nous_jump": {
+				const link = await linkOf(userId);
+				if (!link) throw new AiFailure("not_linked");
+				const res = await callNous({
+					action: "jump.token",
+					cave_user_id: userId,
+					nous_user_id: link.nous_user_id
+				});
+				if (!res.ok || typeof res.token_hash !== "string") throw new AiFailure(res.code === "not_linked" ? "not_linked" : "nous_unavailable");
+				const next = typeof body.next === "string" && /^[#/?][\w\-/#?=&%.]{0,200}$/.test(body.next) ? body.next : "";
+				const q = new URLSearchParams({
+					auth: "link",
+					token_hash: res.token_hash
+				});
+				if (next) q.set("next", next);
+				return { url: `${nousAppUrl}?${q.toString()}` };
+			}
+			default: throw new AiFailure("invalid");
+		}
+	}
+	async function handleSigned(body) {
+		const action = String(body.action ?? "");
+		const pair = () => {
+			if (!isUuid(body.cave_user_id) || !isUuid(body.nous_user_id)) throw new AiFailure("invalid");
+			return {
+				p_user: body.cave_user_id,
+				p_nous_user: body.nous_user_id
+			};
+		};
+		const code = () => {
+			if (typeof body.code !== "string" || !/^[A-Za-z0-9]{32}$/.test(body.code)) throw new AiFailure("invalid_code");
+			return body.code;
+		};
+		switch (action) {
+			case "link.peek": return rpc("nous_link_peek", { p_code: code() });
+			case "link.redeem": {
+				if (!isUuid(body.nous_user_id)) throw new AiFailure("invalid");
+				const name = typeof body.nous_display_name === "string" ? body.nous_display_name.slice(0, 60) : null;
+				return await rpc("nous_link_redeem", {
+					p_code: code(),
+					p_nous_user: body.nous_user_id,
+					p_nous_name: name
+				});
+			}
+			case "link.revoked": return { removed: await rpc("nous_link_revoked", pair()) };
+			case "rsvp": {
+				const p = pair();
+				if (!isUuid(body.event_id) || ![
+					"yes",
+					"maybe",
+					"no"
+				].includes(String(body.rsvp))) throw new AiFailure("invalid");
+				return { rsvp: await rpc("nous_respond", {
+					...p,
+					p_event: body.event_id,
+					p_rsvp: body.rsvp
+				}) };
+			}
+			case "jump.token": {
+				const p = pair();
+				if (!await rpc("nous_link_check", p)) throw new AiFailure("not_linked");
+				return { token_hash: await loginTokenFor(p.p_user) };
+			}
+			default: throw new AiFailure("invalid");
+		}
+	}
+	async function cronTokenOk(token) {
+		const { data } = await svc.rpc("nous_cron_token_ok", { p_token: token });
+		return data === true;
+	}
+	return {
+		enabled,
+		flush,
+		handleUser,
+		handleSigned,
+		cronTokenOk
+	};
+}
+var NOUS_ACTIONS = /* @__PURE__ */ new Set([
+	"nous_status",
+	"nous_link_start",
+	"nous_unlink",
+	"nous_set_sync",
+	"nous_flush",
+	"nous_jump"
+]);
 //#endregion
 //#region server/api/handler.ts
 /**
@@ -2066,6 +2363,7 @@ async function importPhoto(fetchImpl, user, userId, rawCode) {
 * Toutes les actions exigent une session valide. Les données sont lues avec les droits de la personne
 * connectée ; la clé « service » ne sert qu'à la comptabilité (quotas, budget, erreurs) et à l'enregistrement
 * des conversations et des relevés de prix de cette même personne.
+* Exceptions, sans session : les requêtes signées du serveur Nous et la tâche planifiée d'envoi vers Nous (nous.ts).
 */
 var TECHNICAL = /* @__PURE__ */ new Set([
 	"invalid_key",
@@ -2096,6 +2394,7 @@ function createApiHandler(env, deps = {}) {
 	});
 	const now = deps.now ?? (() => /* @__PURE__ */ new Date());
 	const webFetch = deps.webFetch ?? ((input, init) => fetch(input, init));
+	const nous = createNous(env, svc, deps.nousFetch ?? ((input, init) => fetch(input, init)), now);
 	async function settings() {
 		const { data, error } = await svc.rpc("ai_config");
 		if (error || !data) throw new AiFailure("internal", sanitize(error?.message ?? "Réglages introuvables"));
@@ -2157,6 +2456,7 @@ function createApiHandler(env, deps = {}) {
 		return data?.currency ?? "EUR";
 	}
 	async function handle(action, body, user, userId) {
+		if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
 		switch (action) {
 			case "status": {
 				const { data, error } = await user.rpc("my_ai_status");
@@ -2315,6 +2615,53 @@ function createApiHandler(env, deps = {}) {
 			};
 		}
 	}
+	/** Requêtes sans session : venues du serveur Nous (signées) ou de la tâche planifiée (jeton du cron). */
+	async function serveMachine(req, cors) {
+		const text = await req.text();
+		if (text.length > 64e3) return json({
+			ok: false,
+			code: "invalid"
+		}, 413, cors);
+		let body;
+		try {
+			body = JSON.parse(text || "{}");
+		} catch {
+			return json({
+				ok: false,
+				code: "invalid"
+			}, 400, cors);
+		}
+		const cron = req.headers.get("x-cron-token");
+		if (cron !== null) {
+			if (body.action !== "nous_flush" || !await nous.cronTokenOk(cron)) return json({
+				ok: false,
+				code: "forbidden"
+			}, 403, cors);
+			return json({
+				ok: true,
+				...await nous.flush(100)
+			}, 200, cors);
+		}
+		if (!env.ecosystemSecret) return json({
+			ok: false,
+			code: "integration_disabled"
+		}, 503, cors);
+		if (!await ecoVerify(env.ecosystemSecret, text, req.headers.get("x-eco-timestamp"), req.headers.get("x-eco-signature"), now().getTime())) return json({
+			ok: false,
+			code: "bad_signature"
+		}, 401, cors);
+		try {
+			return json({
+				ok: true,
+				...await nous.handleSigned(body)
+			}, 200, cors);
+		} catch (e) {
+			return json({
+				ok: false,
+				code: (e instanceof AiFailure ? e : new AiFailure("internal", e.message)).code
+			}, 200, cors);
+		}
+	}
 	return async function serve(req) {
 		const cors = corsHeaders(env, req);
 		if (req.method === "OPTIONS") return new Response(null, {
@@ -2326,6 +2673,7 @@ function createApiHandler(env, deps = {}) {
 			code: "invalid",
 			message: "Méthode non autorisée"
 		}, 405, cors);
+		if (req.headers.has("x-eco-signature") || req.headers.has("x-cron-token")) return serveMachine(req, cors);
 		const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "");
 		if (!token || token === env.publishableKey || token === env.serviceKey) return json({
 			ok: false,

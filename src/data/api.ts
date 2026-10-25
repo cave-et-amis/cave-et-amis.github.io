@@ -362,29 +362,51 @@ export class Api {
 
   // ───────────── Événements ─────────────
 
+  /**
+   * Après un changement d'événement : demande l'envoi immédiat vers les agendas Nous des participants liés
+   * (sinon la tâche planifiée s'en charge dans la minute). Regroupé, sans attendre la réponse, sans effet en cas d'échec.
+   */
+  private nousTimer: ReturnType<typeof setTimeout> | null = null;
+  private nudgeNous() {
+    if (this.nousTimer) clearTimeout(this.nousTimer);
+    this.nousTimer = setTimeout(() => {
+      this.nousTimer = null;
+      void this.ai('nous_flush').catch(() => undefined);
+    }, 1500);
+  }
+
   async createEvent(p: Record<string, unknown>, guests: string[]) {
-    return must(await this.sb.rpc('create_event', { p, p_guests: guests })) as CaveEvent;
+    const ev = must(await this.sb.rpc('create_event', { p, p_guests: guests })) as CaveEvent;
+    this.nudgeNous();
+    return ev;
   }
   async updateEvent(id: string, patch: Partial<CaveEvent>) {
     must(await this.sb.from('events').update(patch).eq('id', id));
+    this.nudgeNous();
   }
   async inviteToEvent(id: string, guests: string[]) {
     must(await this.sb.rpc('invite_to_event', { p_event: id, p_guests: guests }));
+    this.nudgeNous();
   }
   async respondEvent(id: string, rsvp: string) {
     must(await this.sb.rpc('respond_event', { p_event: id, p_rsvp: rsvp }));
+    this.nudgeNous();
   }
   async removeParticipant(id: string, user: string) {
     must(await this.sb.rpc('remove_participant', { p_event: id, p_user: user }));
+    this.nudgeNous();
   }
   async cancelEvent(id: string) {
     must(await this.sb.rpc('cancel_event', { p_event: id }));
+    this.nudgeNous();
   }
   async deleteEvent(id: string) {
     must(await this.sb.rpc('delete_event', { p_event: id }));
+    this.nudgeNous();
   }
   async closeEvent(id: string) {
     must(await this.sb.rpc('close_event', { p_event: id }));
+    this.nudgeNous();
   }
   async eventDetail(id: string, planned: boolean): Promise<EventDetail> {
     const [participants, dishes, wines, suggestable, tastings] = await Promise.all([
@@ -403,18 +425,24 @@ export class Api {
     };
   }
   async proposeEventWine(event: string, lot: string, quantity: number, note: string | null, bring: boolean, requestId: string) {
-    return must(
+    const w = must(
       await this.sb.rpc('propose_event_wine', { p_event: event, p_lot: lot, p_quantity: quantity, p_note: note, p_bring: bring, p_request: requestId }),
     ) as EventWine;
+    this.nudgeNous();
+    return w;
   }
   async confirmEventWine(id: string, quantity: number | null) {
-    return must(await this.sb.rpc('confirm_event_wine', { p_id: id, p_quantity: quantity })) as EventWine;
+    const w = must(await this.sb.rpc('confirm_event_wine', { p_id: id, p_quantity: quantity })) as EventWine;
+    this.nudgeNous();
+    return w;
   }
   async declineEventWine(id: string) {
     must(await this.sb.rpc('decline_event_wine', { p_id: id }));
+    this.nudgeNous();
   }
   async withdrawEventWine(id: string) {
     must(await this.sb.rpc('withdraw_event_wine', { p_id: id }));
+    this.nudgeNous();
   }
   async confirmConsumption(id: string, consumed: number, requestId: string) {
     return must(await this.sb.rpc('confirm_event_consumption', { p_id: id, p_consumed: consumed, p_request: requestId })) as EventWine;
