@@ -24,6 +24,9 @@ import { SettingsPage } from '../features/settings/SettingsPage';
 import { CellarsPage } from '../features/settings/CellarsPage';
 import { WhoSeesPage } from '../features/settings/WhoSeesPage';
 import { AdminPage } from '../features/admin/AdminPage';
+import { ScannerPage } from '../features/scanner/ScannerPage';
+import { ScanPage } from '../features/scanner/ScanPage';
+import { ScanHistory } from '../features/scanner/ScanHistory';
 import { Avatar, Button, EmptyState } from './kit';
 import { go, useRoute, whenHistorySettled } from './router';
 
@@ -158,6 +161,20 @@ export function Shell() {
         page = <JournalPage />;
       }
       break;
+    case 'scanner':
+      if (seg[1] === 'historique') {
+        title = 'Mes analyses';
+        back = '/scanner';
+        page = <ScanHistory />;
+      } else if (seg[1]) {
+        title = 'Vérifier la bouteille';
+        back = '/scanner/historique';
+        page = <ScanPage id={seg[1]} />;
+      } else {
+        title = 'Scanner avant d’acheter';
+        page = <ScannerPage />;
+      }
+      break;
     case 'assistant':
       title = 'Assistant';
       page = <AssistantPage conversationId={seg[1] ?? null} />;
@@ -259,7 +276,7 @@ export function Shell() {
         <main className="page" id="contenu">
           {page}
         </main>
-        {!['assistant', 'admin', 'reglages'].includes(seg[0] ?? '') && (
+        {!['assistant', 'admin', 'reglages', 'scanner'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add}>
             <Plus aria-hidden />
             Ajouter

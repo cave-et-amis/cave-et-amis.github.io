@@ -529,3 +529,44 @@ export type PriceCheck = {
   model: string | null;
   created_at: string;
 };
+
+// ───────────── Scanner avant d'acheter ─────────────
+
+export type ScanPhotoRole = 'front' | 'back' | 'price';
+
+/** Fiche vérifiée d'une bouteille vue en magasin (mêmes champs que les fiches de vin, plus le degré). */
+export type ScanWine = Partial<
+  Pick<Wine, 'name' | 'domaine' | 'producer' | 'cuvee' | 'country' | 'region' | 'appellation' | 'color' | 'wine_type' | 'grapes' | 'vintage' | 'non_vintage'>
+> & { volume_ml?: number | null; alcohol?: number | null };
+
+export type ScanCandidate = { name: string; producer: string | null; cuvee: string | null; appellation: string | null; vintage: number | null; reason: string | null };
+
+/** Lecture de Lia (écrite par le serveur) : jamais modifiée par l'application. */
+export type ScanReading = {
+  is_wine_label: boolean;
+  fields: Record<string, unknown>;
+  uncertain: string[];
+  candidates: ScanCandidate[];
+  price_tag: { price: number | null; currency: string; label: string | null; conditions: string | null };
+  photo_issues: string[];
+  notes: string | null;
+};
+
+export type Scan = {
+  id: string;
+  user_id: string;
+  status: 'identified' | 'confirmed';
+  photos: { path: string; role: ScanPhotoRole }[];
+  barcode: string | null;
+  /** Vide pour une analyse saisie à la main. */
+  result: Partial<ScanReading>;
+  wine: ScanWine;
+  store_price: number | null;
+  currency: string;
+  store_name: string | null;
+  price_confirmed: boolean;
+  from_cache: boolean;
+  created_at: string;
+  updated_at: string;
+  expires_at: string;
+};

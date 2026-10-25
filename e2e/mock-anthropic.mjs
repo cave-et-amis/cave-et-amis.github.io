@@ -92,6 +92,42 @@ function label(body) {
   ]);
 }
 
+// Scanner : deux cuvées possibles (Lia demande laquelle), prix du rayon lu, millésime incertain, reflet signalé.
+function scan(body) {
+  return message(body, [
+    text(
+      JSON.stringify({
+        is_wine_label: true,
+        fields: {
+          name: 'Château Labeille',
+          domaine: '',
+          producer: 'Château Labeille',
+          cuvee: '',
+          country: 'France',
+          region: 'Bordeaux',
+          appellation: 'Pauillac',
+          color: 'rouge',
+          wine_type: 'tranquille',
+          grapes: [],
+          vintage: 2016,
+          non_vintage: false,
+          volume_ml: 750,
+          barcode: '',
+          alcohol: 13.5,
+        },
+        uncertain: ['vintage'],
+        candidates: [
+          { name: 'Château Labeille', producer: 'Château Labeille', cuvee: 'Grand vin', appellation: 'Pauillac', vintage: 2016, reason: 'Étiquette crème' },
+          { name: 'Château Labeille', producer: 'Château Labeille', cuvee: 'Le Petit Labeille', appellation: 'Pauillac', vintage: 2016, reason: 'Second vin, même étiquette' },
+        ],
+        price_tag: { price: 24.9, currency: 'EUR', label: 'PAUILLAC LABEILLE 2016', conditions: '2 achetées : -20 % sur la 2e' },
+        photo_issues: ['glare'],
+        notes: '',
+      }),
+    ),
+  ]);
+}
+
 function price(body) {
   return message(
     body,
@@ -138,6 +174,7 @@ createServer(async (req, res) => {
   }
   if (req.method === 'POST' && req.url.startsWith('/v1/messages')) {
     const body = JSON.parse(raw);
+    if (body.output_config?.format?.schema?.properties?.price_tag) return send(200, scan(body));
     if (body.output_config?.format) return send(200, label(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_offers')) return send(200, price(body));
     if ((body.tools ?? []).some((t) => t.name === 'search_my_cellar')) return send(200, chat(body));

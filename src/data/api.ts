@@ -34,6 +34,7 @@ import type {
   MyGroup,
   Participant,
   PriceCheck,
+  Scan,
   Profile,
   SharedLot,
   SuggestableLot,
@@ -624,6 +625,31 @@ export class Api {
     if (paths.length) await this.sb.storage.from('photos').remove(paths);
   }
 
+  // ───────────── Scanner avant d'acheter ─────────────
+
+  async scans() {
+    return must(await this.sb.from('scans').select('*').order('created_at', { ascending: false }).limit(100)) as Scan[];
+  }
+  async scan(id: string) {
+    return must(await this.sb.from('scans').select('*').eq('id', id).maybeSingle()) as Scan | null;
+  }
+  /** Analyse saisie à la main (assistant indisponible) : sans lecture de Lia. */
+  async createManualScan(row: Pick<Scan, 'photos' | 'wine'> & { barcode?: string | null }) {
+    return must(await this.sb.from('scans').insert(row).select('*').single()) as Scan;
+  }
+  async updateScan(id: string, patch: Partial<Pick<Scan, 'status' | 'barcode' | 'wine' | 'store_price' | 'currency' | 'store_name' | 'price_confirmed'>>) {
+    return must(await this.sb.from('scans').update(patch).eq('id', id).select('*').single()) as Scan;
+  }
+  /** Supprime des analyses et leurs photos. */
+  async deleteScans(list: Scan[]) {
+    if (!list.length) return;
+    await this.removePhotos(list.flatMap((s) => s.photos.map((p) => p.path))).catch(() => undefined);
+    must(await this.sb.from('scans').delete().in('id', list.map((s) => s.id)));
+  }
+  async scanStatus() {
+    return must(await this.sb.rpc('my_scan_status')) as { used: number; limit: number; retention_days: number };
+  }
+
   // ───────────── Assistant (fonction serveur) ─────────────
 
   async ai(action: string, body: Record<string, unknown> = {}): Promise<AiReply> {
@@ -680,6 +706,10 @@ export type AdminOverview = {
     default_monthly_user_usd: number;
     rate_per_minute: number;
     max_concurrent_per_user: number;
+    /** Scanner avant d'acheter : modèle (null = celui de l'assistant), analyses par jour, conservation (jours). */
+    scan_model: string | null;
+    scan_daily_limit: number;
+    scan_retention_days: number;
     prices: Record<string, { input: number; output: number; cache_write?: number; cache_read?: number }>;
     available_models: { id: string; display_name: string }[];
     key_status: string;

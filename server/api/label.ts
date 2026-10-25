@@ -126,7 +126,10 @@ export async function readPhoto(user: SupabaseClient, userId: string, path: unkn
   if (bytes.byteLength > maxBytes) throw new AiFailure('image_too_large');
   const type = mediaType(bytes);
   if (!type) throw new AiFailure('image_invalid');
-  return { data: base64(bytes), media_type: type };
+  // Empreinte : une photo déjà lue n'est pas renvoyée à l'IA (cache du scanner).
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+  const sha256 = Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('');
+  return { data: base64(bytes), media_type: type, sha256 };
 }
 
 type LabelImage = { data: string; media_type: 'image/jpeg' | 'image/png' | 'image/webp' };

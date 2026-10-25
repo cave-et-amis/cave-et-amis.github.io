@@ -154,6 +154,26 @@ actuel » interroge le web : seuls des liens réellement trouvés sont retenus, 
 ensuite d'**enregistrer** le relevé. Sinon : « prix non vérifié ». L'accueil indique la valeur d'achat et la valeur de marché
 estimée de votre stock, avec la part de la cave couverte.
 
+## Scanner avant d'acheter
+
+En magasin, **Accueil › Scanner avant d'acheter** (ou **+ Ajouter**, ou l'écran de l'assistant). Photographiez l'**étiquette**,
+et si vous le souhaitez la **contre-étiquette** et l'**étiquette de prix** du rayon (appareil photo ou galerie). Le code-barres
+est lu par le téléphone quand il le peut (Android), sinon par Lia sur la contre-étiquette ; vous pouvez aussi le recopier.
+Sans réseau, les photos restent sur le téléphone : touchez « Analyser » quand la connexion revient.
+
+Lia identifie le vin (domaine, cuvée, millésime, appellation, couleur, cépages, contenance, degré) et lit le prix du rayon.
+Les champs **surlignés** sont incertains, ceux qu'elle n'a pas pu lire restent **vides**. Si plusieurs vins sont possibles,
+elle vous demande lequel vous avez en main. Les défauts des photos (flou, reflet, étiquette coupée, prix illisible, étiquette
+de prix d'un autre vin) sont signalés. Vous **confirmez le prix** (une bouteille, TTC ; les promotions sont indiquées à part).
+
+L'analyse ne touche **jamais** à votre cave : « Ajouter à ma cave » ouvre le formulaire habituel (quantité, prix payé, cave,
+emplacement) pré-rempli, à confirmer ; « Ajouter à mes envies » de même. **Mes analyses** garde l'historique, privé, supprimé
+automatiquement après 30 jours (réglable) ; vous pouvez supprimer une analyse ou tout l'historique à tout moment.
+Si l'assistant est indisponible ou si votre nombre d'analyses du jour est atteint, la fiche se remplit à la main.
+
+*À venir* : l'avis de Lia sur le vin, la comparaison du prix avec des offres vérifiées du marché, le verdict d'achat et le
+comparateur de plusieurs bouteilles.
+
 ## L'assistant
 
 Exemples : « Quel vin de ma cave ouvrir avec un magret de canard ? », « Quelles bouteilles devrais-je boire prochainement ? »,

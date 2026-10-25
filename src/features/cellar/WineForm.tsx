@@ -24,6 +24,8 @@ export type WinePrefill = {
   aiNotes?: string | null;
   /** Photo déjà rangée (lecture d'étiquette). */
   uploaded?: string[];
+  /** Achat repéré avec le scanner : prix du rayon confirmé et magasin, modifiables avant d'enregistrer. */
+  purchase?: { price: number | null; place: string | null };
 };
 
 type Form = {
@@ -109,9 +111,9 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
   const [cellarId, setCellarId] = useState(snapshot.cellars[0]?.id ?? '');
   const [locationId, setLocationId] = useState('');
   const [newLocation, setNewLocation] = useState('');
-  const [price, setPrice] = useState('');
+  const [price, setPrice] = useState(prefill?.purchase?.price != null ? String(prefill.purchase.price).replace('.', ',') : '');
   const [purchaseDate, setPurchaseDate] = useState(todayIso());
-  const [place, setPlace] = useState('');
+  const [place, setPlace] = useState(prefill?.purchase?.place ?? '');
   const [origin, setOrigin] = useState<'achat' | 'cadeau_recu' | 'entree'>('achat');
   const [visibility, setVisibility] = useState<Visibility>(me.preferences.default_visibility ?? 'private');
   const [hidePrice, setHidePrice] = useState(true);

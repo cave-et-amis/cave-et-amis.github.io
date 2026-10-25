@@ -11,9 +11,12 @@ import { AI_MESSAGES } from '../../src/domain/errors.ts';
 import { runChat, type ChatInput } from './chat.ts';
 import { makeClient, mapAnthropicError, Meter, type Action, type AiSettings, baseParams, textOf } from './claude.ts';
 import { identifyLabel, readPhoto } from './label.ts';
-import { importPhoto, searchPhotos } from './photos.ts';
+import { importPhoto, offProduct, searchPhotos } from './photos.ts';
 import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
+
 import { lookupPrice } from './price.ts';
+import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpired, type ScanResult } from './scan.ts';
+import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { AiFailure, corsHeaders, isUuid, json, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
 
@@ -55,9 +58,10 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     if (f.code === 'invalid_key') await svc.rpc('ai_set_key_status', { p_status: 'invalid', p_models: null });
   }
 
-  /** Prépare un compteur (contrôles : clé présente, assistant activé, tarif connu). */
-  async function prepare(userId: string | null, action: Action) {
-    const s = await settings();
+  /** Prépare un compteur (contrôles : clé présente, assistant activé, tarif connu). `model` : autre modèle que celui de l'assistant. */
+  async function prepare(userId: string | null, action: Action, model?: string | null) {
+    const base = await settings();
+    const s = model ? { ...base, model } : base;
     if (!env.anthropicKey) {
       if (s.key_status !== 'missing') await svc.rpc('ai_set_key_status', { p_status: 'missing', p_models: null });
       throw new AiFailure('ai_not_configured');
@@ -68,8 +72,14 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
   }
 
   /** `estimate` null : le travail ouvre lui-même la demande (meter.start) une fois la première requête construite. */
-  async function metered<T>(userId: string, action: Action, estimate: ((m: Meter) => number) | null, work: (m: Meter, s: AiSettings) => Promise<T>) {
-    const { s, meter } = await prepare(userId, action);
+  async function metered<T>(
+    userId: string,
+    action: Action,
+    estimate: ((m: Meter) => number) | null,
+    work: (m: Meter, s: AiSettings) => Promise<T>,
+    model?: string | null,
+  ) {
+    const { s, meter } = await prepare(userId, action, model);
     try {
       if (estimate) await meter.start(estimate(meter));
       const result = await work(meter, s);
@@ -138,6 +148,57 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           (meter) => lookupPrice({ svc, meter, userId, currency }, wine as Wine, volume),
         );
         return { result };
+      }
+
+      case 'scan_identify': {
+        // Scanner avant d'acheter : 1 à 3 photos (étiquette, contre-étiquette, prix du rayon), toutes dans le dossier de la personne.
+        const photos = parsePhotos(body.photos);
+        const typed = normalizeBarcode(body.barcode);
+        const s = await settings();
+        await purgeExpired(svc, userId, now()).catch(() => undefined);
+        const images: (Awaited<ReturnType<typeof readPhoto>> & { role: (typeof photos)[number]['role'] })[] = [];
+        for (const p of photos) images.push({ ...(await readPhoto(user, userId, p.path, s.max_image_bytes)), role: p.role });
+        // Mêmes photos (octet pour octet) et même code-barres : la lecture déjà faite est reprise, sans appel à l'IA.
+        const key = `identify:v1:${images.map((i) => `${i.role}=${i.sha256}`).join('|')}${typed ? `:${typed}` : ''}`;
+        const { data: cached } = await svc.from('scan_cache').select('value').eq('key', key).gt('expires_at', now().toISOString()).maybeSingle();
+        let result = (cached as { value: ScanResult } | null)?.value ?? null;
+        const fromCache = Boolean(result);
+        if (!result) {
+          const { data: quota } = await svc.rpc('scan_quota', { p_user: userId });
+          const q = quota as { used: number; limit: number } | null;
+          if (q && q.used >= q.limit) throw new AiFailure('scan_quota');
+          // Indice facultatif : le produit Open Food Facts du code-barres (sans coût ; ignoré s'il ne répond pas).
+          const off = typed ? await offProduct(webFetch, typed).catch(() => null) : null;
+          const hint = off ? sanitize(`code-barres ${typed} — produit « ${off.product_name ?? ''} »${off.brands ? `, marque « ${Array.isArray(off.brands) ? off.brands.join(', ') : off.brands} »` : ''}`, 300) : null;
+          const maxTokens = Math.min(s.max_output_tokens * 2, 6000);
+          result = await metered(
+            userId,
+            'scan',
+            (m) => m.estimate({ chars: 8_000, images: images.length, maxTokens }),
+            (meter) => identifyScan({ meter, images, hint }),
+            s.scan_model,
+          );
+          const expires = new Date(now().getTime() + IDENTIFY_CACHE_DAYS * 86_400_000).toISOString();
+          await svc.from('scan_cache').upsert({ key, kind: 'identify', value: result, expires_at: expires }, { onConflict: 'key' });
+        }
+        const read = normalizeBarcode(result.fields.barcode);
+        const { data: scan, error } = await svc
+          .from('scans')
+          .insert({
+            user_id: userId,
+            photos,
+            barcode: typed ?? read,
+            result,
+            wine: initialWine(result),
+            // Prix lu sur l'étiquette du rayon : proposé, jamais utilisé avant la confirmation de la personne.
+            store_price: result.price_tag.price,
+            currency: result.price_tag.currency,
+            from_cache: fromCache,
+          })
+          .select('*')
+          .single();
+        if (error) throw new AiFailure('internal', sanitize(error.message));
+        return { scan };
       }
 
       // Photo officielle (Open Food Facts) : sans IA, sans coût.

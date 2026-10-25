@@ -24,9 +24,13 @@ export type AiSettings = {
   monthly_budget_usd: number;
   prices: Record<string, ModelPrice>;
   key_status: string;
+  /** Modèle du scanner (null : celui de l'assistant). */
+  scan_model?: string | null;
+  scan_daily_limit?: number;
+  scan_retention_days?: number;
 };
 
-export type Action = 'chat' | 'label' | 'price' | 'admin_test';
+export type Action = 'chat' | 'label' | 'price' | 'scan' | 'admin_test';
 
 /** Modèles acceptant le paramètre « effort » (documentation Anthropic, octobre 2026). */
 export function supportsEffort(model: string) {

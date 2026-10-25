@@ -2047,3 +2047,77 @@ details.fold:not([open]) > summary::after {
 .summary-line:last-child {
   border-bottom: 0;
 }
+
+/* ───────────── Scanner avant d'acheter ───────────── */
+
+.shortcut-wide {
+  width: 100%;
+  min-height: 0;
+  margin-bottom: 10px;
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.scan-slots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scan-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.scan-slot.filled {
+  border-style: solid;
+  border-color: var(--success);
+}
+.scan-slot img,
+.scan-slot-icon {
+  flex: 0 0 auto;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: var(--bg-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary);
+}
+.scan-slot-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.scan-slot-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.scan-photos .photo-preview {
+  max-height: 180px;
+}
+.uncertain-sample {
+  background: var(--gold-soft);
+  border-bottom: 2px solid var(--gold);
+  padding: 0 3px;
+}
+/* Téléphone : boutons sous le texte, pour garder le titre et l'aide lisibles. */
+@media (max-width: 560px) {
+  .scan-slot {
+    flex-wrap: wrap;
+  }
+  .scan-slot-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

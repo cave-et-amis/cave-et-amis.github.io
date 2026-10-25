@@ -78,6 +78,19 @@
   réellement renvoyées par la recherche, avec le bon millésime et la bonne contenance. Sinon : « prix non vérifié ».
 - Les étiquettes, notes, commentaires et pages web sont traités comme des **données**, jamais comme des instructions.
 
+## Le scanner avant d'acheter
+
+- Les analyses (table `scans`) sont **privées** (RLS : leur auteur seulement). Les photos restent dans le dossier privé de la
+  personne ; la lecture de Lia (`result`) n'est écrite que par le serveur ; la personne ne peut modifier que la fiche vérifiée,
+  le prix confirmé et le magasin. Une analyse n'ajoute **jamais** de bouteille au stock.
+- Conservation : `scan_retention_days` (30 jours par défaut), puis suppression des analyses **et de leurs photos** (par le
+  serveur à chaque nouvelle analyse, et par l'application à l'ouverture de l'historique). Suppression manuelle à tout moment.
+- **Cache** (`scan_cache`, inaccessible depuis l'application) : une série de photos identique octet pour octet n'est pas
+  renvoyée à l'IA (lecture reprise pendant 90 jours, sans coût ni quota). Il ne contient que la lecture des étiquettes.
+- Coûts : modèle propre au scanner (`scan_model`, Sonnet 5.5 par défaut), **nombre d'analyses par jour et par personne**
+  (`scan_daily_limit`, 10 par défaut) en plus des quotas et budgets de l'assistant ; photos réduites sur le téléphone
+  (1 600 px) et taille maximale contrôlée par le serveur. Open Food Facts (code-barres) est gratuit et sans clé.
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

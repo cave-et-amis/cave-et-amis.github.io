@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { BookOpen, Camera, CalendarHeart, Heart, PenLine, Sparkles, UserPlus } from 'lucide-react';
+import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { buildRows, readyToDrink } from '../../domain/cellar';
 import { currentYear, eventDate, money, moneyRange, relativeDays } from '../../domain/format';
@@ -68,6 +68,11 @@ export function Home() {
         <h2 id="h-shortcuts" className="sr-only">
           Raccourcis
         </h2>
+        <button type="button" className="shortcut shortcut-wide" onClick={() => go('/scanner')}>
+          <ScanSearch aria-hidden />
+          Scanner avant d’acheter
+          <span className="hint">En magasin : Lia identifie la bouteille et relève le prix</span>
+        </button>
         <div className="shortcuts">
           <button type="button" className="shortcut" onClick={actions.scanLabel}>
             <Camera aria-hidden />

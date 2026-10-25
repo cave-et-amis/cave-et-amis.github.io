@@ -3,7 +3,7 @@
  * propose des actions que vous confirmez vous-même, et cite ses sources pour les prix.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, ExternalLink, MessageSquarePlus, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { Check, ExternalLink, MessageSquarePlus, ScanSearch, Send, Sparkles, Trash2, X } from 'lucide-react';
 import type { AiMessage, Conversation } from '../../data/api';
 import { useStore } from '../../data/store';
 import { dateShort, todayIso } from '../../domain/format';
@@ -162,6 +162,11 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
               les repères généraux et ses propres estimations. Les prix de marché ne sont donnés qu’avec des sources.
             </p>
           </div>
+          {!context && (
+            <Button variant="secondary" icon={<ScanSearch />} onClick={() => go('/scanner')}>
+              Scanner avant d’acheter
+            </Button>
+          )}
           {context && <span className="pill primary">{context.label}</span>}
           <div className="suggestions">
             {(context?.kind === 'wine'

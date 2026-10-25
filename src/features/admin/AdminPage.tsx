@@ -270,6 +270,21 @@ export function AdminPage() {
         <Field label="Prix de la recherche web ($ pour 1 000)">
           <input {...num('web_search_price_per_1000')} />
         </Field>
+        <h3 className="section">Scanner avant d’acheter</h3>
+        <Field label="Modèle du scanner" hint="Vide : le même modèle que l’assistant. Sonnet 5.5 coûte environ deux fois moins qu’Opus 5.5 pour lire les étiquettes.">
+          <input className="input" value={s.scan_model ?? ''} onChange={(e) => set({ scan_model: e.target.value.trim() || null })} placeholder={s.model} />
+        </Field>
+        {s.scan_model && !s.prices?.[s.scan_model] && !prices.includes(`"${s.scan_model}"`) && (
+          <Notice tone="danger">Aucun tarif n’est renseigné pour {s.scan_model} : les analyses seront refusées tant qu’il manque.</Notice>
+        )}
+        <div className="field-row">
+          <Field label="Analyses par jour et par personne" hint="Une lecture reprise du cache (mêmes photos) n’est pas comptée.">
+            <input {...num('scan_daily_limit')} />
+          </Field>
+          <Field label="Conservation des analyses (jours)" hint="Ensuite, analyses et photos sont supprimées.">
+            <input {...num('scan_retention_days')} />
+          </Field>
+        </div>
         <Field label="Tarifs des modèles ($ par million de jetons)" hint="input, output, cache_write, cache_read — d’après la page Pricing d’Anthropic. À mettre à jour si les tarifs changent.">
           <textarea className="input" style={{ fontFamily: 'ui-monospace, Consolas, monospace', fontSize: '0.85rem', minHeight: 180 }} value={prices} onChange={(e) => setPrices(e.target.value)} />
         </Field>
