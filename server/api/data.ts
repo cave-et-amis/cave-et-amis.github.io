@@ -27,16 +27,23 @@ async function paged<T>(page: (from: number, to: number) => PromiseLike<{ data: 
   return out;
 }
 
-export type CellarData = { wines: Wine[]; lots: Lot[]; cellars: Cellar[]; locations: Location[] };
+/** Bouteilles d'un de mes lots mises à disposition d'un groupe (avec le nom du groupe). */
+export type Allocation = { lot_id: string; group: string; bottles: number };
+
+export type CellarData = { wines: Wine[]; lots: Lot[]; cellars: Cellar[]; locations: Location[]; allocations?: Allocation[] };
 
 export async function loadCellar(sb: SupabaseClient): Promise<CellarData> {
-  const [wines, lots, cellars, locations] = await Promise.all([
+  const [wines, lots, cellars, locations, shares, groups] = await Promise.all([
     paged<Wine>((a, b) => sb.from('wines').select('*').order('name').order('id').range(a, b)),
     paged<Lot>((a, b) => sb.from('lots').select('*').order('id').range(a, b)),
     paged<Cellar>((a, b) => sb.from('cellars').select('*').order('id').range(a, b)),
     paged<Location>((a, b) => sb.from('locations').select('*').order('id').range(a, b)),
+    // Mes mises à disposition (RLS : seulement les miennes) et le nom de mes groupes.
+    paged<{ lot_id: string; group_id: string; allocated: number }>((a, b) => sb.from('group_shares').select('lot_id, group_id, allocated').gt('allocated', 0).range(a, b)),
+    paged<{ id: string; name: string }>((a, b) => sb.from('groups').select('id, name').range(a, b)),
   ]);
-  return { wines, lots, cellars, locations };
+  const allocations = shares.map((s) => ({ lot_id: s.lot_id, group: groups.find((g) => g.id === s.group_id)?.name ?? 'un groupe', bottles: s.allocated }));
+  return { wines, lots, cellars, locations, allocations };
 }
 
 const clip = (s: string | null | undefined, n: number) => (s ? (s.length > n ? `${s.slice(0, n)}…` : s) : undefined);
@@ -50,6 +57,9 @@ export function compactWine(w: Wine, data: CellarData, year: number, detail = fa
   const lots = data.lots.filter((l) => l.wine_id === w.id);
   const stock = lots.reduce((s, l) => s + l.quantity, 0);
   const reserved = lots.reduce((s, l) => s + l.reserved, 0);
+  // « reserved » compte à la fois les réservations d'événements et les mises à disposition de groupes.
+  const allocations = (data.allocations ?? []).filter((a) => lots.some((l) => l.id === a.lot_id));
+  const forGroups = allocations.reduce((s, a) => s + a.bottles, 0);
   const storages = new Set(lots.map((l) => data.cellars.find((c) => c.id === l.cellar_id)?.storage ?? 'unknown'));
   const storage = storages.has('piece') ? 'piece' : [...storages][0];
   const win = windowOf(w);
@@ -73,7 +83,8 @@ export function compactWine(w: Wine, data: CellarData, year: number, detail = fa
     grapes: w.grapes?.length ? w.grapes : undefined,
     bottles_in_stock: stock,
     bottles_available: stock - reserved,
-    bottles_reserved_for_events: reserved || undefined,
+    bottles_reserved_for_events: reserved - forGroups || undefined,
+    bottles_set_aside_for_groups: forGroups ? allocations.map((a) => ({ group: a.group, bottles: a.bottles })) : undefined,
     drink_window: win
       ? { from: win.from, until: win.until, origin: win.origin === 'general' ? 'Repère général très approximatif' : adviceTag(win.origin), note: w.window_note || undefined }
       : undefined,

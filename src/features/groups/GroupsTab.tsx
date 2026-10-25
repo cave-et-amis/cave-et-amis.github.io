@@ -73,7 +73,8 @@ export function GroupsTab() {
                 <span className="row-main">
                   <span className="row-title">{g.name}</span>
                   <span className="row-sub">
-                    {g.members} membre{g.members > 1 ? 's' : ''} · {g.bottles} vin{g.bottles > 1 ? 's' : ''} dans la cave · {ROLE_LABELS[g.my_role]}
+                    {g.members} membre{g.members > 1 ? 's' : ''} · {g.bottles} vin{g.bottles > 1 ? 's' : ''} dans la cave
+                    {g.available_bottles > 0 ? ` · ${g.available_bottles} bouteille${g.available_bottles > 1 ? 's' : ''} à disposition` : ''} · {ROLE_LABELS[g.my_role]}
                   </span>
                 </span>
               </a>

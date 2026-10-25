@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generalAeration, generalServingTemperature, suggestServiceOrder } from '../src/domain/advice.ts';
-import { applyFilters, buildRows, cellarCsv, EMPTY_FILTERS } from '../src/domain/cellar.ts';
+import { applyFilters, buildRows, cellarCsv, EMPTY_FILTERS, lotSplit, splitText } from '../src/domain/cellar.ts';
 import { AppError, toMessage } from '../src/domain/errors.ts';
 import { fromLocalInput, toLocalInput } from '../src/domain/format.ts';
 import { maturity, maturityOf, windowOf } from '../src/domain/maturity.ts';
@@ -130,6 +130,23 @@ describe('inventaire et export', () => {
     expect(applyFilters(rows, { ...EMPTY_FILTERS, stock: 'all', vintageTo: 2015 }).map((r) => r.wine.id)).toEqual(['b']);
     expect(applyFilters(rows, { ...EMPTY_FILTERS, priceMax: 10 })).toEqual([]);
     expect(applyFilters(rows, { ...EMPTY_FILTERS, q: 'alpha 2022' })).toHaveLength(1);
+  });
+
+  it('mises à disposition : détail des bouteilles bloquées, « 6 en stock · dont 2 pour mes groupes · 4 libres »', () => {
+    const l = lot({ id: 'l1', wine_id: 'a', quantity: 6, reserved: 3 });
+    const shares = [
+      { lot_id: 'l1', group_id: 'g', owner_id: 'o', allocated: 2, created_at: '' },
+      { lot_id: 'l1', group_id: 'h', owner_id: 'o', allocated: 0, created_at: '' },
+      { lot_id: 'autre', group_id: 'g', owner_id: 'o', allocated: 5, created_at: '' },
+    ];
+    const split = lotSplit(l, shares);
+    expect(split).toMatchObject({ forGroups: 2, forEvents: 1, free: 3 });
+    expect(split.groups.map((g) => g.group_id)).toEqual(['g']);
+    expect(buildRows([wine({ id: 'a' })], [l], cellars, 2026, shares)[0]).toMatchObject({ stock: 6, reserved: 3, forGroups: 2, available: 3 });
+    expect(buildRows([wine({ id: 'a' })], [l], cellars, 2026)[0].forGroups).toBe(0);
+    expect(splitText(6, 2, 0)).toBe('6 en stock · dont 2 pour mes groupes · 4 libres');
+    expect(splitText(6, 2, 1)).toBe('6 en stock · dont 2 pour mes groupes · 1 réservée (événements) · 3 libres');
+    expect(splitText(1, 0, 0)).toBe('1 en stock · 1 libre');
   });
 
   it('l’export neutralise les formules de tableur', () => {

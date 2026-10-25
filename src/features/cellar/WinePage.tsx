@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowDownToLine, BookOpen, CalendarHeart, Heart, Minus, Pencil, Plus, Sparkles, Undo2, Wine as WineIcon } from 'lucide-react';
+import { ArrowDownToLine, BookOpen, CalendarHeart, HandHeart, Heart, Minus, Pencil, Plus, Sparkles, Undo2, Wine as WineIcon } from 'lucide-react';
 import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
 import { PhotoCredit } from './OfficialPhoto';
 import { generalAeration, generalServingTemperature } from '../../domain/advice';
-import { buildRows } from '../../domain/cellar';
+import { buildRows, lotSplit, splitText } from '../../domain/cellar';
 import { currentYear, dateShort, money } from '../../domain/format';
 import { MATURITY_HINTS, MATURITY_LABELS, windowText } from '../../domain/maturity';
 import type { Lot, Movement } from '../../domain/types';
@@ -13,6 +13,7 @@ import { colorLabel, label, MOVEMENT_LABELS, VISIBILITIES, volumeLabel, WINE_TYP
 import { useActions } from '../../ui/Shell';
 import { Button, EmptyState, InlineLoading, Origin, StarsView, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
+import { AllocateSheet } from '../groups/AllocateSheet';
 import { LotSheet } from './LotSheet';
 import { MovementSheet } from './MovementSheet';
 import { PriceSection } from './PriceSection';
@@ -26,13 +27,18 @@ export function WinePage({ id }: { id: string }) {
   const wine = getWine(id);
   const lots = useMemo(() => lotsOf(id), [lotsOf, id]);
   const year = currentYear();
-  const row = useMemo(() => (wine ? buildRows([wine], lots, snapshot.cellars, year)[0] : null), [wine, lots, snapshot.cellars, year]);
+  const row = useMemo(
+    () => (wine ? buildRows([wine], lots, snapshot.cellars, year, snapshot.groupShares)[0] : null),
+    [wine, lots, snapshot.cellars, snapshot.groupShares, year],
+  );
   const photo = usePhotoUrl(api, wine?.label_photo ?? wine?.bottle_photo);
   const bottlePhoto = usePhotoUrl(api, wine?.label_photo && wine?.bottle_photo ? wine.bottle_photo : null);
-  const [sheet, setSheet] = useState<{ kind: 'edit' } | { kind: 'lot'; lot?: Lot } | { kind: 'move'; lot?: Lot; mode: 'out' | 'in' | 'fix' } | null>(null);
-  // Groupes dont je suis membre, et mes lots qui y sont visibles.
+  const [sheet, setSheet] = useState<
+    { kind: 'edit' } | { kind: 'lot'; lot?: Lot } | { kind: 'move'; lot?: Lot; mode: 'out' | 'in' | 'fix' } | { kind: 'allocate'; lot?: Lot } | null
+  >(null);
+  // Groupes dont je suis membre, et mes lots qui y sont visibles (dont des bouteilles mises à disposition).
   const myGroups = snapshot.groups.filter((g) => g.my_status === 'active');
-  const groupShares = new Set(snapshot.groupShares.map((s) => `${s.lot_id}:${s.group_id}`));
+  const shareOf = (lot: string, group: string) => snapshot.groupShares.find((s) => s.lot_id === lot && s.group_id === group);
   const [movements, setMovements] = useState<Movement[] | null>(null);
   const lotKey = lots.map((l) => `${l.id}:${l.quantity}:${l.reserved}`).join(',');
 
@@ -61,6 +67,11 @@ export function WinePage({ id }: { id: string }) {
   const generalAer = generalAeration(wine, year);
   const reversed = new Set((movements ?? []).map((m) => m.reverses_id).filter(Boolean));
   const storageCaution = row.storage === 'piece';
+  const forEvents = row.reserved - row.forGroups;
+  const inStockLots = lots.filter((l) => l.quantity > 0);
+  const wineShares = snapshot.groupShares.filter((s) => inStockLots.some((l) => l.id === s.lot_id));
+  const groupName = (id: string) => snapshot.groups.find((g) => g.id === id)?.name ?? 'un groupe';
+  const sharedIn = snapshot.groups.filter((g) => wineShares.some((s) => s.group_id === g.id));
 
   return (
     <>
@@ -107,17 +118,24 @@ export function WinePage({ id }: { id: string }) {
           <span className="label">disponible{row.available > 1 ? 's' : ''}</span>
         </div>
         <div className="tile">
-          <span className="value">{row.reserved}</span>
-          <span className="label">réservée{row.reserved > 1 ? 's' : ''} (événements)</span>
+          <span className="value">{forEvents}</span>
+          <span className="label">réservée{forEvents > 1 ? 's' : ''} (événements)</span>
         </div>
-        <div className="tile">
-          <span className="value">{lots.length}</span>
-          <span className="label">lot{lots.length > 1 ? 's' : ''}</span>
-        </div>
+        {myGroups.length > 0 || row.forGroups > 0 ? (
+          <div className="tile">
+            <span className="value">{row.forGroups}</span>
+            <span className="label">pour mes groupes</span>
+          </div>
+        ) : (
+          <div className="tile">
+            <span className="value">{lots.length}</span>
+            <span className="label">lot{lots.length > 1 ? 's' : ''}</span>
+          </div>
+        )}
       </section>
 
       <div className="grid-2-always">
-        <Button icon={<Minus />} disabled={row.available < 1} onClick={() => setSheet({ kind: 'move', mode: 'out' })}>
+        <Button icon={<Minus />} disabled={row.available < 1 && row.forGroups < 1} onClick={() => setSheet({ kind: 'move', mode: 'out' })}>
           J’en ai bu une
         </Button>
         <Button variant="secondary" icon={<Plus />} onClick={() => setSheet({ kind: 'lot' })}>
@@ -161,6 +179,29 @@ export function WinePage({ id }: { id: string }) {
             ))}
           </div>
         </div>
+      )}
+
+      {(myGroups.length > 0 || sharedIn.length > 0) && (
+        <section aria-labelledby="h-share" className="card stack-sm">
+          <h2 id="h-share" className="section">
+            Partage avec mes groupes
+          </h2>
+          <p className="strong">{splitText(row.stock, row.forGroups, forEvents)}</p>
+          <span className="small muted">Visible : {sharedIn.length ? sharedIn.map((g) => `${g.emoji} ${g.name}`).join(', ') : 'dans aucun groupe'}</span>
+          {sharedIn
+            .map((g) => ({ g, n: wineShares.filter((s) => s.group_id === g.id).reduce((a, s) => a + s.allocated, 0) }))
+            .filter((x) => x.n > 0)
+            .map(({ g, n }) => (
+              <span key={g.id} className="small">
+                Disponible : {n} pour <a href={`#/groupes/${g.id}`}>{g.name}</a>
+              </span>
+            ))}
+          {myGroups.length > 0 && row.stock > 0 && (
+            <Button variant="secondary" icon={<HandHeart />} onClick={() => setSheet({ kind: 'allocate' })}>
+              Mettre à disposition d’un groupe
+            </Button>
+          )}
+        </section>
       )}
 
       <section aria-labelledby="h-advice" className="card">
@@ -249,7 +290,13 @@ export function WinePage({ id }: { id: string }) {
               <span className="small muted">
                 {cellar(l.cellar_id)?.name}
                 {l.location_id ? ` › ${location(l.location_id)?.name}` : ''}
-                {l.reserved > 0 ? ` · ${l.reserved} réservée${l.reserved > 1 ? 's' : ''}` : ''}
+                {(() => {
+                  const sp = lotSplit(l, snapshot.groupShares);
+                  return [
+                    sp.forGroups ? ` · ${sp.forGroups} pour ${sp.groups.length > 1 ? 'mes groupes' : `« ${groupName(sp.groups[0].group_id)} »`}` : '',
+                    sp.forEvents ? ` · ${sp.forEvents} réservée${sp.forEvents > 1 ? 's' : ''} (événement)` : '',
+                  ].join('');
+                })()}
                 {l.purchase_price !== null ? ` · acheté ${money(l.purchase_price, l.currency)}` : ''}
                 {l.purchase_date ? ` le ${dateShort(l.purchase_date)}` : ''}
               </span>
@@ -262,21 +309,35 @@ export function WinePage({ id }: { id: string }) {
               {l.notes && <span className="small">{l.notes}</span>}
               {myGroups.length > 0 && l.quantity > 0 && (
                 <div className="stack-sm">
-                  <span className="small muted">Visible dans mes groupes (rien n’est réservé, les bouteilles restent à vous) :</span>
+                  <span className="small muted">Visible dans mes groupes (les bouteilles restent à vous) :</span>
                   <div className="chips" role="group" aria-label="Groupes où ce lot est visible">
                     {myGroups.map((g) => {
-                      const on = groupShares.has(`${l.id}:${g.id}`);
+                      const share = shareOf(l.id, g.id);
+                      const on = !!share;
                       return (
                         <button
                           key={g.id}
                           type="button"
                           className="chip"
                           aria-pressed={on}
-                          onClick={() =>
-                            void run(() => api.shareLotWithGroup(l.id, g.id, !on), { success: on ? `Retiré de « ${g.name} »` : `Visible dans « ${g.name} »` })
-                          }
+                          onClick={async () => {
+                            if (
+                              share?.allocated &&
+                              !(await confirm({
+                                title: `Ne plus partager avec « ${g.name} » ?`,
+                                message:
+                                  share.allocated > 1
+                                    ? `Les ${share.allocated} bouteilles mises à disposition du groupe redeviendront libres.`
+                                    : 'La bouteille mise à disposition du groupe redeviendra libre.',
+                                confirmLabel: 'Ne plus partager',
+                              }))
+                            )
+                              return;
+                            await run(() => api.shareLotWithGroup(l.id, g.id, !on), { success: on ? `Retiré de « ${g.name} »` : `Visible dans « ${g.name} »` });
+                          }}
                         >
                           {g.emoji} {g.name}
+                          {share?.allocated ? ` · ${share.allocated} à disposition` : ''}
                         </button>
                       );
                     })}
@@ -284,7 +345,13 @@ export function WinePage({ id }: { id: string }) {
                 </div>
               )}
               <div className="inline">
-                <Button size="sm" variant="secondary" icon={<Minus />} disabled={l.quantity - l.reserved < 1} onClick={() => setSheet({ kind: 'move', lot: l, mode: 'out' })}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon={<Minus />}
+                  disabled={l.quantity - l.reserved < 1 && lotSplit(l, snapshot.groupShares).forGroups < 1}
+                  onClick={() => setSheet({ kind: 'move', lot: l, mode: 'out' })}
+                >
                   Sortie
                 </Button>
                 <Button size="sm" variant="secondary" icon={<ArrowDownToLine />} onClick={() => setSheet({ kind: 'move', lot: l, mode: 'in' })}>
@@ -342,9 +409,18 @@ export function WinePage({ id }: { id: string }) {
                     <span className="strong">
                       {MOVEMENT_LABELS[m.kind]} · {dateShort(m.occurred_on)}
                     </span>
-                    {(m.note || m.event_id) && (
+                    {(m.note || m.event_id || m.group_id) && (
                       <span className="small muted">
-                        {m.event_id ? <a href={`#/evenements/${m.event_id}`}>{m.note ?? 'Événement'}</a> : m.note}
+                        {m.event_id ? (
+                          <a href={`#/evenements/${m.event_id}`}>{m.note ?? 'Événement'}</a>
+                        ) : m.group_id ? (
+                          <>
+                            Mise à disposition de <a href={`#/groupes/${m.group_id}`}>{groupName(m.group_id)}</a>
+                            {m.note ? ` · ${m.note}` : ''}
+                          </>
+                        ) : (
+                          m.note
+                        )}
                       </span>
                     )}
                     {reversed.has(m.id) && <span className="small faint">Annulé</span>}
@@ -378,6 +454,7 @@ export function WinePage({ id }: { id: string }) {
       {sheet?.kind === 'edit' && <WineFormSheet wine={wine} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'lot' && <LotSheet wine={wine} lot={sheet.lot} onClose={() => setSheet(null)} />}
       {sheet?.kind === 'move' && <MovementSheet wine={wine} lots={lots} initialLot={sheet.lot} mode={sheet.mode} onClose={() => setSheet(null)} />}
+      {sheet?.kind === 'allocate' && <AllocateSheet lotIds={lots.map((l) => l.id)} initialLot={sheet.lot?.id} onClose={() => setSheet(null)} />}
     </>
   );
 }

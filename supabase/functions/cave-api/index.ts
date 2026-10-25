@@ -360,6 +360,7 @@ Prix
 - Le prix d'achat personnel, le prix payé au restaurant et le prix de marché sont trois choses différentes : ne les mélange pas.
 
 Modifications
+- Les bouteilles « mises à disposition d'un groupe » (bottles_set_aside_for_groups) ou réservées pour un événement restent à la personne mais ne sont pas libres : ne propose de sortir que des bouteilles disponibles (bottles_available, available).
 - Tu ne modifies jamais rien toi-même. Pour proposer une consommation, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour un événement ou une note de dégustation, utilise l'outil propose_* correspondant : la personne verra un bouton pour confirmer. Ne dis jamais qu'une action est faite.
 
 Style
@@ -635,17 +636,24 @@ async function paged(page, max = 5e3) {
 	return out;
 }
 async function loadCellar(sb) {
-	const [wines, lots, cellars, locations] = await Promise.all([
+	const [wines, lots, cellars, locations, shares, groups] = await Promise.all([
 		paged((a, b) => sb.from("wines").select("*").order("name").order("id").range(a, b)),
 		paged((a, b) => sb.from("lots").select("*").order("id").range(a, b)),
 		paged((a, b) => sb.from("cellars").select("*").order("id").range(a, b)),
-		paged((a, b) => sb.from("locations").select("*").order("id").range(a, b))
+		paged((a, b) => sb.from("locations").select("*").order("id").range(a, b)),
+		paged((a, b) => sb.from("group_shares").select("lot_id, group_id, allocated").gt("allocated", 0).range(a, b)),
+		paged((a, b) => sb.from("groups").select("id, name").range(a, b))
 	]);
 	return {
 		wines,
 		lots,
 		cellars,
-		locations
+		locations,
+		allocations: shares.map((s) => ({
+			lot_id: s.lot_id,
+			group: groups.find((g) => g.id === s.group_id)?.name ?? "un groupe",
+			bottles: s.allocated
+		}))
 	};
 }
 var clip = (s, n) => s ? s.length > n ? `${s.slice(0, n)}…` : s : void 0;
@@ -657,6 +665,8 @@ function compactWine(w, data, year, detail = false) {
 	const lots = data.lots.filter((l) => l.wine_id === w.id);
 	const stock = lots.reduce((s, l) => s + l.quantity, 0);
 	const reserved = lots.reduce((s, l) => s + l.reserved, 0);
+	const allocations = (data.allocations ?? []).filter((a) => lots.some((l) => l.id === a.lot_id));
+	const forGroups = allocations.reduce((s, a) => s + a.bottles, 0);
 	const storages = new Set(lots.map((l) => data.cellars.find((c) => c.id === l.cellar_id)?.storage ?? "unknown"));
 	const storage = storages.has("piece") ? "piece" : [...storages][0];
 	const win = windowOf(w);
@@ -683,7 +693,11 @@ function compactWine(w, data, year, detail = false) {
 		grapes: w.grapes?.length ? w.grapes : void 0,
 		bottles_in_stock: stock,
 		bottles_available: stock - reserved,
-		bottles_reserved_for_events: reserved || void 0,
+		bottles_reserved_for_events: reserved - forGroups || void 0,
+		bottles_set_aside_for_groups: forGroups ? allocations.map((a) => ({
+			group: a.group,
+			bottles: a.bottles
+		})) : void 0,
 		drink_window: win ? {
 			from: win.from,
 			until: win.until,

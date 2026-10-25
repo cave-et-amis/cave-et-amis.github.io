@@ -333,6 +333,16 @@ export class Api {
   async shareLotWithGroup(lot: string, group: string, share: boolean) {
     must(await this.sb.rpc('share_lot_with_group', { p_lot: lot, p_group: group, p_share: share }));
   }
+  /** Nombre de bouteilles du lot mises à disposition du groupe (valeur finale ; 0 = tout reprendre). */
+  async allocateToGroup(lot: string, group: string, quantity: number) {
+    return must(await this.sb.rpc('allocate_to_group', { p_lot: lot, p_group: group, p_quantity: quantity })) as GroupShare;
+  }
+  /** J'ouvre des bouteilles que j'avais mises à disposition du groupe. Clé d'idempotence : une seule fois. */
+  async consumeFromGroup(lot: string, group: string, quantity: number, date: string | null, note: string | null, requestId: string) {
+    return must(
+      await this.sb.rpc('consume_from_group', { p_lot: lot, p_group: group, p_quantity: quantity, p_date: date, p_note: note, p_request: requestId }),
+    ) as Movement;
+  }
   async groupMembers(id: string) {
     return must(await this.sb.rpc('group_members_list', { p_group: id })) as GroupMember[];
   }

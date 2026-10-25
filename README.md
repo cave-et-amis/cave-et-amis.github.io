@@ -12,8 +12,12 @@ avec un **assistant sommelier (Claude)** dont la clé API, unique, reste sur le 
   export tableur.
 - **Ajout en quelques gestes** : saisie courte (champs avancés repliés) ou **photo d'étiquette** lue par Claude ; formulaire
   pré-rempli à vérifier, informations incertaines signalées, inconnues laissées vides.
-- **Amis** : invitation par lien ou code, accepter / refuser / supprimer une connexion. Chaque lot est **privé**, **partagé
-  avec mes amis** ou **proposable pour un événement**, avec masquage indépendant du prix, de la quantité exacte et des notes.
+- **Amis & Groupes** : recherche des personnes qui l'acceptent, demandes d'ami, invitation par lien ou code, blocage,
+  notifications. Chaque lot est **privé**, **partagé avec mes amis** ou **proposable pour un événement**, avec masquage
+  indépendant du prix, de la quantité exacte et des notes. **Groupes** (famille, soirées…) avec rôles et invitations : on y rend
+  des bouteilles **visibles**, ou on en **met à disposition** une quantité, réservée pour le groupe (« 6 en stock · dont 2 pour
+  mes groupes · 4 libres »), jamais comptée deux fois, rendue si l'on quitte le groupe ; seul le propriétaire les ouvre, avec
+  l'historique et l'activité du groupe.
 - **Événements** (dîner, dégustation, anniversaire, soirée à thème) : invités et réponses, menu, thème et budget, bouteilles
   proposées ou suggérées, **confirmation par le propriétaire = réservation** (sans sortie de stock), disponibilité tenant compte
   des autres réservations, libération à l'annulation, confirmation après coup des bouteilles bues (stock mis à jour **une seule

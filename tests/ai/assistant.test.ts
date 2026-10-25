@@ -105,6 +105,31 @@ describe('assistant : sécurité et droits', () => {
     expect((res.message as { meta: { actions: unknown[] } }).meta.actions).toEqual([]);
   });
 
+  it('Lia distingue les bouteilles libres de celles mises à disposition d’un groupe', async () => {
+    const env = await makeAiEnv();
+    const bruno = await env.signUp('Bruno');
+    const { data: w } = await bruno.sb.from('wines').insert({ name: 'Morgon', vintage: 2020, color: 'rouge' }).select().single();
+    const { data: lot } = await bruno.sb.rpc('create_lot', { p: { wine_id: w.id, quantity: 6 }, p_request: crypto.randomUUID() });
+    const { data: g } = await bruno.sb.rpc('create_group', { p_name: 'Les soirées entre amis', p_emoji: '🎉', p_description: null, p_photo: null, p_invite: [] });
+    const { error } = await bruno.sb.rpc('allocate_to_group', { p_lot: (lot as { id: string }).id, p_group: (g as { id: string }).id, p_quantity: 2 });
+    expect(error).toBeNull();
+    env.anthropic.reply(
+      { kind: 'message', stop_reason: 'tool_use', content: [toolUse('t1', 'search_my_cellar', { query: null, color: null, maturity: null, include_empty: null, limit: null })] },
+      { kind: 'message', content: [text('Ouvrez une de vos **4 bouteilles libres** de Morgon.')] },
+    );
+    const res = await call(bruno.sb, { action: 'chat', message: 'Que boire ce soir ?' });
+    expect(res.ok).toBe(true);
+    const last = (env.anthropic.requests[1].body!.messages as { content: { content: string }[] }[]).at(-1)!.content;
+    const found = JSON.parse(last[0].content) as { wines: Record<string, unknown>[] };
+    expect(found.wines[0]).toMatchObject({
+      name: 'Morgon',
+      bottles_in_stock: 6,
+      bottles_available: 4,
+      bottles_set_aside_for_groups: [{ group: 'Les soirées entre amis', bottles: 2 }],
+    });
+    expect(found.wines[0].bottles_reserved_for_events).toBeUndefined();
+  });
+
   it('message trop long, conversation d’un autre', async () => {
     const env = await makeAiEnv();
     const { bruno, claire } = await cellarWith(env);

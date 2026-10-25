@@ -18,6 +18,12 @@ export function Home() {
   const inStock = rows.filter((r) => r.stock > 0);
   const bottles = inStock.reduce((s, r) => s + r.stock, 0);
   const reserved = inStock.reduce((s, r) => s + r.reserved, 0);
+  // Dont mises à disposition de mes groupes (le reste est réservé pour des événements).
+  const forGroups = snapshot.groupShares.reduce((s, g) => s + g.allocated, 0);
+  const blocked = [
+    reserved - forGroups > 0 ? `${reserved - forGroups} réservée${reserved - forGroups > 1 ? 's' : ''}` : null,
+    forGroups > 0 ? `${forGroups} pour mes groupes` : null,
+  ].filter(Boolean);
   const ready = readyToDrink(rows, 5);
   const value = useMemo(() => valuation(snapshot.lots, snapshot.prices), [snapshot.lots, snapshot.prices]);
 
@@ -99,7 +105,7 @@ export function Home() {
             </a>
             <a className="tile" href="#/cave">
               <span className="value">{bottles - reserved}</span>
-              <span className="label">disponibles{reserved > 0 ? ` (${reserved} réservée${reserved > 1 ? 's' : ''})` : ''}</span>
+              <span className="label">disponibles{blocked.length ? ` (${blocked.join(', ')})` : ''}</span>
             </a>
             <div className="tile">
               <span className="value">{purchase.length ? purchase.map(([c, v]) => money(v, c)).join(' + ') : '—'}</span>

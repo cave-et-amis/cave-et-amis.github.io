@@ -4,7 +4,8 @@
 
 - **Accueil** : résumé de la cave (bouteilles, disponibles, valeurs), vins à ouvrir prochainement, prochain événement, raccourcis.
 - **Ma cave** : inventaire, recherche, filtres (couleur, maturité, région, millésime, prix, cave, emplacement, favoris, partage), export.
-- **Amis** : inviter, accepter, supprimer une connexion ; consulter les bouteilles que vos amis partagent.
+- **Amis & Groupes** : chercher, inviter, accepter, bloquer ; consulter les bouteilles que vos amis partagent ; créer des groupes
+  (famille, soirées entre amis…) et y partager des bouteilles.
 - **Événements** : organiser, répondre, choisir les vins ensemble, garder les souvenirs.
 - **Mon carnet** : dégustations, favoris, liste d'envies, vins possédés.
 
@@ -26,13 +27,28 @@ accessibles.
 
 Sur la fiche d'un vin : **J'en ai bu une**, **Sortie** (bouteille bue, cadeau offert), **Entrée** (achat, cadeau reçu),
 **Corriger** (quantité réelle). Une erreur ? Dans l'historique, la flèche ↶ **annule la saisie** et rétablit le stock.
-Les bouteilles réservées pour un événement ne peuvent pas sortir ailleurs tant que la réservation existe.
+Les bouteilles réservées pour un événement ou mises à disposition d'un groupe ne peuvent pas sortir ailleurs tant que la
+réservation existe (pour ouvrir une bouteille mise à disposition, choisissez-la dans « Bouteille prise sur »).
 
 ## Partager avec ses amis
 
 Chaque lot a sa visibilité : **Privé** (par défaut), **Partagé avec mes amis**, **Proposable pour un événement**. Vous pouvez
 masquer le prix, la quantité exacte et vos notes. Une bouteille visible n'est pas pour autant disponible : c'est toujours son
 propriétaire qui confirme qu'il l'apporte.
+
+## Partager avec un groupe
+
+Dans **Amis & Groupes › Groupes**, créez un groupe et invitez-y des amis. Une bouteille peut y être :
+
+- **visible** : les membres la voient (avec vos masques), rien n'est réservé ;
+- **mise à disposition** : vous choisissez combien de bouteilles vous gardez pour le groupe (fiche du vin › « Mettre à
+  disposition d'un groupe », ou page du groupe › « Mettre à disposition »). Elles restent à vous mais ne sont plus libres : la
+  fiche affiche par exemple « 6 en stock · dont 2 pour mes groupes · 4 libres ». Les mêmes bouteilles ne peuvent jamais être
+  promises deux fois (à deux groupes, ou à un groupe et à un événement).
+
+Personne d'autre que vous n'ouvre vos bouteilles : « J'en ai ouvert une » (page du groupe) retire la bouteille du groupe et de votre stock, une
+seule fois, et l'activité du groupe le garde. Vous pouvez reprendre vos bouteilles à tout moment ; quitter le groupe (ou en
+être retiré) vous les rend automatiquement.
 
 ## Organiser un événement
 

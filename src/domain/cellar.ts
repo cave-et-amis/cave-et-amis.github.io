@@ -1,5 +1,5 @@
 /** Inventaire : une ligne par vin (stock agrégé de ses lots), recherche, filtres, tri, export. */
-import type { Cellar, Color, Lot, Storage, Wine } from './types.ts';
+import type { Cellar, Color, GroupShare, Lot, Storage, Wine } from './types.ts';
 import { MATURITY_RANK, maturityOf, windowOf, type Maturity, type WindowInfo } from './maturity.ts';
 import { colorLabel, fold, label, VISIBILITIES, vintageLabel, WINE_TYPES } from './wine.ts';
 
@@ -7,7 +7,10 @@ export type WineRow = {
   wine: Wine;
   lots: Lot[];
   stock: number;
+  /** Bouteilles bloquées : réservées pour des événements + mises à disposition de groupes. */
   reserved: number;
+  /** Dont mises à disposition de groupes. */
+  forGroups: number;
   available: number;
   window: WindowInfo | null;
   maturity: Maturity;
@@ -17,13 +20,37 @@ export type WineRow = {
   shared: boolean;
 };
 
-export function buildRows(wines: Wine[], lots: Lot[], cellars: Cellar[], year: number): WineRow[] {
+/**
+ * Détail des bouteilles bloquées d'un lot : lots.reserved compte à la fois les réservations d'événements et les
+ * mises à disposition de groupes (détaillées dans group_shares). Le reste du stock est libre.
+ */
+export function lotSplit(lot: Lot, shares: GroupShare[]) {
+  const groups = shares.filter((s) => s.lot_id === lot.id && s.allocated > 0);
+  const forGroups = groups.reduce((s, g) => s + g.allocated, 0);
+  return { groups, forGroups, forEvents: Math.max(lot.reserved - forGroups, 0), free: lot.quantity - lot.reserved };
+}
+
+/** « 6 en stock · dont 2 pour mes groupes · 4 libres » */
+export function splitText(quantity: number, forGroups: number, forEvents: number) {
+  const free = quantity - forGroups - forEvents;
+  return [
+    `${quantity} en stock`,
+    forGroups ? `dont ${forGroups} pour mes groupes` : null,
+    forEvents ? `${forEvents} réservée${forEvents > 1 ? 's' : ''} (événements)` : null,
+    `${free} libre${free > 1 ? 's' : ''}`,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+export function buildRows(wines: Wine[], lots: Lot[], cellars: Cellar[], year: number, shares: GroupShare[] = []): WineRow[] {
   const byWine = new Map<string, Lot[]>();
   for (const l of lots) byWine.set(l.wine_id, [...(byWine.get(l.wine_id) ?? []), l]);
   return wines.map((wine) => {
     const ls = byWine.get(wine.id) ?? [];
     const stock = ls.reduce((s, l) => s + l.quantity, 0);
     const reserved = ls.reduce((s, l) => s + l.reserved, 0);
+    const forGroups = ls.reduce((s, l) => s + lotSplit(l, shares).forGroups, 0);
     const storages = ls.filter((l) => l.quantity > 0).map((l) => cellars.find((c) => c.id === l.cellar_id)?.storage ?? 'unknown');
     const storage: Storage | null = storages.includes('piece') ? 'piece' : (storages[0] ?? null);
     const window = windowOf(wine);
@@ -33,6 +60,7 @@ export function buildRows(wines: Wine[], lots: Lot[], cellars: Cellar[], year: n
       lots: ls,
       stock,
       reserved,
+      forGroups,
       available: stock - reserved,
       window,
       maturity: maturityOf(window, year, storage),

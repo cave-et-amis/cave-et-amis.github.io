@@ -1,30 +1,32 @@
 /**
- * Page d'un groupe : sa cave (bouteilles rendues visibles par les membres), ses membres et rôles, son activité.
- * Les bouteilles restent à leurs propriétaires : le groupe ne fait que les voir.
+ * Page d'un groupe : sa cave (bouteilles rendues visibles ou mises à disposition par les membres), ses membres et
+ * rôles, son activité. Les bouteilles restent à leurs propriétaires : seul le propriétaire en ouvre une.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { LogOut, Pencil, Search, Share2, UserPlus } from 'lucide-react';
+import { HandHeart, LogOut, Pencil, Search, Share2, UserPlus, Wine as WineIcon } from 'lucide-react';
 import { useStore } from '../../data/store';
-import { dateShort } from '../../domain/format';
+import { bottles, dateShort } from '../../domain/format';
 import type { Color, GroupActivity, GroupLot, GroupMember, GroupRole, MyGroup } from '../../domain/types';
 import { COLORS, fold, vintageLabel } from '../../domain/wine';
 import { Avatar, Button, Check, EmptyState, InlineLoading, Segmented, Sheet, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
+import { MovementSheet } from '../cellar/MovementSheet';
 import { SharedItem } from '../friends/SharedItem';
+import { AllocateSheet } from './AllocateSheet';
 import { GroupAvatar, ROLE_LABELS } from './common';
 import { GroupFormSheet } from './GroupFormSheet';
 
 type Tab = 'cave' | 'membres' | 'activite';
 
 export function GroupPage({ id }: { id: string }) {
-  const { snapshot, api, run } = useStore();
+  const { snapshot, api, run, wine, lotsOf } = useStore();
   const group = snapshot.groups.find((g) => g.id === id);
   const [tab, setTab] = useState<Tab>('cave');
   const [members, setMembers] = useState<GroupMember[] | null>(null);
   const [lots, setLots] = useState<GroupLot[] | null>(null);
   const [activity, setActivity] = useState<GroupActivity[] | null>(null);
   const [version, setVersion] = useState(0);
-  const [sheet, setSheet] = useState<'edit' | 'invite' | 'share' | null>(null);
+  const [sheet, setSheet] = useState<'edit' | 'invite' | 'share' | { allocate: string | undefined } | { open: string } | null>(null);
   const active = group?.my_status === 'active';
   const refresh = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -81,7 +83,8 @@ export function GroupPage({ id }: { id: string }) {
           <div style={{ minWidth: 0, flex: 1 }}>
             <h2 className="section">{group.name}</h2>
             <p className="small muted">
-              {group.members} membre{group.members > 1 ? 's' : ''} · {group.bottles} vin{group.bottles > 1 ? 's' : ''} dans la cave · vous êtes {ROLE_LABELS[group.my_role].toLowerCase()}
+              {group.members} membre{group.members > 1 ? 's' : ''} · {group.bottles} vin{group.bottles > 1 ? 's' : ''} dans la cave
+              {group.available_bottles > 0 ? ` · ${bottles(group.available_bottles)} à disposition` : ''} · vous êtes {ROLE_LABELS[group.my_role].toLowerCase()}
             </p>
           </div>
         </div>
@@ -110,21 +113,43 @@ export function GroupPage({ id }: { id: string }) {
           { value: 'activite', label: 'Activité' },
         ]}
       />
-      {tab === 'cave' && <GroupCellar lots={lots} onShare={() => setSheet('share')} />}
+      {tab === 'cave' && (
+        <GroupCellar lots={lots} onShare={() => setSheet('share')} onAllocate={(lot) => setSheet({ allocate: lot })} onOpen={(lot) => setSheet({ open: lot })} />
+      )}
       {tab === 'membres' && <GroupMembers group={group} members={members} onChange={refresh} />}
       {tab === 'activite' && <GroupActivityList activity={activity} />}
 
       {sheet === 'edit' && <GroupFormSheet group={group} onClose={() => setSheet(null)} />}
       {sheet === 'invite' && members && <InviteSheet group={group} members={members} onClose={() => (setSheet(null), refresh())} />}
       {sheet === 'share' && <ShareSheet group={group} onClose={() => (setSheet(null), refresh())} />}
+      {typeof sheet === 'object' && sheet && 'allocate' in sheet && <AllocateSheet groupId={group.id} initialLot={sheet.allocate} onClose={() => setSheet(null)} />}
+      {typeof sheet === 'object' &&
+        sheet &&
+        'open' in sheet &&
+        (() => {
+          const lot = snapshot.lots.find((l) => l.id === sheet.open);
+          const w = lot && wine(lot.wine_id);
+          return lot && w ? <MovementSheet wine={w} lots={lotsOf(w.id)} initialLot={lot} initialGroup={group.id} mode="out" onClose={() => setSheet(null)} /> : null;
+        })()}
     </>
   );
 }
 
-function GroupCellar({ lots, onShare }: { lots: GroupLot[] | null; onShare: () => void }) {
+function GroupCellar({
+  lots,
+  onShare,
+  onAllocate,
+  onOpen,
+}: {
+  lots: GroupLot[] | null;
+  onShare: () => void;
+  onAllocate: (lot?: string) => void;
+  onOpen: (lot: string) => void;
+}) {
   const [q, setQ] = useState('');
   const [color, setColor] = useState<Color | null>(null);
   const [owner, setOwner] = useState('');
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
   const owners = useMemo(() => [...new Map((lots ?? []).map((l) => [l.owner_id, l.mine ? 'Moi' : l.owner_name])).entries()], [lots]);
   const shown = useMemo(() => {
     const words = fold(q).split(/\s+/).filter(Boolean);
@@ -132,18 +157,25 @@ function GroupCellar({ lots, onShare }: { lots: GroupLot[] | null; onShare: () =
       (s) =>
         (!color || s.color === color) &&
         (!owner || s.owner_id === owner) &&
+        (!onlyAvailable || s.allocated > 0) &&
         words.every((w) => fold([s.name, s.producer, s.domaine, s.region, s.appellation, s.owner_name, vintageLabel(s), ...(s.grapes ?? [])].join(' ')).includes(w)),
     );
-  }, [lots, q, color, owner]);
+  }, [lots, q, color, owner, onlyAvailable]);
 
   return (
     <section className="stack-sm" aria-label="Cave du groupe">
       <p className="small muted">
-        Les bouteilles que les membres ont rendues visibles dans ce groupe. Elles restent à leur propriétaire : rien n’est réservé ni transféré.
+        Les bouteilles que les membres rendent visibles dans ce groupe, ou mettent à sa disposition (elles sont alors réservées pour le groupe). Elles
+        restent à leur propriétaire : personne d’autre ne peut les ouvrir, et rien n’est transféré.
       </p>
-      <Button variant="secondary" icon={<Share2 />} onClick={onShare}>
-        Partager mes bouteilles avec ce groupe
-      </Button>
+      <div className="grid-2-always">
+        <Button variant="secondary" icon={<Share2 />} onClick={onShare}>
+          Rendre visibles
+        </Button>
+        <Button variant="secondary" icon={<HandHeart />} onClick={() => onAllocate()}>
+          Mettre à disposition
+        </Button>
+      </div>
       <div className="search">
         <Search aria-hidden />
         <input className="input" type="search" aria-label="Chercher dans la cave du groupe" placeholder="Chercher un vin, une région…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -154,6 +186,11 @@ function GroupCellar({ lots, onShare }: { lots: GroupLot[] | null; onShare: () =
             {c.label}
           </button>
         ))}
+      </div>
+      <div className="subtabs" role="group" aria-label="Disponibilité">
+        <button type="button" aria-pressed={onlyAvailable} onClick={() => setOnlyAvailable(!onlyAvailable)}>
+          Disponibles pour le groupe
+        </button>
       </div>
       {owners.length > 1 && (
         <select className="input" aria-label="Propriétaire" value={owner} onChange={(e) => setOwner(e.target.value)}>
@@ -169,12 +206,25 @@ function GroupCellar({ lots, onShare }: { lots: GroupLot[] | null; onShare: () =
         <InlineLoading />
       ) : shown.length === 0 ? (
         <EmptyState icon="🍷" title={lots.length ? 'Aucun vin ne correspond' : 'La cave du groupe est vide'}>
-          {lots.length ? 'Essayez d’autres filtres.' : 'Partagez quelques bouteilles de votre cave : elles apparaîtront ici pour tous les membres.'}
+          {lots.length ? 'Essayez d’autres filtres.' : 'Rendez visibles ou mettez à disposition quelques bouteilles de votre cave : elles apparaîtront ici pour tous les membres.'}
         </EmptyState>
       ) : (
         <div className="list">
           {shown.map((s) => (
-            <SharedItem key={s.lot_id} lot={s.mine ? { ...s, owner_name: 'vous' } : s} showOwner />
+            <SharedItem key={s.lot_id} lot={s.mine ? { ...s, owner_name: 'vous' } : s} showOwner allocated={s.allocated}>
+              {s.mine && (
+                <span className="inline" style={{ marginTop: 8 }}>
+                  <Button size="sm" variant="secondary" icon={<HandHeart />} onClick={() => onAllocate(s.lot_id)} aria-label={`Mettre à disposition : ${s.name}`}>
+                    {s.allocated > 0 ? 'Modifier' : 'Mettre à disposition'}
+                  </Button>
+                  {s.allocated > 0 && (
+                    <Button size="sm" variant="secondary" icon={<WineIcon />} onClick={() => onOpen(s.lot_id)} aria-label={`J’en ai ouvert une : ${s.name}`}>
+                      J’en ai ouvert une
+                    </Button>
+                  )}
+                </span>
+              )}
+            </SharedItem>
           ))}
         </div>
       )}
@@ -183,7 +233,9 @@ function GroupCellar({ lots, onShare }: { lots: GroupLot[] | null; onShare: () =
 }
 
 function GroupMembers({ group, members, onChange }: { group: MyGroup; members: GroupMember[] | null; onChange: () => void }) {
-  const { api, run, userId } = useStore();
+  const { api, run, userId, snapshot } = useStore();
+  // Mes bouteilles mises à disposition de ce groupe : elles me seront rendues si je pars.
+  const mineAllocated = snapshot.groupShares.filter((s) => s.group_id === group.id).reduce((a, s) => a + s.allocated, 0);
   const confirm = useConfirm();
   if (members === null) return <InlineLoading />;
   const active = members.filter((m) => m.status === 'active');
@@ -232,7 +284,7 @@ function GroupMembers({ group, members, onChange }: { group: MyGroup; members: G
                 onClick={async () => {
                   const ok = await confirm({
                     title: `Retirer ${m.display_name} du groupe ?`,
-                    message: 'Ses bouteilles ne seront plus visibles dans le groupe ; elles restent dans sa cave.',
+                    message: 'Ses bouteilles ne seront plus visibles dans le groupe, et celles mises à disposition lui seront rendues : tout reste dans sa cave.',
                     confirmLabel: 'Retirer',
                     danger: true,
                   });
@@ -274,7 +326,9 @@ function GroupMembers({ group, members, onChange }: { group: MyGroup; members: G
         onClick={async () => {
           const ok = await confirm({
             title: `Quitter « ${group.name} » ?`,
-            message: 'Vos bouteilles ne seront plus visibles dans le groupe ; elles restent toutes dans votre cave. Vous pourrez être réinvité.',
+            message: `Vos bouteilles ne seront plus visibles dans le groupe ; elles restent toutes dans votre cave.${
+              mineAllocated ? ` ${mineAllocated > 1 ? `Vos ${mineAllocated} bouteilles mises à disposition vous sont rendues.` : 'Votre bouteille mise à disposition vous est rendue.'}` : ''
+            } Vous pourrez être réinvité.`,
             confirmLabel: 'Quitter le groupe',
             danger: true,
           });
@@ -309,6 +363,12 @@ function activityText(a: GroupActivity) {
       return `${who} a rendu visible « ${target} »`;
     case 'unshared':
       return `${who} a retiré « ${target} » de la cave du groupe`;
+    case 'allocated': {
+      const n = Number(a.detail ?? 0);
+      return n > 0 ? `${who} a mis ${bottles(n)} de « ${target} » à disposition` : `${who} a repris ses bouteilles de « ${target} »`;
+    }
+    case 'consumed':
+      return `${who} a ouvert ${bottles(Number(a.detail ?? 1))} de « ${target} »`;
   }
 }
 
@@ -389,6 +449,7 @@ function InviteSheet({ group, members, onClose }: { group: MyGroup; members: Gro
 /** Mes lots en stock, à rendre visibles (ou non) dans ce groupe. */
 function ShareSheet({ group, onClose }: { group: MyGroup; onClose: () => void }) {
   const { snapshot, api, run, wine } = useStore();
+  const confirm = useConfirm();
   // Cochée ou décochée aussitôt ; revient en arrière seulement si l'enregistrement échoue.
   const [shared, setShared] = useState(() => new Set(snapshot.groupShares.filter((s) => s.group_id === group.id).map((s) => s.lot_id)));
   const lots = snapshot.lots.filter((l) => l.quantity > 0);
@@ -398,7 +459,8 @@ function ShareSheet({ group, onClose }: { group: MyGroup; onClose: () => void })
     <Sheet open onClose={onClose} title={`Partager avec « ${group.name} »`}>
       <div className="stack-sm">
         <p className="small muted">
-          Les membres verront ces bouteilles, avec les mêmes masques que pour vos amis (prix, quantité exacte, notes). Elles restent à vous et rien n’est réservé.
+          Les membres verront ces bouteilles, avec les mêmes masques que pour vos amis (prix, quantité exacte, notes). Elles restent à vous et rien n’est réservé :
+          pour en garder pour le groupe, utilisez « Mettre à disposition ».
         </p>
         {lots.length === 0 ? (
           <EmptyState icon="🍷" title="Aucune bouteille en stock" />
@@ -412,6 +474,20 @@ function ShareSheet({ group, onClose }: { group: MyGroup; onClose: () => void })
                 checked={shared.has(l.id)}
                 onChange={async (v) => {
                   if (busy) return;
+                  const allocated = snapshot.groupShares.find((s) => s.lot_id === l.id && s.group_id === group.id)?.allocated ?? 0;
+                  if (
+                    !v &&
+                    allocated > 0 &&
+                    !(await confirm({
+                      title: `Ne plus partager « ${title} » ?`,
+                      message:
+                        allocated > 1
+                          ? `Les ${allocated} bouteilles mises à disposition du groupe redeviendront libres.`
+                          : 'La bouteille mise à disposition du groupe redeviendra libre.',
+                      confirmLabel: 'Ne plus partager',
+                    }))
+                  )
+                    return;
                   setBusy(l.id);
                   toggle(l.id, v);
                   const res = await run(() => api.shareLotWithGroup(l.id, group.id, v), { success: v ? `« ${title} » est visible dans le groupe` : `« ${title} » est retiré du groupe` });
@@ -419,7 +495,10 @@ function ShareSheet({ group, onClose }: { group: MyGroup; onClose: () => void })
                   setBusy(null);
                 }}
                 label={title}
-                hint={`${l.quantity} bouteille${l.quantity > 1 ? 's' : ''}`}
+                hint={`${bottles(l.quantity)}${(() => {
+                  const n = snapshot.groupShares.find((s) => s.lot_id === l.id && s.group_id === group.id)?.allocated ?? 0;
+                  return n ? ` · ${n} à disposition du groupe` : '';
+                })()}`}
               />
             );
           })
