@@ -241,6 +241,87 @@ describe('assistant : sécurité et droits', () => {
   });
 });
 
+describe('assistant : aide sur l’application', () => {
+  type HelpResult = { topics: { id: string; available: boolean; steps?: string[]; reason?: string }[]; note?: string; page?: string };
+  const toolResults = (env: AiEnv, i: number) =>
+    (env.anthropic.requests[i].body!.messages as { content: { content: string }[] }[]).at(-1)!.content.map((c) => JSON.parse(c.content) as HelpResult & Record<string, string>);
+
+  it('répond d’après les fiches d’aide et propose d’ouvrir le vrai écran ; rien n’est modifié', async () => {
+    const env = await makeAiEnv();
+    const bruno = await env.signUp('Bruno');
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [toolUse('t1', 'app_help', { question: 'Je veux inviter Paul sans lui montrer mes bouteilles' }), toolUse('t2', 'propose_open_page', { topic_id: 'inviter-decouverte' })],
+      },
+      { kind: 'message', content: [text('Envoyez-lui une invitation « Découvrir l’application » : Paul ne verra pas votre cave.')] },
+    );
+    const res = await call(bruno.sb, { action: 'chat', message: 'Je veux inviter Paul sans lui montrer mes bouteilles.' });
+    expect(res.ok).toBe(true);
+    const [help, open] = toolResults(env, 1);
+    expect(help.topics[0]).toMatchObject({ id: 'inviter-decouverte', available: true });
+    expect(help.topics[0].steps!.join(' ')).toContain('« Découvrir l’application »');
+    expect(open).toMatchObject({ proposed: 'Ouvrir les invitations' });
+    const actions = (res.message as { meta: { actions: unknown[] } }).meta.actions;
+    expect(actions).toEqual([expect.objectContaining({ type: 'open', label: 'Ouvrir les invitations', path: '/amis?onglet=invitations' })]);
+  });
+
+  it('fonction inaccessible : l’administration pour une personne qui n’est pas administratrice ; jamais d’adresse libre', async () => {
+    const env = await makeAiEnv();
+    await env.signUp('Bruno'); // premier compte : administrateur
+    const marc = await env.signUp('Marc');
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [
+          toolUse('t1', 'app_help', { question: 'Comment changer la clé et les quotas de l’assistant ?' }),
+          toolUse('t2', 'propose_open_page', { topic_id: 'administration' }),
+          toolUse('t3', 'propose_open_page', { topic_id: 'https://exemple.test/piege' }),
+        ],
+      },
+      { kind: 'message', content: [text('C’est réservé à l’administrateur de l’application.')] },
+    );
+    const res = await call(marc.sb, { action: 'chat', message: 'Comment changer la clé de l’assistant ?' });
+    const [help, open, trap] = toolResults(env, 1);
+    expect(help.topics.find((t) => t.id === 'administration')).toEqual({
+      id: 'administration',
+      title: 'Administration de l’assistant',
+      available: false,
+      reason: 'Réservé à l’administrateur de l’application.',
+    });
+    expect(open.error).toBeTruthy();
+    expect(trap.error).toBeTruthy();
+    expect((res.message as { meta: { actions: unknown[] } }).meta.actions).toEqual([]);
+  });
+
+  it('question sans fiche : l’outil le dit ; la page d’origine est transmise, une page inconnue est ignorée', async () => {
+    const env = await makeAiEnv();
+    const bruno = await env.signUp('Bruno');
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [toolUse('t1', 'app_help', { question: 'Comment payer un abonnement premium ?' }), toolUse('t2', 'app_help', { question: null })],
+      },
+      { kind: 'message', content: [text('Cette fonction n’existe pas dans Cave & Amis.')] },
+      { kind: 'message', content: [text('Bonjour.')] },
+    );
+    await call(bruno.sb, { action: 'chat', message: 'Comment payer un abonnement premium ?', context: { kind: 'page', id: 'evenements' } });
+    expect(JSON.stringify(env.anthropic.requests[0].body!.messages)).toContain('depuis la page « Événements »');
+    const [none, page] = toolResults(env, 1);
+    expect(none.topics).toEqual([]);
+    expect(none.note).toContain('n’existe pas');
+    expect(page.page).toBe('Événements');
+    expect(page.topics.map((t) => t.id)).toEqual(expect.arrayContaining(['organiser-evenement', 'inviter-evenement']));
+    // Bruno n'organise aucun événement : y inviter n'est pas possible pour lui.
+    expect(page.topics.find((t) => t.id === 'inviter-evenement')).toMatchObject({ available: false });
+    await call(bruno.sb, { action: 'chat', message: 'Bonjour', context: { kind: 'page', id: 'constructor' } });
+    expect(JSON.stringify(env.anthropic.requests[2].body!.messages)).not.toContain('depuis la page');
+  });
+});
+
 describe('assistant : identification d’étiquette', () => {
   it('pré-remplit un formulaire, signale l’incertain, laisse vide l’inconnu', async () => {
     const env = await makeAiEnv();

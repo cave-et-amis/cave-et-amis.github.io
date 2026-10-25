@@ -9,6 +9,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { COLORS } from '../../src/domain/wine.ts';
 import { wineTitle } from '../../src/domain/wine.ts';
+import { availability, HELP_PAGES, helpTopic, searchHelp, topicsForPage, type HelpPage, type HelpPerms } from '../../src/domain/help.ts';
 import type { Meter } from './claude.ts';
 import { compactWine, eventDetails, friendsWines, groupDetails, listTastings, loadCellar, myGroupAllocations, searchWines, wineDetails, type CellarData } from './data.ts';
 import { lookupPrice, type PriceResult } from './price.ts';
@@ -31,9 +32,12 @@ export type PendingAction =
       label: string;
       draft: { wine_name: string; vintage: number | null; wine_id: string | null; rating: number | null; comment: string | null; robe: string | null; nez: string | null; bouche: string | null };
     }
-  | { id: string; type: 'save_price'; label: string; check_id: string; wine_id: string };
+  | { id: string; type: 'save_price'; label: string; check_id: string; wine_id: string }
+  // Navigation seulement, vers un écran prévu par une fiche d'aide (jamais une adresse libre).
+  | { id: string; type: 'open'; label: string; path: string };
 
 export type ChatSource = { title: string; url: string; note?: string };
+export type ChatContext = { kind: 'wine' | 'event' | 'group'; id: string } | { kind: 'page'; id: HelpPage };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -114,6 +118,16 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
     lot_id: str,
     quantity: int,
   }),
+  tool(
+    'app_help',
+    'Fiches d’aide officielles sur le fonctionnement de Cave & Amis : ce que l’application permet vraiment, pas à pas, avec les libellés exacts, et si la personne y a droit. À consulter pour toute question sur l’utilisation de l’application ; sans question, renvoie les fiches de la page où se trouve la personne.',
+    { question: nullable(str) },
+  ),
+  tool(
+    'propose_open_page',
+    'Ajoute un bouton qui ouvre l’écran de l’application prévu par une fiche d’aide (topic_id renvoyé par app_help). Navigation seulement : rien n’est modifié.',
+    { topic_id: str },
+  ),
   tool('propose_tasting_note', 'Prépare une note de dégustation que la personne pourra relire, compléter et enregistrer.', {
     wine_name: str,
     vintage: nullable(int),
@@ -137,6 +151,9 @@ export class ToolBox {
   private currency: string;
   private year: number;
   private cellar: CellarData | null = null;
+  private permissions: HelpPerms | null = null;
+  /** Page de l'application d'où vient la question (aide contextuelle). */
+  private page: HelpPage | null = null;
   readonly actions: PendingAction[] = [];
   readonly sources: ChatSource[] = [];
   readonly prices: PriceResult[] = [];
@@ -154,6 +171,55 @@ export class ToolBox {
   private async data() {
     this.cellar ??= await loadCellar(this.user, this.userId);
     return this.cellar;
+  }
+
+  /** Droits utiles à l'aide, lus avec le client de la personne. */
+  private async perms(): Promise<HelpPerms> {
+    if (this.permissions) return this.permissions;
+    const [me, groups, events] = await Promise.all([
+      this.user.from('profiles').select('is_admin').eq('id', this.userId).maybeSingle(),
+      this.user.rpc('my_groups'),
+      this.user.from('events').select('id').eq('organizer_id', this.userId).eq('status', 'planned').limit(1),
+    ]);
+    this.permissions = {
+      admin: Boolean((me.data as { is_admin?: boolean } | null)?.is_admin),
+      groupManager: ((groups.data ?? []) as { my_status: string; my_role: string }[]).some((g) => g.my_status === 'active' && (g.my_role === 'admin' || g.my_role === 'manager')),
+      eventOrganizer: ((events.data ?? []) as unknown[]).length > 0,
+      assistant: true,
+    };
+    return this.permissions;
+  }
+
+  private async help(question: string | null): Promise<string> {
+    const p = await this.perms();
+    let topics = question ? searchHelp(question) : [];
+    if (!topics.length && !question && this.page) topics = topicsForPage(this.page, p).slice(0, 5);
+    if (!topics.length) {
+      return JSON.stringify({
+        topics: [],
+        note: 'Aucune fiche ne correspond : cette fonction n’existe pas dans Cave & Amis, ou la question est à reformuler. Dis-le clairement, sans rien inventer.',
+      });
+    }
+    return JSON.stringify({
+      page: this.page ? HELP_PAGES[this.page] : undefined,
+      topics: topics.map((t) => {
+        const a = availability(t, p);
+        return a.available
+          ? { id: t.id, title: t.title, available: true, steps: t.steps, open_button: t.link?.label }
+          : { id: t.id, title: t.title, available: false, reason: a.reason };
+      }),
+    });
+  }
+
+  private async openPage(topicId: unknown): Promise<string> {
+    const t = typeof topicId === 'string' ? helpTopic(topicId) : undefined;
+    if (!t?.link) return JSON.stringify({ error: 'Fiche inconnue, ou sans écran à ouvrir.' });
+    if (!availability(t, await this.perms()).available) return JSON.stringify({ error: 'Cette fonction n’est pas disponible pour la personne.' });
+    const link = t.link;
+    if (!this.actions.some((a) => a.type === 'open' && a.path === link.path)) {
+      this.actions.push({ id: crypto.randomUUID(), type: 'open', label: link.label, path: link.path });
+    }
+    return JSON.stringify({ proposed: link.label, status: 'Bouton affiché : la personne pourra ouvrir cet écran. Rien n’est modifié.' });
   }
 
   private propose(action: DistributiveOmit<PendingAction, 'id'>): string {
@@ -199,6 +265,10 @@ export class ToolBox {
         return JSON.stringify(await groupDetails(this.user, i.group_id));
       case 'lookup_market_price':
         return this.lookup(i);
+      case 'app_help':
+        return this.help(text(i.question, 300));
+      case 'propose_open_page':
+        return this.openPage(i.topic_id);
       case 'propose_consumption':
         return this.proposeConsumption(i);
       case 'propose_wishlist_add': {
@@ -350,8 +420,12 @@ export class ToolBox {
     });
   }
 
-  /** Contexte d'ouverture (fiche, événement ou groupe) : simple rappel, les détails passent par les outils. */
-  async contextNote(context: { kind: 'wine' | 'event' | 'group'; id: string } | null): Promise<string | null> {
+  /** Contexte d'ouverture (page, fiche, événement ou groupe) : simple rappel, les détails passent par les outils. */
+  async contextNote(context: ChatContext | null): Promise<string | null> {
+    if (context?.kind === 'page') {
+      this.page = context.id;
+      return `La personne pose sa question depuis la page « ${HELP_PAGES[context.id]} » de l’application. Pour une question sur l’utilisation de l’application, appelle app_help.`;
+    }
     if (!context || !isUuid(context.id)) return null;
     if (context.kind === 'group') {
       const { data: g } = await this.user.from('groups').select('id, name').eq('id', context.id).maybeSingle();

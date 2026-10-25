@@ -41,7 +41,7 @@ export function Home() {
 
   return (
     <>
-      <section className="hero">
+      <section className="hero" data-tour="accueil">
         <h2>Bonjour {firstName}</h2>
         <p>
           {bottles > 0
@@ -93,6 +93,11 @@ export function Home() {
             <Sparkles aria-hidden />
             Que boire ce soir ?
             <span className="hint">Demandez à l’assistant</span>
+          </button>
+          <button type="button" className="shortcut" style={{ gridColumn: '1 / -1' }} onClick={() => go('/amis?inviter=1')}>
+            <UserPlus aria-hidden />
+            Inviter quelqu’un
+            <span className="hint">Un lien ou un QR code, sans ouvrir votre cave</span>
           </button>
         </div>
       </section>
@@ -186,7 +191,7 @@ export function Home() {
             <strong>Partagez avec vos amis</strong>
           </div>
           <p className="muted small">Invitez un ami par lien : vous choisirez ensuite, bouteille par bouteille, ce qu’il peut voir.</p>
-          <Button variant="secondary" onClick={() => go('/amis')}>
+          <Button variant="secondary" onClick={() => go('/amis?inviter=1')}>
             Inviter un ami
           </Button>
         </section>

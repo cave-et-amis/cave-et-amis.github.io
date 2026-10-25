@@ -10,6 +10,7 @@ import { useActions } from '../../ui/Shell';
 import { Button, Check, EmptyState, Field, Segmented, Sheet } from '../../ui/kit';
 import { routeQuery } from '../../ui/router';
 import { WineItem } from '../../ui/WineItem';
+import { FirstTip } from '../tour/Tour';
 
 const SORTS: { value: Sort; label: string }[] = [
   { value: 'name', label: 'Nom' },
@@ -62,6 +63,10 @@ export function CellarPage() {
 
   return (
     <>
+      <FirstTip id="cave" title="Votre cave" onHelp={actions.help}>
+        « Ajouter » pour une nouvelle bouteille, la recherche et les « Filtres » pour la retrouver. Chaque bouteille reste privée tant que vous ne
+        choisissez pas de la partager (fiche du vin › « Lot et partage »).
+      </FirstTip>
       <div className="stack-sm">
         <div className="search">
           <Search aria-hidden />

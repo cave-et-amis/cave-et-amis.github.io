@@ -6,6 +6,8 @@ import type { CaveEvent } from '../../domain/types';
 import { EVENT_KINDS, label } from '../../domain/wine';
 import { Button, EmptyState, Segmented } from '../../ui/kit';
 import { routeQuery } from '../../ui/router';
+import { useActions } from '../../ui/Shell';
+import { FirstTip } from '../tour/Tour';
 import { EventFormSheet } from './EventForm';
 
 const RSVP_LABELS = { pending: 'À répondre', yes: 'Je viens', maybe: 'Peut-être', no: 'Je ne viens pas' } as const;
@@ -20,10 +22,15 @@ export function EventsPage() {
   const upcoming = events.filter((e) => !isPast(e)).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const past = events.filter(isPast).sort((a, b) => b.starts_at.localeCompare(a.starts_at));
   const list = view === 'upcoming' ? upcoming : past;
+  const actions = useActions();
 
   return (
     <>
-      <Button icon={<CalendarPlus />} onClick={() => setCreating(true)}>
+      <FirstTip id="evenements" title="Vos événements" onHelp={actions.help}>
+        Un dîner, une dégustation : invitez des amis ou des contacts, prévoyez le menu et choisissez les vins ensemble. Chaque propriétaire confirme
+        ses bouteilles.
+      </FirstTip>
+      <Button icon={<CalendarPlus />} onClick={() => setCreating(true)} data-tour="organiser">
         Organiser un événement
       </Button>
       <Segmented

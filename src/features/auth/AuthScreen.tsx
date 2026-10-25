@@ -3,7 +3,9 @@ import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
 import { toMessage } from '../../domain/errors';
 import { Button, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
+import { go } from '../../ui/router';
 import { inviteHeadline } from '../friends/invite';
+import { Discover } from './Discover';
 
 type Mode = 'login' | 'signup' | 'forgot';
 type InviteInfo = Awaited<ReturnType<Api['inviteInfo']>>;
@@ -46,22 +48,27 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
   );
 }
 
-/** Ce qu'apporte l'application, en trois cartes, pour une personne invitée qui ne la connaît pas. */
+/** Les trois idées de l'application, pour une personne invitée qui ne la connaît pas. */
 const SHOWCASE: { icon: ReactNode; title: string; text: string }[] = [
-  { icon: <Wine />, title: 'Votre cave, bien rangée', text: 'Chaque bouteille avec son emplacement, le bon moment pour la boire et vos notes. Tout est privé par défaut.' },
-  { icon: <Users />, title: 'Vos amis, vos groupes', text: 'Vous choisissez à qui vous ouvrez votre cave, et quelles bouteilles vous montrez.' },
-  { icon: <CalendarHeart />, title: 'Des dîners réussis', text: 'Organisez un repas, prévoyez les vins ensemble, et demandez conseil à Lia, la sommelière de l’application.' },
+  { icon: <Wine />, title: 'Organisez votre cave', text: 'Chaque bouteille avec son emplacement, le bon moment pour l’ouvrir et vos notes. Tout est privé par défaut.' },
+  { icon: <Users />, title: 'Partagez avec vos amis', text: 'Vous choisissez à qui vous ouvrez votre cave, et quelles bouteilles vous montrez. Invitez par un simple lien.' },
+  { icon: <CalendarHeart />, title: 'Préparez vos événements', text: 'Dîners et dégustations : invitez, prévoyez les vins ensemble, et demandez conseil à Lia, la sommelière de l’application.' },
 ];
 
 const SHOWCASE_DETAIL: Record<string, string> = {
   discovery: 'Vous serez en contact, sans voir la cave l’un de l’autre : chacun peut ouvrir la sienne plus tard, s’il le souhaite.',
-  friend: 'Cette personne vous ouvre sa cave : vous verrez les bouteilles partagées avec ses amis. La vôtre reste privée tant que vous ne l’ouvrez pas.',
+  friend: 'Cette personne vous ouvre sa cave : vous verrez les bouteilles partagées avec ses amis, en lecture seule. La vôtre reste privée tant que vous ne l’ouvrez pas.',
+  selection: 'Cette personne vous montre une sélection de bouteilles de sa cave, en lecture seule. La vôtre reste privée tant que vous ne l’ouvrez pas.',
   group: 'Votre compte créé, vous arrivez directement dans le groupe. Votre cave reste privée.',
   event: 'Votre compte créé, vous arrivez directement sur l’événement pour répondre et voir les vins prévus. Votre cave reste privée.',
 };
 
-/** Page vitrine d'un lien d'invitation (#/ami/CODE) pour une personne non connectée, avant la connexion. */
-export function Showcase({ api, code, onChoose }: { api: Api; code: string; onChoose: (mode: 'signup' | 'login') => void }) {
+/**
+ * Page d'accueil d'un lien d'invitation (#/ami/CODE) pour une personne non connectée : qui invite et à quoi, ce qu'est
+ * l'application, puis « Découvrir l'application », « Créer mon compte » ou « Me connecter ». Rien de privé n'y figure :
+ * seulement le prénom de la personne qui invite, et le nom du groupe ou le titre et la date de l'événement.
+ */
+export function Showcase({ api, code, onChoose, onDiscover }: { api: Api; code: string; onChoose: (mode: 'signup' | 'login') => void; onDiscover: () => void }) {
   const [info, setInfo] = useState<InviteInfo | null>(null);
   useEffect(() => {
     let alive = true;
@@ -76,7 +83,11 @@ export function Showcase({ api, code, onChoose }: { api: Api; code: string; onCh
   return (
     <main className="auth">
       <div className="auth-card">
-        <Brand />
+        <div className="brand">
+          <img src="./icon.svg" alt="" />
+          <h1>🍷 Bienvenue dans Cave &amp; Amis !</h1>
+          <p>Découvrez une application conviviale pour organiser vos bouteilles, retrouver vos amis et partager de bons moments autour de dégustations et de repas.</p>
+        </div>
         <section className="card stack center" aria-live="polite">
           {info === null ? (
             <InlineLoading />
@@ -85,7 +96,7 @@ export function Showcase({ api, code, onChoose }: { api: Api; code: string; onCh
               <h2 className="title-font" style={{ fontSize: '1.3rem' }}>
                 {inviteHeadline(info)}
               </h2>
-              <p className="muted">{SHOWCASE_DETAIL[info.kind ?? 'discovery']}</p>
+              <p className="muted">{SHOWCASE_DETAIL[info.kind === 'friend' && info.selection ? 'selection' : (info.kind ?? 'discovery')]}</p>
             </>
           ) : (
             <Notice tone="warn">Ce lien d’invitation n’est plus valable. Vous pouvez tout de même créer votre compte, puis demander un nouveau lien.</Notice>
@@ -104,13 +115,44 @@ export function Showcase({ api, code, onChoose }: { api: Api; code: string; onCh
             </div>
           ))}
         </div>
+        <Button variant="secondary" block onClick={onDiscover}>
+          Découvrir l’application
+        </Button>
         <Button size="lg" block onClick={() => onChoose('signup')}>
           Créer mon compte
         </Button>
-        <Button variant="secondary" block onClick={() => onChoose('login')}>
-          J’ai déjà un compte
+        <Button variant="ghost" block onClick={() => onChoose('login')}>
+          Me connecter
         </Button>
         <p className="small faint center">Gratuit. Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>
+      </div>
+    </main>
+  );
+}
+
+/** « Découvrir l'application » sans compte (visiteur, ou personne invitée avant de s'inscrire). */
+export function DiscoverScreen({ onChoose, onBack }: { onChoose: (mode: 'signup' | 'login') => void; onBack?: () => void }) {
+  return (
+    <main className="auth">
+      <div className="auth-card">
+        <Brand />
+        <Discover
+          actions={
+            <>
+              <Button size="lg" block onClick={() => onChoose('signup')}>
+                Créer mon compte
+              </Button>
+              <Button variant="secondary" block onClick={() => onChoose('login')}>
+                Me connecter
+              </Button>
+            </>
+          }
+        />
+        {onBack && (
+          <Button variant="ghost" block onClick={onBack}>
+            Revenir à l’invitation
+          </Button>
+        )}
       </div>
     </main>
   );
@@ -223,6 +265,9 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
             (identifiants dans le README et le terminal du serveur local).
           </Notice>
         )}
+        <Button variant="ghost" onClick={() => go('/decouvrir')}>
+          Découvrir l’application sans compte
+        </Button>
         <p className="small faint center">Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>
       </div>
     </main>

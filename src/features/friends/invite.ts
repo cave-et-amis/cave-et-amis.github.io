@@ -13,8 +13,11 @@ const MAX_AGE = 30 * 86400_000;
  * un lien de groupe ou d'événement est accepté pour elle et elle arrive directement dessus.
  */
 export function savePendingInvite(code: string, auto = false) {
+  const upper = code.toUpperCase();
+  // Rouvrir le même lien (retour depuis « Découvrir l'application ») ne retire pas le choix déjà fait.
+  const keep = !auto && saved()?.code === upper && saved()?.auto === true;
   try {
-    localStorage.setItem(KEY, JSON.stringify({ code: code.toUpperCase(), at: Date.now(), auto }));
+    localStorage.setItem(KEY, JSON.stringify({ code: upper, at: Date.now(), auto: auto || keep }));
   } catch {
     /* navigation privée : l'invitation reste dans l'adresse */
   }
@@ -60,8 +63,8 @@ export const INVITE_KINDS: { value: InviteKind; label: string; hint: string }[] 
   },
   {
     value: 'friend',
-    label: 'Ami, avec accès à ma cave',
-    hint: 'La personne verra les bouteilles que vous partagez avec vos amis. Une seule personne, pendant 14 jours.',
+    label: 'Voir ma cave',
+    hint: 'La personne voit vos bouteilles partagées, ou seulement une sélection, en lecture seule. Une seule personne, pendant 14 jours.',
   },
   {
     value: 'group',
@@ -80,7 +83,7 @@ export function inviteHeadline(info: { kind?: InviteKind; inviter_name?: string;
   const who = info.inviter_name || 'Quelqu’un';
   switch (info.kind) {
     case 'friend':
-      return `${who} vous invite à devenir amis sur Cave & Amis`;
+      return `${who} vous invite à voir sa cave sur Cave & Amis`;
     case 'group':
       return info.target_label ? `${who} vous invite à rejoindre le groupe « ${info.target_label} »` : `${who} vous invite à rejoindre un groupe`;
     case 'event':
@@ -97,6 +100,45 @@ export function inviteValidity(i: { max_uses: number; uses?: number; expires_at:
   const left = i.max_uses - (i.uses ?? 0);
   const uses = i.max_uses === 1 ? 'Une seule utilisation' : `${left} utilisation${left > 1 ? 's' : ''} restante${left > 1 ? 's' : ''} sur ${i.max_uses}`;
   return `${uses} · jusqu’au ${dateLong(i.expires_at)}`;
+}
+
+/** Où en est un lien : actif, utilisé, expiré, révoqué, refusé (lien à usage unique). */
+export type InviteStatus = 'active' | 'used' | 'expired' | 'revoked' | 'declined';
+export const INVITE_STATUS: Record<InviteStatus, string> = {
+  active: 'Actif',
+  used: 'Utilisé',
+  expired: 'Expiré',
+  revoked: 'Révoqué',
+  declined: 'Refusé',
+};
+
+export function inviteStatus(i: { status: string; uses: number; max_uses: number; expires_at: string }, now = Date.now()): InviteStatus {
+  if (i.status === 'revoked') return 'revoked';
+  if (i.status === 'declined') return 'declined';
+  if (i.uses >= i.max_uses || i.status === 'accepted') return 'used';
+  if (new Date(i.expires_at).getTime() <= now) return 'expired';
+  return 'active';
+}
+
+/** Message prêt à envoyer (WhatsApp, SMS, e-mail), selon ce que permet le lien. */
+export function shareMessage(kind: InviteKind, target: string | null, link: string) {
+  const intro = {
+    discovery: 'Je t’invite à découvrir Cave & Amis, une application pour gérer sa cave, partager de bons moments et organiser nos dîners.',
+    friend: 'Je t’ouvre ma cave sur Cave & Amis : tu pourras voir les bouteilles que je partage.',
+    group: `Je t’invite à rejoindre le groupe « ${target ?? ''} » sur Cave & Amis.`,
+    event: `Je t’invite à « ${target ?? ''} » sur Cave & Amis.`,
+  }[kind];
+  return `${intro} Voici le lien : ${link}`;
+}
+
+/** Liens de partage (rien n'est envoyé par l'application : ils ouvrent WhatsApp, les SMS ou la messagerie). */
+export function shareLinks(message: string) {
+  const text = encodeURIComponent(message);
+  return {
+    whatsapp: `https://wa.me/?text=${text}`,
+    sms: `sms:?&body=${text}`,
+    email: `mailto:?subject=${encodeURIComponent('Invitation à Cave & Amis')}&body=${text}`,
+  };
 }
 
 /** Lien à partager : adresse de l'application + #/ami/CODE. */

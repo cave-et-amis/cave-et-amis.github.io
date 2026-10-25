@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Download, Eye, KeyRound, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { ChevronRight, Compass, Download, Eye, KeyRound, Lightbulb, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
 import type { Visibility } from '../../domain/types';
@@ -7,6 +7,7 @@ import { VISIBILITIES } from '../../domain/wine';
 import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
+import { useTour } from '../tour/Tour';
 import { NousSection } from './NousSection';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP', 'CAD'];
@@ -16,6 +17,7 @@ export function SettingsPage() {
   const confirm = useConfirm();
   const toast = useToast();
   const ai = useAiStatus();
+  const tour = useTour();
   const [name, setName] = useState(me.display_name);
   const [password, setPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -27,7 +29,8 @@ export function SettingsPage() {
   const prefs = me.preferences ?? {};
   const openTo = snapshot.relations.filter((r) => r.they_see_mine).length;
 
-  const savePrefs = (patch: Partial<typeof prefs>) => run(() => api.updateProfile(me.id, { preferences: { ...prefs, ...patch } }), { success: 'Préférence enregistrée' });
+  // Fusion côté base : n'écrase ni la visite guidée ni les astuces enregistrées entre-temps.
+  const savePrefs = (patch: Partial<typeof prefs>) => run(() => api.mergePreferences(patch), { success: 'Préférence enregistrée' });
 
   return (
     <>
@@ -96,6 +99,36 @@ export function SettingsPage() {
           label="Afficher « Bouteilles partagées par mes amis »"
           hint="Dans Amis & Groupes, la liste des bouteilles que vos amis vous montrent."
         />
+      </section>
+
+      <section className="card stack-sm" aria-labelledby="h-tour">
+        <h2 id="h-tour" className="section">
+          Visite guidée et aide
+        </h2>
+        <p className="small muted">
+          La visite montre les principaux boutons en une minute. À tout moment, le bouton « ? » en haut de l’écran ouvre l’aide de la page.
+        </p>
+        <div className="inline">
+          <Button
+            icon={<Compass />}
+            onClick={() => {
+              go('/', { replace: true });
+              tour.start(0);
+            }}
+          >
+            Revoir la visite guidée
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<Lightbulb />}
+            onClick={() => {
+              tour.resetTips();
+              toast('Les astuces réapparaîtront à votre prochaine visite de chaque page.', { tone: 'info' });
+            }}
+          >
+            Réafficher les astuces
+          </Button>
+        </div>
       </section>
 
       <NousSection />

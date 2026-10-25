@@ -47,9 +47,28 @@ function toolResults(messages) {
   return messages.flatMap((m) => (m.role === 'user' && Array.isArray(m.content) ? m.content.filter((b) => b.type === 'tool_result') : []));
 }
 
+// Question sur l'application : lire les fiches d'aide, proposer l'écran de la première (le serveur refuse si la fonction
+// n'est pas disponible pour la personne), puis répondre d'après la fiche, sans rien inventer.
+function help(body, question, results) {
+  if (results.length === 0) return message(body, [toolUse('app_help', { question })], 'tool_use');
+  const found = JSON.parse(results[0].content);
+  const topic = found.topics?.[0];
+  if (!topic) return message(body, [text(found.note ?? 'Cette fonction n’existe pas dans l’application.')]);
+  if (results.length === 1) return message(body, [toolUse('propose_open_page', { topic_id: topic.id })], 'tool_use');
+  if (!topic.available) return message(body, [text(`**${topic.title}** : ce n’est pas disponible pour vous. ${topic.reason}`)]);
+  return message(body, [text(`**${topic.title}**\n\n${topic.steps.map((step, i) => `${i + 1}. ${step}`).join('\n')}`)]);
+}
+
 function chat(body) {
   const results = toolResults(body.messages);
-  const question = lastUserText(body.messages.filter((m) => !(Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_result'))));
+  const asked = lastUserText(body.messages.filter((m) => !(Array.isArray(m.content) && m.content.some((b) => b.type === 'tool_result'))));
+  // Sans la note « [Informations de l'application…] » ajoutée par le serveur.
+  const question = asked
+    .split('\n')
+    .filter((l) => !l.startsWith('['))
+    .join(' ')
+    .trim();
+  if (/^comment /i.test(question) && (body.tools ?? []).some((t) => t.name === 'app_help')) return help(body, question, results);
   const wantsExit = /sortie|bu une/i.test(question);
   if (results.length === 0) return message(body, [toolUse('search_my_cellar', { query: null, color: null, maturity: null, include_empty: null, limit: null })], 'tool_use');
   const first = JSON.parse(results[0].content);

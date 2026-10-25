@@ -41,3 +41,31 @@ test('studio photo : détourage dans le navigateur, avant / après, original con
   await toast(page, 'Vin ajouté');
   await expect(page.getByRole('img', { name: /Château Studio/ }).first()).toBeVisible();
 });
+
+test('visite guidée et aide sur ordinateur : la carte se place près de l’élément éclairé, sans le cacher', async ({ page }) => {
+  await signIn(page, 'Bruno');
+  await goto(page, '/reglages');
+  await page.getByRole('button', { name: 'Revoir la visite guidée' }).click();
+  const first = page.getByRole('dialog', { name: 'Votre tableau de bord', exact: true });
+  await expect(first).toContainText('Étape 1 sur');
+  await first.getByRole('button', { name: 'Suivant' }).click();
+  const card = page.getByRole('dialog', { name: 'Votre cave', exact: true });
+  await expect(card).toBeVisible();
+  // Sur ordinateur, c'est le lien « Ma cave » de la barre latérale qui est éclairé.
+  const link = (await page.getByRole('navigation', { name: 'Navigation principale' }).first().locator('[data-tour="nav-cave"]').boundingBox())!;
+  await expect
+    .poll(async () => {
+      const spot = (await page.locator('.tour-spot').boundingBox())!;
+      return spot.x <= link.x && spot.y <= link.y && spot.x + spot.width >= link.x + link.width && spot.y + spot.height >= link.y + link.height;
+    })
+    .toBe(true);
+  const box = (await card.boundingBox())!;
+  expect(box.x < link.x + link.width && link.x < box.x + box.width && box.y < link.y + link.height && link.y < box.y + box.height).toBe(false);
+  expect(box.y).toBeGreaterThan(link.y);
+  await shot(page, '13-ordinateur-visite');
+  await card.getByRole('button', { name: 'Passer' }).click();
+  await expect(page.locator('.tour-card')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Aide de cette page' }).click();
+  await expect(page.getByRole('dialog', { name: 'Aide · Accueil' })).toBeVisible();
+  await shot(page, '14-ordinateur-aide');
+});

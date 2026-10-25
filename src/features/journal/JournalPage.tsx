@@ -10,6 +10,7 @@ import { Button, EmptyState, StarsView, useConfirm } from '../../ui/kit';
 import { routeQuery } from '../../ui/router';
 import { WineItem } from '../../ui/WineItem';
 import { WishFormSheet } from './WishForm';
+import { FirstTip } from '../tour/Tour';
 
 type Tab = 'degustations' | 'favoris' | 'envies' | 'possedes';
 
@@ -82,6 +83,10 @@ export function JournalPage() {
 
   return (
     <>
+      <FirstTip id="carnet" title="Votre carnet" onHelp={actions.help}>
+        Notez les vins goûtés, où que vous soyez, et gardez vos envies d’achat. Vos notes restent privées, sauf si vous les partagez avec un
+        événement ou un groupe.
+      </FirstTip>
       <div className="subtabs" role="tablist" aria-label="Sections du carnet">
         {TABS.map((t) => (
           <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} aria-pressed={tab === t.value} onClick={() => setTab(t.value)}>

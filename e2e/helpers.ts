@@ -24,7 +24,22 @@ export async function labelPhoto(page: Page) {
   return Buffer.from(b64, 'base64');
 }
 
-export async function signUp(page: Page, name: string, path = '/') {
+/**
+ * L'accueil « Bienvenue sur Cave & Amis ! » s'ouvre une fois pour chaque compte : les parcours qui ne le testent pas le
+ * referment (« Commencer directement ») dès qu'il apparaît, avant chaque action ou vérification.
+ */
+const skipping = new WeakSet<Page>();
+export async function skipWelcome(page: Page) {
+  if (skipping.has(page)) return;
+  skipping.add(page);
+  await page.addLocatorHandler(page.getByRole('dialog', { name: 'Bienvenue sur Cave & Amis ! 🍷' }), async (dialog) => {
+    await dialog.getByRole('button', { name: 'Commencer directement' }).click();
+  });
+}
+
+/** Création de compte ; « welcome » : garder l'accueil et la visite guidée (parcours qui les testent). */
+export async function signUp(page: Page, name: string, path = '/', { welcome = false } = {}) {
+  if (!welcome) await skipWelcome(page);
   await page.goto(path);
   // Lien d'invitation : la vitrine d'abord, puis la création de compte.
   if (path.includes('#/ami/')) await page.getByRole('button', { name: 'Créer mon compte' }).click();
@@ -36,6 +51,7 @@ export async function signUp(page: Page, name: string, path = '/') {
 }
 
 export async function signIn(page: Page, name: string) {
+  await skipWelcome(page);
   await page.goto('/');
   await page.getByLabel('Adresse e-mail').fill(email(name));
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
@@ -44,20 +60,23 @@ export async function signIn(page: Page, name: string) {
 }
 
 /**
- * Crée un lien d'invitation depuis Amis & Groupes › Invitations et renvoie son code. « kind » : libellé du type de lien ;
+ * Crée un lien avec Amis & Groupes › « Inviter quelqu'un » et renvoie son code. « kind » : libellé du type de lien ;
  * « target » : groupe ou événement visé (libellé de la liste).
  */
-export async function inviteCode(page: Page, kind = 'Ami, avec accès à ma cave', target?: string | RegExp) {
-  await goto(page, '/amis?onglet=invitations');
-  await page.getByRole('radio', { name: kind }).check();
+export async function inviteCode(page: Page, kind = 'Voir ma cave', target?: string | RegExp) {
+  await goto(page, '/amis');
+  await page.getByRole('button', { name: 'Inviter quelqu’un', exact: true }).click();
+  const sheet = page.getByRole('dialog', { name: 'Inviter quelqu’un' });
+  await sheet.getByRole('radio', { name: kind }).check();
   if (target) {
-    const select = page.getByRole('combobox', { name: /Groupe|Événement/ });
+    const select = sheet.getByRole('combobox', { name: /Groupe|Événement/ });
     const value = await select.locator('option', { hasText: target }).getAttribute('value');
     await select.selectOption(value!);
   }
-  await page.getByRole('button', { name: /^Créer le lien/ }).click();
-  const code = (await page.locator('.kbd-code').innerText()).replace(/-/g, '');
-  await page.getByRole('dialog').getByRole('button', { name: 'Fermer' }).click();
+  await sheet.getByRole('button', { name: /^Créer le lien/ }).click();
+  const ready = page.getByRole('dialog', { name: 'Votre invitation est prête' });
+  const code = (await ready.locator('.kbd-code').innerText()).replace(/-/g, '');
+  await ready.getByRole('button', { name: 'Fermer' }).click();
   return code;
 }
 

@@ -2121,3 +2121,168 @@ details.fold:not([open]) > summary::after {
     justify-content: flex-end;
   }
 }
+
+/* Visite guidée : le reste de l'écran est assombri, l'élément présenté reste éclairé. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+.tour-dim {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 8, 11, 0.55);
+}
+.tour-spot {
+  position: fixed;
+  border-radius: 14px;
+  box-shadow: 0 0 0 9999px rgba(18, 8, 11, 0.55);
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+  transition: top 0.25s, left 0.25s, width 0.25s, height 0.25s;
+  pointer-events: none;
+}
+.tour-card {
+  position: fixed;
+  max-width: 360px;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 16px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tour-card h2 {
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+.tour-card[hidden] {
+  display: none;
+}
+@media (max-width: 639px) {
+  .tour-card {
+    max-width: none;
+    margin-bottom: env(safe-area-inset-bottom);
+    margin-top: env(safe-area-inset-top);
+  }
+}
+.tour-progress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.tour-progress span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.25s;
+}
+.tour-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+.tour-actions .spacer {
+  flex: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tour-spot,
+  .tour-progress span {
+    transition: none;
+  }
+}
+/* Astuce de première visite. */
+.first-tip {
+  border-left: 4px solid var(--gold);
+}
+/* Aide : fiches dépliables. */
+details.help-topic {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 0;
+}
+details.help-topic:last-child {
+  border-bottom: 0;
+}
+details.help-topic > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+}
+details.help-topic > summary::-webkit-details-marker {
+  display: none;
+}
+details.help-topic > summary::after {
+  content: '▾';
+  margin-left: auto;
+  color: var(--ink-2);
+}
+details.help-topic:not([open]) > summary::after {
+  transform: rotate(-90deg);
+}
+.help-steps {
+  margin: 4px 0 10px;
+  padding-left: 22px;
+  display: grid;
+  gap: 4px;
+}
+/* QR code d'une invitation. */
+.qr {
+  width: min(220px, 70vw);
+  height: auto;
+  margin: 0 auto;
+  display: block;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+}
+/* Présentation de l'application pour les visiteurs. */
+.discover-slide {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 260px;
+  justify-content: center;
+}
+.discover-slide .discover-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.discover-slide .discover-icon svg {
+  width: 34px;
+  height: 34px;
+}
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+.dots button {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+  cursor: pointer;
+}
+.dots button[aria-current='true'] {
+  background: var(--primary);
+  width: 22px;
+  border-radius: 5px;
+}

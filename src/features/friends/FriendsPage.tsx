@@ -3,15 +3,17 @@
  * bouteilles partagées, invitations et demandes, liens d'invitation, groupes.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Check as CheckIcon, Copy, Eye, KeyRound, Search, Share2, UserPlus, Users, X } from 'lucide-react';
-import type { InviteKind, Relation, SharedLot, UserResult } from '../../domain/types';
+import { Check as CheckIcon, Eye, KeyRound, Search, Send, UserPlus, X } from 'lucide-react';
+import type { Relation, SharedLot, UserResult } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateLong, deName } from '../../domain/format';
 import { toMessage } from '../../domain/errors';
 import { fold, vintageLabel } from '../../domain/wine';
-import { Avatar, Button, Check, copyText, EmptyState, Field, InlineLoading, Notice, Pill, Segmented, Sheet, useConfirm, useToast } from '../../ui/kit';
+import { Avatar, Button, Check, EmptyState, InlineLoading, Notice, Pill, Segmented, Sheet } from '../../ui/kit';
 import { go, routeQuery, useRoute } from '../../ui/router';
-import { INVITE_KINDS, inviteLink, inviteValidity, prettyCode } from './invite';
+import { useActions } from '../../ui/Shell';
+import { FirstTip } from '../tour/Tour';
+import { InviteSheet, MyInvites } from './InviteSheet';
 import { SharedItem } from './SharedItem';
 import { GroupsTab } from '../groups/GroupsTab';
 
@@ -19,9 +21,19 @@ type Tab = 'amis' | 'invitations' | 'groupes';
 
 export function FriendsPage() {
   const { snapshot, userId } = useStore();
+  const actions = useActions();
   const route = useRoute();
-  const requested = routeQuery(route).get('onglet');
+  const query = routeQuery(route);
+  const requested = query.get('onglet');
   const [tab, setTab] = useState<Tab>(requested === 'invitations' || requested === 'groupes' ? requested : 'amis');
+  const [inviting, setInviting] = useState(false);
+  // « Inviter quelqu'un » : aussi ouvert par un accès direct (#/amis?inviter=1) ; l'adresse redevient celle de la page.
+  const wantsInvite = query.get('inviter') === '1';
+  useEffect(() => {
+    if (!wantsInvite) return;
+    setInviting(true);
+    go(requested === 'invitations' || requested === 'groupes' ? `/amis?onglet=${requested}` : '/amis', { replace: true });
+  }, [wantsInvite, requested]);
   useEffect(() => {
     if (requested === 'invitations' || requested === 'groupes' || requested === 'amis') setTab(requested);
   }, [requested]);
@@ -33,6 +45,13 @@ export function FriendsPage() {
 
   return (
     <>
+      <FirstTip id="amis" title="Vos amis et contacts" onHelp={actions.help}>
+        « Inviter quelqu’un » envoie un lien, même à une personne sans compte. Découvrir l’application ne donne jamais accès à votre cave : vous
+        l’ouvrez à qui vous voulez, en entier ou quelques bouteilles, et vous la refermez quand vous voulez.
+      </FirstTip>
+      <Button size="lg" block icon={<Send />} onClick={() => setInviting(true)} data-tour="inviter">
+        Inviter quelqu’un
+      </Button>
       <Segmented<Tab>
         label="Sections"
         value={tab}
@@ -46,6 +65,7 @@ export function FriendsPage() {
       {tab === 'amis' && <FriendsTab />}
       {tab === 'invitations' && <InvitationsTab />}
       {tab === 'groupes' && <GroupsTab />}
+      {inviting && <InviteSheet onClose={() => setInviting(false)} />}
     </>
   );
 }
@@ -105,7 +125,7 @@ function FriendsTab() {
           <EmptyState icon="🤝" title={contacts.length ? 'Aucune cave ouverte pour l’instant' : 'Pas encore d’amis'}>
             {contacts.length
               ? 'Un ami, c’est un contact à qui vous avez ouvert votre cave (ou qui vous a ouvert la sienne).'
-              : 'Cherchez une personne ci-dessus, ou envoyez-lui un lien d’invitation (onglet Invitations).'}
+              : 'Cherchez une personne ci-dessus, ou envoyez-lui un lien avec « Inviter quelqu’un ».'}
           </EmptyState>
         ) : (
           <div className="list">
@@ -178,7 +198,7 @@ function FriendsTab() {
 
       {relations.length === 0 && (
         <EmptyState icon="✉️" title="Invitez quelqu’un">
-          Un lien « Découvrir l’application » permet d’inviter sans ouvrir votre cave (onglet Invitations).
+          « Inviter quelqu’un » › « Découvrir l’application » : un lien qui n’ouvre pas votre cave.
         </EmptyState>
       )}
 
@@ -382,8 +402,6 @@ function ConnectSheet({
 
 function InvitationsTab() {
   const { snapshot, api, run, userId } = useStore();
-  const confirm = useConfirm();
-  const [created, setCreated] = useState<{ code: string; expires_at: string; kind: InviteKind; max_uses: number; target: string | null } | null>(null);
   const [accepting, setAccepting] = useState<{ id: string; name: string; requestId: string; openCellar: boolean } | null>(null);
   const received = snapshot.requests.filter((r) => r.direction === 'in');
   const sent = snapshot.requests.filter((r) => r.direction === 'out');
@@ -391,9 +409,6 @@ function InvitationsTab() {
   const cellarInvites = snapshot.cellarLinks.filter((l) => l.user_id === userId && l.status === 'invited');
   // Demandes à voir ma cave.
   const accessRequests = snapshot.relations.filter((r) => r.request_in);
-  const activeLinks = snapshot.invites.filter((i) => i.inviter_id === userId && i.status === 'pending' && new Date(i.expires_at) > new Date() && i.uses < i.max_uses);
-  const targetName = (kind: InviteKind, id: string | null) =>
-    kind === 'group' ? snapshot.groups.find((g) => g.id === id)?.name : kind === 'event' ? snapshot.events.find((e) => e.id === id)?.title : undefined;
 
   return (
     <>
@@ -539,172 +554,15 @@ function InvitationsTab() {
         )}
       </section>
 
-      <NewInviteCard onCreated={setCreated} />
-
-      {activeLinks.length > 0 && (
-        <section aria-labelledby="h-links">
-          <div className="section-title">
-            <h2 id="h-links">Liens actifs</h2>
-            <span className="small muted">{activeLinks.length}</span>
-          </div>
-          <div className="list">
-            {activeLinks.map((i) => {
-              const kind = INVITE_KINDS.find((k) => k.value === i.kind);
-              const target = targetName(i.kind, i.target_id);
-              return (
-                <div key={i.id} className="row static">
-                  <Share2 aria-hidden style={{ color: 'var(--primary)', flex: 'none' }} />
-                  <span className="row-main">
-                    <span className="row-title" style={{ whiteSpace: 'normal' }}>
-                      {kind?.label ?? 'Invitation'}
-                      {target ? ` : « ${target} »` : ''}
-                    </span>
-                    <span className="row-sub" style={{ whiteSpace: 'normal' }}>
-                      {inviteValidity(i)}
-                    </span>
-                  </span>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Révoquer le lien ${kind?.label ?? ''}${target ? ` « ${target} »` : ''}`}
-                    onClick={async () => {
-                      const ok = await confirm({
-                        title: 'Révoquer ce lien ?',
-                        message: 'Il ne fonctionnera plus. Les personnes qui l’ont déjà utilisé gardent leur place.',
-                        confirmLabel: 'Révoquer',
-                        danger: true,
-                      });
-                      if (ok) await run(() => api.revokeInvite(i.id), { success: 'Lien révoqué' });
-                    }}
-                  >
-                    Révoquer
-                  </Button>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+      <MyInvites />
 
       <Button variant="ghost" onClick={() => go('/ami')}>
         J’ai reçu un code
       </Button>
 
-      <Sheet open={created !== null} onClose={() => setCreated(null)} title="Lien d’invitation">
-        {created && <InviteShare {...created} />}
-      </Sheet>
       {accepting && (
         <ConnectSheet person={{ id: accepting.id, name: accepting.name }} request={{ id: accepting.requestId, openCellar: accepting.openCellar }} onClose={() => setAccepting(null)} />
       )}
     </>
-  );
-}
-
-/** Nouveau lien : découvrir l'application, ami avec accès à ma cave, rejoindre un de mes groupes, venir à un événement. */
-function NewInviteCard({ onCreated }: { onCreated: (i: { code: string; expires_at: string; kind: InviteKind; max_uses: number; target: string | null }) => void }) {
-  const { snapshot, api, run, userId } = useStore();
-  const [kind, setKind] = useState<InviteKind>('discovery');
-  const groups = snapshot.groups.filter((g) => g.my_status === 'active' && (g.my_role === 'admin' || g.my_role === 'manager'));
-  const events = snapshot.events.filter((e) => e.organizer_id === userId && e.status === 'planned' && new Date(e.starts_at) > new Date());
-  const [target, setTarget] = useState('');
-  const [busy, setBusy] = useState(false);
-  const options = INVITE_KINDS.filter((k) => (k.value === 'group' ? groups.length > 0 : k.value === 'event' ? events.length > 0 : true));
-  const chosen = INVITE_KINDS.find((k) => k.value === kind)!;
-  const needsTarget = kind === 'group' || kind === 'event';
-  const list = kind === 'group' ? groups.map((g) => ({ id: g.id, label: g.name })) : events.map((e) => ({ id: e.id, label: `${e.title} (${dateLong(e.starts_at)})` }));
-  const targetId = needsTarget ? target || list[0]?.id || '' : null;
-
-  return (
-    <section className="card stack" aria-labelledby="h-invite-link">
-      <div className="inline">
-        <Users aria-hidden style={{ color: 'var(--primary)' }} />
-        <h2 id="h-invite-link" className="section">
-          Inviter par lien
-        </h2>
-      </div>
-      <p className="muted small">Pour une personne qui n’apparaît pas dans la recherche, ou pas encore inscrite : envoyez-lui un lien (SMS, WhatsApp, e-mail).</p>
-      <Field label="Ce que le lien permet">
-        <div className="stack-sm" role="radiogroup" aria-label="Type de lien">
-          {options.map((k) => (
-            <label key={k.value} className="check">
-              <input
-                type="radio"
-                name="invite-kind"
-                checked={kind === k.value}
-                onChange={() => {
-                  setKind(k.value);
-                  setTarget('');
-                }}
-              />
-              <span className="check-text">
-                <span>{k.label}</span>
-                {kind === k.value && <small>{k.hint}</small>}
-              </span>
-            </label>
-          ))}
-        </div>
-      </Field>
-      {needsTarget && (
-        <Field label={kind === 'group' ? 'Groupe' : 'Événement'}>
-          <select className="input" value={targetId ?? ''} onChange={(e) => setTarget(e.target.value)}>
-            {list.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      <Button
-        icon={<Share2 />}
-        loading={busy}
-        disabled={needsTarget && !targetId}
-        onClick={async () => {
-          setBusy(true);
-          const res = await run(() => api.createInvite(kind, targetId));
-          setBusy(false);
-          if (res.ok) onCreated({ ...res.value, target: needsTarget ? (list.find((o) => o.id === targetId)?.label ?? null) : null });
-        }}
-      >
-        Créer le lien « {chosen.label} »
-      </Button>
-    </section>
-  );
-}
-
-const SHARE_TEXT: Record<InviteKind, (target: string | null) => string> = {
-  discovery: () => 'Je t’invite à découvrir Cave & Amis, pour organiser nos dîners et parler vin',
-  friend: () => 'Je t’invite sur Cave & Amis : je t’ouvre ma cave, pour partager nos bouteilles et organiser nos dîners',
-  group: (t) => `Je t’invite à rejoindre le groupe « ${t ?? ''} » sur Cave & Amis`,
-  event: (t) => `Je t’invite à « ${t ?? ''} » sur Cave & Amis`,
-};
-
-function InviteShare({ code, expires_at, kind, max_uses, target }: { code: string; expires_at: string; kind: InviteKind; max_uses: number; target: string | null }) {
-  const toast = useToast();
-  const link = inviteLink(code);
-  const text = `${SHARE_TEXT[kind](target)} : ${link}`;
-  return (
-    <div className="stack">
-      <p className="muted">
-        Envoyez ce lien. La personne pourra accepter ou refuser. {max_uses === 1 ? 'Une seule utilisation' : `Jusqu’à ${max_uses} personnes`}, jusqu’au {dateLong(expires_at)}.
-      </p>
-      <div className="kbd-code" aria-label="Code d’invitation">
-        {prettyCode(code)}
-      </div>
-      <p className="small faint center">Le code peut aussi être dicté : il se saisit dans Amis & Groupes › Invitations › « J’ai reçu un code ».</p>
-      {typeof navigator.share === 'function' && (
-        <Button icon={<Share2 />} onClick={() => void navigator.share({ title: 'Cave & Amis', text }).catch(() => undefined)}>
-          Partager le lien
-        </Button>
-      )}
-      <Button
-        variant="secondary"
-        icon={<Copy />}
-        onClick={async () => toast((await copyText(link)) ? 'Lien copié' : 'Copie impossible : sélectionnez le code à la main', { tone: 'info' })}
-      >
-        Copier le lien
-      </Button>
-      <Notice tone="info">Ce code n’est montré qu’une fois. S’il se perd, créez simplement un nouveau lien. Vous pouvez le révoquer dans « Liens actifs ».</Notice>
-    </div>
   );
 }
