@@ -37,6 +37,11 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await page.getByRole('button', { name: 'Photographier' }).first().click();
   await camera.setInputFiles({ name: 'face.jpg', mimeType: 'image/jpeg', buffer: photo });
   await expect(page.getByAltText('Étiquette photographiée')).toBeVisible();
+  // Lot 3e : l'application se ferme (ou la page se recharge) : la photo est retrouvée sur l'appareil.
+  await page.waitForTimeout(300);
+  await page.reload();
+  await expect(page.getByText(/Photos retrouvées sur cet appareil/)).toBeVisible();
+  await expect(page.getByAltText('Étiquette photographiée')).toBeVisible();
   // La même image pour la contre-étiquette est refusée.
   await page.getByRole('button', { name: 'Choisir une photo existante : Contre-étiquette' }).click();
   await gallery.setInputFiles({ name: 'dos.jpg', mimeType: 'image/jpeg', buffer: photo });
@@ -114,12 +119,22 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await expect(form.getByLabel(/Prix d’achat/)).toHaveValue('23,5');
   await form.getByRole('button', { name: 'Ajouter à ma cave' }).click();
   await toast(page, 'Vin ajouté');
+  // La photo d'étiquette est gardée dans la cave (copiée : celles du scanner sont supprimées à échéance).
+  await expect(page.locator('.wine-photo img')).toBeVisible();
 
   // Lot 3d : comparer avec une autre bouteille du même magasin, puis demander à Lia.
   await goto(page, '/scanner/historique');
   await page.getByRole('link', { name: /Château Labeille 2016/ }).first().click();
+  // Lot 3e : question à Lia sur cette bouteille (préparée, pas envoyée ici).
+  await page.getByRole('button', { name: 'Poser une question à Lia' }).click();
+  await expect(page.getByText('Analyse en magasin')).toBeVisible();
+  await expect(page.getByPlaceholder(/Posez votre question/)).toHaveValue('Que penses-tu de ce vin à ce prix ?');
+  await page.goBack();
+  await expect(page.getByRole('button', { name: 'Comparer avec une autre bouteille' })).toBeVisible();
   await page.getByRole('button', { name: 'Comparer avec une autre bouteille' }).click();
   await expect(page.getByText(/Bouteille ajoutée à votre comparaison \(1 déjà analysée\)/)).toBeVisible();
+  // Aucun brouillon d'une analyse précédente : il a été effacé après l'envoi.
+  await expect(page.getByText(/Photos retrouvées/)).toHaveCount(0);
   await page.getByRole('button', { name: 'Photographier' }).first().click();
   await camera.setInputFiles({ name: 'face-2.jpg', mimeType: 'image/jpeg', buffer: await priceTagPhoto(page) });
   await page.getByRole('button', { name: 'Analyser' }).click();
@@ -138,7 +153,7 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await page.getByLabel('Occasion (facultatif)').blur();
   await shot(page, '24-scanner-comparaison');
   await page.getByRole('button', { name: 'Demander à Lia laquelle choisir' }).click();
-  await expect(page.getByText('Comparaison en magasin')).toBeVisible();
+  await expect(page.getByText('Analyse en magasin')).toBeVisible();
   await expect(page.getByPlaceholder(/Posez votre question/)).toHaveValue(/^Parmi ces 2 bouteilles, laquelle me conseilles-tu pour un dîner avec des amis, avec un budget maximal de 25\s€ \?$/);
   await page.getByRole('button', { name: 'Envoyer' }).click();
   await expect(page.locator('.bubble.assistant').last()).toContainText('je vous propose');

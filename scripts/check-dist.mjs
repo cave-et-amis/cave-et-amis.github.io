@@ -22,8 +22,9 @@ function walk(dir) {
   }
 }
 function check(path, name) {
-  // Seul .wasm admis : le moteur du studio photo (onnxruntime-web), chargé à la demande.
-  const studioEngine = /^ort-wasm-simd-threaded-[A-Za-z0-9_-]+\.wasm$/.test(name);
+  // Seuls .wasm admis, chargés à la demande : le moteur du studio photo (onnxruntime-web) et le lecteur de
+  // codes-barres du scanner (zxing-wasm, pour les navigateurs sans lecteur intégré, comme sur iPhone).
+  const studioEngine = /^ort-wasm-simd-threaded-[A-Za-z0-9_-]+\.wasm$/.test(name) || /^zxing_reader-[A-Za-z0-9_-]+\.wasm$/.test(name);
   if (/pglite|\.data$/i.test(name) || (/\.wasm$/i.test(name) && !studioEngine)) problems.push(`Fichier local ou de test inclus : ${name}`);
   if (!/\.(js|html|css|json|webmanifest|txt)$/.test(name) && name !== '_headers') return;
   const text = readFileSync(path, 'utf8');

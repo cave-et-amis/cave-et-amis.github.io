@@ -4,7 +4,7 @@
  * « Ajouter à ma cave » ouvre le formulaire habituel (quantité, prix payé, cave, emplacement) à confirmer.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { BookmarkPlus, Camera, Columns3, Heart, Pencil, Trash2, Wine as WineIcon } from 'lucide-react';
+import { BookmarkPlus, Camera, Columns3, Heart, Pencil, Sparkles, Trash2, Wine as WineIcon } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
 import { normalizeBarcode } from '../../domain/barcode';
@@ -346,7 +346,8 @@ function ScanReview({ scan, onSaved }: { scan: Scan; onSaved: (s: Scan) => void 
 }
 
 function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
-  const { api, run } = useStore();
+  const { api, run, userId } = useStore();
+  const [copying, setCopying] = useState(false);
   const actions = useActions();
   const confirm = useConfirm();
   const w = scan.wine;
@@ -359,15 +360,43 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
     w.grapes?.length ? w.grapes.join(', ') : null,
   ].filter(Boolean);
 
-  /** Lot 3d : rattache l'analyse à une comparaison (créée au besoin), puis on scanne la bouteille suivante. */
-  async function compare() {
-    const res = await run(async () => {
+  /** Lot 3d : rattache l'analyse à une comparaison (créée au besoin). */
+  function ensureVisit() {
+    return run(async () => {
       if (scan.visit_id) return scan.visit_id;
       const visit = await api.createVisit({ store_name: scan.store_name, budget: scan.budget });
       await api.updateScan(scan.id, { visit_id: visit.id });
       return visit.id;
     });
+  }
+
+  async function compare() {
+    const res = await ensureVisit();
     if (res.ok) go(`/scanner?visite=${res.value}`);
+  }
+
+  /** Question à Lia sur cette bouteille : Lia relit l'analyse (avec vos droits) par sa visite. */
+  async function askLia() {
+    const res = await ensureVisit();
+    if (res.ok) go(`/assistant?visite=${res.value}&q=${encodeURIComponent(`Que penses-tu de ce vin${scan.price_confirmed ? ' à ce prix' : ''} ?`)}`);
+  }
+
+  /** Ajout à la cave : la photo d'étiquette est copiée (les photos du scanner sont supprimées après leur conservation). */
+  async function addToCellar() {
+    const { volume_ml, alcohol: _alcohol, ...wine } = w;
+    const front = scan.photos.find((p) => p.role === 'front') ?? scan.photos.find((p) => p.role === 'back');
+    let photo: string | null = null;
+    if (front) {
+      setCopying(true);
+      photo = await api.copyPhoto(userId, front.path).catch(() => null);
+      setCopying(false);
+    }
+    actions.newWine({
+      wine: { ...wine, name: w.name ?? '', barcode: scan.barcode, label_photo: photo },
+      volume_ml: volume_ml ?? null,
+      purchase: { price: scan.price_confirmed ? scan.store_price : null, place: scan.store_name },
+      uploaded: photo ? [photo] : [],
+    });
   }
 
   async function remove() {
@@ -416,16 +445,13 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
         <Button
           icon={<BookmarkPlus />}
           variant="secondary"
-          onClick={() => {
-            const { volume_ml, alcohol: _alcohol, ...wine } = w;
-            actions.newWine({
-              wine: { ...wine, name: w.name ?? '', barcode: scan.barcode },
-              volume_ml: volume_ml ?? null,
-              purchase: { price: scan.price_confirmed ? scan.store_price : null, place: scan.store_name },
-            });
-          }}
+          loading={copying}
+          onClick={() => void addToCellar()}
         >
           Ajouter à ma cave
+        </Button>
+        <Button variant="secondary" icon={<Sparkles />} onClick={() => void askLia()}>
+          Poser une question à Lia
         </Button>
         <Button variant="secondary" icon={<Columns3 />} onClick={() => void compare()}>
           Comparer avec une autre bouteille

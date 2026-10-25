@@ -25,7 +25,8 @@
     "lucide-react": "1.58.0",
     "onnxruntime-web": "1.30.0",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zxing-wasm": "3.1.6"
   },
   "devDependencies": {
     "@anthropic-ai/sdk": "0.134.0",

@@ -635,6 +635,12 @@ export class Api {
     if (error) throw error;
     return path;
   }
+  /** Copie d'une de mes photos (nouveau chemin dans mon dossier). */
+  async copyPhoto(userId: string, path: string) {
+    const { data, error } = await this.sb.storage.from('photos').download(path);
+    if (error || !data) throw error ?? new Error('not_found');
+    return this.uploadPhoto(userId, data.type ? data : new Blob([data], { type: 'image/jpeg' }));
+  }
   async signedUrls(paths: string[]) {
     if (!paths.length) return new Map<string, string>();
     const { data, error } = await this.sb.storage.from('photos').createSignedUrls(paths, 3600);

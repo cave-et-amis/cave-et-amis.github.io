@@ -5,13 +5,14 @@
  * Chaque information indique son origine : donnée confirmée, source identifiée, estimation de Lia ou indisponible.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ExternalLink, RefreshCw } from 'lucide-react';
+import { ExternalLink, RefreshCw, Share2 } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { dateShort, money, parseNumber } from '../../domain/format';
 import { computeVerdict, priceIsFresh, QUALITY_LABELS, VERDICT_LABELS, VERDICT_METHOD, wineKey, type Verdict } from '../../domain/scan';
 import { tasteFit } from '../../domain/taste';
 import type { Scan, ScanAssessment, ScanMarket, SourcedText } from '../../domain/types';
-import { Advanced, Button, Field, InlineLoading, Notice, Origin, Pill } from '../../ui/kit';
+import { wineTitle } from '../../domain/wine';
+import { Advanced, Button, Field, InlineLoading, Notice, Origin, Pill, useToast } from '../../ui/kit';
 import { useAiStatus } from '../cellar/LabelScan';
 
 const TONE: Record<Verdict, string> = { excellent: 'success', good: 'success', fair: 'gold', poor: 'danger', insufficient: '' };
@@ -91,6 +92,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 export function ScanAnalysis({ scan }: { scan: Scan }) {
   const { api, online, snapshot, userId } = useStore();
+  const toast = useToast();
   const ai = useAiStatus();
   const key = wineKey(scan.wine);
   // Une analyse faite pour un autre vin (fiche modifiée depuis) n'est pas reprise.
@@ -179,6 +181,33 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
   if (fit.overBudget !== null) lines.push(`Dépasse votre budget de ${money(fit.overBudget, cur)}.`);
   if (v.verdict === 'insufficient' && !busy && v.missing.length) lines.push(`Il manque : ${v.missing.join(', ')}.`);
 
+  /**
+   * Partage : un texte seulement (pas de lien vers l'analyse), sans vos goûts, votre cave ni votre budget.
+   * Partage du téléphone s'il existe, sinon copie dans le presse-papiers.
+   */
+  async function share() {
+    const w = scan.wine;
+    const name = `${wineTitle({ name: w.name ?? 'Vin', vintage: w.vintage ?? null, non_vintage: w.non_vintage })}${w.cuvee ? ` · ${w.cuvee}` : ''}`;
+    const text = [
+      `${name} — ${VERDICT_LABELS[v.verdict]}`,
+      scan.price_confirmed ? `Prix en rayon : ${money(scan.store_price, cur)}${scan.store_name ? ` (${scan.store_name})` : ''}` : null,
+      usable ? `Marché : médiane ${money(market!.median, cur)} sur ${market!.count} offre${market!.count > 1 ? 's' : ''} vérifiée${market!.count > 1 ? 's' : ''} (relevé du ${dateShort(market!.checked_at)})` : 'Prix de marché non vérifié',
+      assessment?.quality ? `Qualité estimée par Lia : ${QUALITY_LABELS[assessment.quality.tier].toLowerCase()}` : null,
+      v.score !== null ? `Estimation Lia : ${String(v.score).replace('.', ',')}/10 (calculée par Cave & Amis, pas une note de dégustateur)` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    try {
+      if (navigator.share) await navigator.share({ title: name, text });
+      else {
+        await navigator.clipboard.writeText(text);
+        toast('Résultat copié : collez-le dans votre message.');
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') toast('Le partage n’a pas pu se faire sur cet appareil.', { tone: 'error' });
+    }
+  }
+
   const unavailable: string[] = [];
   if (assessment) {
     if (!assessment.critics.length) unavailable.push('aucun avis de dégustateur trouvé pour ce millésime');
@@ -214,6 +243,11 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
         {!busy && !ai.unavailable && online && (failure || !assessment || !market) && (
           <Button size="sm" variant="secondary" onClick={() => void run({ quality: !assessment, price: !market || !usable })}>
             {failure ? 'Réessayer' : 'Lancer l’analyse'}
+          </Button>
+        )}
+        {!busy && (assessment || market) && (
+          <Button size="sm" variant="ghost" icon={<Share2 />} onClick={() => void share()}>
+            Partager le résultat
           </Button>
         )}
         <Advanced title="Comment le verdict est-il calculé ?">

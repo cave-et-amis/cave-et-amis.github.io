@@ -88,7 +88,7 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
       return g ? { kind: 'group' as const, id: g.id, label: `Groupe : ${g.name}` } : null;
     }
     // Comparaison en magasin : le serveur relit la visite avec vos droits.
-    if (contextVisit && /^[0-9a-f-]{36}$/i.test(contextVisit)) return { kind: 'scan' as const, id: contextVisit, label: 'Comparaison en magasin' };
+    if (contextVisit && /^[0-9a-f-]{36}$/i.test(contextVisit)) return { kind: 'scan' as const, id: contextVisit, label: 'Analyse en magasin' };
     return null;
   }, [contextPage, contextWine, contextEvent, contextGroup, contextVisit, snapshot.wines, snapshot.events, snapshot.groups]);
   // Rubrique « Aide avec Cave & Amis » : les fiches de la page d'origine, sinon les questions les plus courantes.

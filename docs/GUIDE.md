@@ -230,6 +230,14 @@ documentées sont **classées** (meilleure note d'abord) ; les autres sont list�
 pour un dîner avec des amis, avec un budget maximal de 25 € ? ») que vous envoyez ou modifiez : Lia relit la comparaison
 avec vos droits et ne recommande que les bouteilles assez documentées. Les comparaisons sont dans « Mes analyses ».
 
+**Après l'analyse** : « Poser une question à Lia » (Lia relit l'analyse de la bouteille), « Partager le résultat » (un texte
+court : vin, prix, verdict, marché, sans lien ni rien de votre cave, de vos goûts ou de votre budget), « Comparer avec une
+autre bouteille », « Ajouter à mes envies », « Ajouter à ma cave » (la photo d'étiquette est conservée avec la fiche).
+
+**Sans réseau** : les photos prises restent sur le téléphone, même si l'application se ferme (3 jours au plus) ; elles
+sont retrouvées à la réouverture du scanner et effacées dès l'envoi. **Code-barres** : lu par le téléphone sur Android,
+par un lecteur intégré à l'application ailleurs (iPhone, ordinateur), sinon par Lia sur la photo.
+
 ## L'assistant
 
 Exemples : « Quel vin de ma cave ouvrir avec un magret de canard ? », « Quelles bouteilles devrais-je boire prochainement ? »,

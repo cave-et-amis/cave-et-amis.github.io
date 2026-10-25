@@ -139,6 +139,15 @@
   comptés (sinon deux bouteilles d'affilée bloqueraient Lia) ; le nombre de bouteilles par jour, les demandes par jour et
   les budgets s'appliquent toujours.
 
+### Finitions (lot 3e)
+
+- Photos en attente d'envoi : gardées **sur l'appareil seulement** (IndexedDB), pour la personne connectée, 3 jours au plus,
+  effacées après l'envoi ; un brouillon d'un autre compte sur le même appareil est effacé sans être montré.
+- Partage : un texte seulement, sans lien vers l'analyse, sans goûts, cave ni budget.
+- Lecteur de codes-barres zxing-wasm (MIT, gratuit) : servi par le site lui-même, téléchargé seulement si le navigateur n'a
+  pas de lecteur intégré ; aucune image n'est envoyée ailleurs.
+- « Ajouter à ma cave » copie la photo d'étiquette dans le dossier privé de la personne ; annuler le formulaire la supprime.
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

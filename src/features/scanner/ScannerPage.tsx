@@ -14,6 +14,7 @@ import { Button, Field, InlineLoading, Notice, useToast } from '../../ui/kit';
 import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
 import { barcodeSupported, detectBarcode, photoHash } from './capture';
+import { clearDraft, loadDraft, saveDraft } from './draft';
 
 type Slot = { blob: Blob; url: string; hash: string };
 
@@ -40,6 +41,33 @@ export function ScannerPage() {
   // Lot 3d : bouteille ajoutée à une comparaison en cours (visite en magasin).
   const visitId = routeQuery().get('visite');
   const [visitCount, setVisitCount] = useState<number | null>(null);
+  // Brouillon sur l'appareil : photos retrouvées après une fermeture de l'application (sans réseau, par exemple).
+  const [restored, setRestored] = useState<number | null>(null);
+  const draftReady = useRef(false);
+
+  useEffect(() => {
+    let alive = true;
+    void loadDraft(userId).then((d) => {
+      if (!alive) return;
+      draftReady.current = true;
+      // Une autre comparaison en cours : on ne mélange pas les bouteilles.
+      if (!d || (d.visitId ?? null) !== (visitId ?? null)) return;
+      const next: Partial<Record<ScanPhotoRole, Slot>> = {};
+      for (const [role, p] of Object.entries(d.photos)) if (p) next[role as ScanPhotoRole] = { blob: p.blob, hash: p.hash, url: URL.createObjectURL(p.blob) };
+      setSlots((cur) => (Object.keys(cur).length ? cur : next));
+      setBarcode((b) => b || d.barcode);
+      setRestored(d.savedAt);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [userId, visitId]);
+
+  useEffect(() => {
+    if (!draftReady.current) return;
+    const photos = Object.fromEntries(Object.entries(slots).map(([r, sl]) => [r, { blob: sl!.blob, hash: sl!.hash }]));
+    void saveDraft({ userId, photos, barcode, visitId });
+  }, [slots, barcode, userId, visitId]);
   const kept = useRef(false);
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
@@ -152,6 +180,7 @@ export function ScannerPage() {
       return;
     }
     kept.current = true;
+    await clearDraft();
     go(`/scanner/${(res.scan as Scan).id}`);
   }
 
@@ -162,6 +191,7 @@ export function ScannerPage() {
       const list = photos ?? (filled.length ? await upload() : []);
       const scan = await api.createManualScan({ photos: list, wine: {}, barcode: normalizeBarcode(barcode), visit_id: visitId });
       kept.current = true;
+      await clearDraft();
       go(`/scanner/${scan.id}`);
     } catch (e) {
       setBusy(null);
@@ -182,7 +212,13 @@ export function ScannerPage() {
           <a href={`#/scanner/visite/${visitId}`}>Voir la comparaison</a>
         </Notice>
       )}
-      {!online && <Notice tone="warn">Pas de connexion : vous pouvez prendre vos photos maintenant et lancer l’analyse quand le réseau revient.</Notice>}
+      {restored && filled.length > 0 && (
+        <Notice tone="info">
+          Photos retrouvées sur cet appareil (prises le {new Date(restored).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })}). Touchez
+          « Analyser » quand vous êtes prêt, ou retirez-les.
+        </Notice>
+      )}
+      {!online && <Notice tone="warn">Pas de connexion : prenez vos photos maintenant, elles restent sur ce téléphone même si l’application se ferme ; lancez l’analyse quand le réseau revient.</Notice>}
       {online && unavailable && (
         <Notice tone="warn">{unavailable} Vous pouvez tout de même photographier la bouteille et remplir la fiche à la main.</Notice>
       )}
@@ -232,7 +268,7 @@ export function ScannerPage() {
           normalizeBarcode(barcode)
             ? 'Code valable : il aide à retrouver le vin.'
             : barcodeSupported()
-              ? 'Lu automatiquement sur les photos quand il est net ; sinon recopiez les chiffres.'
+              ? 'Lu automatiquement sur les photos quand il est net ; sinon Lia le lira, ou recopiez les chiffres.'
               : 'Lia le lira sur la contre-étiquette ; vous pouvez aussi recopier les chiffres.'
         }
         error={barcode.trim() && !normalizeBarcode(barcode) ? 'Ce code ne semble pas complet : vérifiez les chiffres.' : undefined}
