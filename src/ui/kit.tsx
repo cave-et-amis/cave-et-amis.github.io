@@ -292,14 +292,17 @@ export function Segmented<T extends string>({
   value,
   onChange,
   label,
+  wrap,
 }: {
   options: { value: T; label: ReactNode }[];
   value: T;
   onChange: (v: T) => void;
   label: string;
+  /** Beaucoup d'options : sur plusieurs lignes plutôt que trop serrées. */
+  wrap?: boolean;
 }) {
   return (
-    <div className="segmented" role="group" aria-label={label}>
+    <div className={wrap ? 'segmented wrap' : 'segmented'} role="group" aria-label={label}>
       {options.map((o) => (
         <button key={o.value} type="button" aria-pressed={value === o.value} onClick={() => onChange(o.value)}>
           {o.label}

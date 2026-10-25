@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useStore } from '../../data/store';
 import { fromLocalInput, parseNumber, toLocalInput } from '../../domain/format';
-import type { CaveEvent, EventKind } from '../../domain/types';
+import type { CaveEvent, EventKind, MyGroup } from '../../domain/types';
 import { EVENT_KINDS } from '../../domain/wine';
 import { Advanced, Avatar, Button, Check, Chips, Field, Sheet } from '../../ui/kit';
 import { go } from '../../ui/router';
@@ -12,9 +12,24 @@ function defaultStart() {
   return toLocalInput(d.toISOString());
 }
 
-export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose: () => void }) {
+/**
+ * Nouvel événement ou modification. Avec « group » : soirée de ce groupe, ses membres sont proposés (et cochés) comme
+ * invités, même s'ils ne sont pas vos amis.
+ */
+export function EventFormSheet({
+  event,
+  group,
+  members,
+  onClose,
+}: {
+  event?: CaveEvent;
+  group?: MyGroup;
+  members?: { user_id: string; display_name: string }[];
+  onClose: () => void;
+}) {
   const { api, run, friends } = useStore();
   const editing = Boolean(event);
+  const people = group ? (members ?? []).map((m) => ({ id: m.user_id, display_name: m.display_name })) : friends;
   const [kind, setKind] = useState<EventKind>(event?.kind ?? 'diner');
   const [title, setTitle] = useState(event?.title ?? '');
   const [start, setStart] = useState(event ? toLocalInput(event.starts_at) : defaultStart());
@@ -22,7 +37,7 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
   const [description, setDescription] = useState(event?.description ?? '');
   const [theme, setTheme] = useState(event?.theme ?? '');
   const [budget, setBudget] = useState(event?.budget !== null && event?.budget !== undefined ? String(event.budget) : '');
-  const [guests, setGuests] = useState<string[]>([]);
+  const [guests, setGuests] = useState<string[]>(() => (group ? people.map((p) => p.id) : []));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +56,7 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
       description: description.trim() || null,
       theme: theme.trim() || null,
       budget: parseNumber(budget),
+      ...(group && !editing ? { group_id: group.id } : {}),
     };
     const res = await run(
       async () => {
@@ -50,7 +66,7 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
         }
         return (await api.createEvent(payload, guests)).id;
       },
-      { success: editing ? 'Événement modifié' : 'Événement créé' },
+      { success: editing ? 'Événement modifié' : group ? 'Soirée créée' : 'Événement créé' },
     );
     setBusy(false);
     if (res.ok) {
@@ -63,7 +79,7 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
     <Sheet
       open
       onClose={onClose}
-      title={editing ? 'Modifier l’événement' : 'Nouvel événement'}
+      title={editing ? 'Modifier l’événement' : group ? `Nouvelle soirée « ${group.name} »` : 'Nouvel événement'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -80,7 +96,15 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
           <Chips<EventKind> label="Type d’événement" value={kind} onChange={setKind} options={EVENT_KINDS.map((k) => ({ value: k.value, label: `${k.icon} ${k.label}` }))} />
         </Field>
         <Field label="Titre" htmlFor="ev-title">
-          <input id="ev-title" className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Dîner chez nous, dégustation de Bourgognes…" maxLength={100} required />
+          <input
+            id="ev-title"
+            className="input"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={group ? 'Soirée raclette, dégustation à l’aveugle…' : 'Dîner chez nous, dégustation de Bourgognes…'}
+            maxLength={100}
+            required
+          />
         </Field>
         <Field label="Date et heure" htmlFor="ev-start">
           <input id="ev-start" className="input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} required />
@@ -89,9 +113,18 @@ export function EventFormSheet({ event, onClose }: { event?: CaveEvent; onClose:
           <input id="ev-place" className="input" value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Chez moi, restaurant…" maxLength={200} />
         </Field>
         {!editing && (
-          <Field label="Invités" hint={friends.length ? 'Parmi vos amis. Vous pourrez en inviter d’autres ensuite.' : 'Invitez d’abord des amis (onglet Amis) pour les convier.'}>
+          <Field
+            label="Invités"
+            hint={
+              group
+                ? `Les membres de « ${group.name} ». Vous pourrez en inviter d’autres ensuite.`
+                : friends.length
+                  ? 'Parmi vos amis. Vous pourrez en inviter d’autres ensuite.'
+                  : 'Invitez d’abord des amis (onglet Amis) pour les convier.'
+            }
+          >
             <div className="stack-sm">
-              {friends.map((f) => (
+              {people.map((f) => (
                 <Check
                   key={f.id}
                   checked={guests.includes(f.id)}

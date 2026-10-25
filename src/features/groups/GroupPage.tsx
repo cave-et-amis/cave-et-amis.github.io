@@ -1,12 +1,13 @@
 /**
- * Page d'un groupe : sa cave (bouteilles rendues visibles ou mises à disposition par les membres), ses membres et
- * rôles, son activité. Les bouteilles restent à leurs propriétaires : seul le propriétaire en ouvre une.
+ * Page d'un groupe : sa cave (bouteilles rendues visibles ou mises à disposition par les membres), ses soirées, les notes
+ * partagées, les envies communes, ses membres et rôles, son activité. Les bouteilles restent à leurs propriétaires :
+ * seul le propriétaire en ouvre une.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { HandHeart, LogOut, Pencil, Search, Share2, UserPlus, Wine as WineIcon } from 'lucide-react';
+import { HandHeart, LogOut, Pencil, Search, Share2, Sparkles, UserPlus, Wine as WineIcon } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { bottles, dateShort } from '../../domain/format';
-import type { Color, GroupActivity, GroupLot, GroupMember, GroupRole, MyGroup } from '../../domain/types';
+import type { Color, GroupActivity, GroupLot, GroupMember, GroupNote, GroupRole, GroupWish, MyGroup } from '../../domain/types';
 import { COLORS, fold, vintageLabel } from '../../domain/wine';
 import { Avatar, Button, Check, EmptyState, InlineLoading, Segmented, Sheet, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
@@ -15,8 +16,9 @@ import { SharedItem } from '../friends/SharedItem';
 import { AllocateSheet } from './AllocateSheet';
 import { GroupAvatar, ROLE_LABELS } from './common';
 import { GroupFormSheet } from './GroupFormSheet';
+import { GroupEvenings, GroupNotes, GroupWishes } from './GroupLife';
 
-type Tab = 'cave' | 'membres' | 'activite';
+type Tab = 'cave' | 'soirees' | 'notes' | 'envies' | 'membres' | 'activite';
 
 export function GroupPage({ id }: { id: string }) {
   const { snapshot, api, run, wine, lotsOf } = useStore();
@@ -25,6 +27,8 @@ export function GroupPage({ id }: { id: string }) {
   const [members, setMembers] = useState<GroupMember[] | null>(null);
   const [lots, setLots] = useState<GroupLot[] | null>(null);
   const [activity, setActivity] = useState<GroupActivity[] | null>(null);
+  const [notes, setNotes] = useState<GroupNote[] | null>(null);
+  const [wishes, setWishes] = useState<GroupWish[] | null>(null);
   const [version, setVersion] = useState(0);
   const [sheet, setSheet] = useState<'edit' | 'invite' | 'share' | { allocate: string | undefined } | { open: string } | null>(null);
   const active = group?.my_status === 'active';
@@ -33,14 +37,16 @@ export function GroupPage({ id }: { id: string }) {
   useEffect(() => {
     if (!active) return;
     let alive = true;
-    void Promise.all([api.groupMembers(id), api.groupLots(id), api.groupActivity(id)])
-      .then(([m, l, a]) => {
+    void Promise.all([api.groupMembers(id), api.groupLots(id), api.groupActivity(id), api.groupNotes(id), api.groupWishes(id)])
+      .then(([m, l, a, n, w]) => {
         if (!alive) return;
         setMembers(m);
         setLots(l);
         setActivity(a);
+        setNotes(n);
+        setWishes(w);
       })
-      .catch(() => alive && (setMembers([]), setLots([]), setActivity([])));
+      .catch(() => alive && (setMembers([]), setLots([]), setActivity([]), setNotes([]), setWishes([])));
     return () => {
       alive = false;
     };
@@ -100,6 +106,16 @@ export function GroupPage({ id }: { id: string }) {
               Modifier
             </Button>
           )}
+          <Button
+            size="sm"
+            variant="gold"
+            icon={<Sparkles />}
+            onClick={() =>
+              go(`/assistant?groupe=${group.id}&q=${encodeURIComponent('Propose une sélection de vins pour notre prochaine soirée, d’après nos goûts et les bouteilles du groupe.')}`)
+            }
+          >
+            Demander à Lia
+          </Button>
         </div>
       </section>
 
@@ -107,8 +123,12 @@ export function GroupPage({ id }: { id: string }) {
         label="Sections du groupe"
         value={tab}
         onChange={setTab}
+        wrap
         options={[
           { value: 'cave', label: 'Cave' },
+          { value: 'soirees', label: 'Soirées' },
+          { value: 'notes', label: 'Notes' },
+          { value: 'envies', label: 'Envies' },
           { value: 'membres', label: 'Membres' },
           { value: 'activite', label: 'Activité' },
         ]}
@@ -116,6 +136,9 @@ export function GroupPage({ id }: { id: string }) {
       {tab === 'cave' && (
         <GroupCellar lots={lots} onShare={() => setSheet('share')} onAllocate={(lot) => setSheet({ allocate: lot })} onOpen={(lot) => setSheet({ open: lot })} />
       )}
+      {tab === 'soirees' && <GroupEvenings group={group} members={members} />}
+      {tab === 'notes' && <GroupNotes group={group} notes={notes} />}
+      {tab === 'envies' && <GroupWishes group={group} wishes={wishes} onChange={refresh} />}
       {tab === 'membres' && <GroupMembers group={group} members={members} onChange={refresh} />}
       {tab === 'activite' && <GroupActivityList activity={activity} />}
 
@@ -369,6 +392,12 @@ function activityText(a: GroupActivity) {
     }
     case 'consumed':
       return `${who} a ouvert ${bottles(Number(a.detail ?? 1))} de « ${target} »`;
+    case 'event':
+      return `${who} organise « ${target} »${a.detail ? ` (${dateShort(a.detail)})` : ''}`;
+    case 'note':
+      return `${who} a partagé une note sur « ${target} »${a.detail ? ` (${a.detail}/5)` : ''}`;
+    case 'wish':
+      return `${who} propose une envie commune : « ${target} »`;
   }
 }
 

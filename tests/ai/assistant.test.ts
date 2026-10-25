@@ -156,6 +156,43 @@ describe('assistant : sécurité et droits', () => {
     expect(results[1]).toContain('n’est pas proposable');
   });
 
+  it('groupe : Lia connaît ses bouteilles, les goûts des membres et les envies, et propose pour la soirée du groupe', async () => {
+    const env = await makeAiEnv();
+    const { bruno, claire, madiran } = await cellarWith(env);
+    const { data: g } = await bruno.sb.rpc('create_group', { p_name: 'Les copains', p_emoji: '🍷', p_description: null, p_photo: null, p_invite: [claire.id] });
+    const groupId = (g as { id: string }).id;
+    await claire.sb.rpc('respond_group_invite', { p_group: groupId, p_accept: true });
+    await bruno.sb.rpc('allocate_to_group', { p_lot: madiran.lotId, p_group: groupId, p_quantity: 2 });
+    await claire.sb.rpc('create_tasting', { p: { wine_name: 'Cahors partagé', rating: 4, comment: 'Fruité', group_id: groupId }, p_consume_lot: null, p_request: crypto.randomUUID() });
+    await claire.sb.rpc('add_group_wish', { p_group: groupId, p: { wine_name: 'Château Montus', vintage: 2016 } });
+    const { data: ev, error } = await claire.sb.rpc('create_event', { p: { title: 'Soirée des copains', starts_at: '2030-02-01T19:00:00Z', group_id: groupId }, p_guests: [bruno.id] });
+    expect(error).toBeNull();
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [
+          toolUse('t1', 'get_group', { group_id: groupId }),
+          toolUse('t2', 'propose_event_wine', { event_id: (ev as { id: string }).id, lot_id: madiran.lotId, quantity: 2 }),
+        ],
+      },
+      { kind: 'message', content: [text('Je propose le **Madiran** mis à disposition par Bruno.')] },
+    );
+    const res = await call(claire.sb, { action: 'chat', message: 'Que boire à notre soirée ?', context: { kind: 'group', id: groupId } });
+    expect(res.ok).toBe(true);
+    const first = JSON.stringify(env.anthropic.requests[0].body!.messages);
+    expect(first).toContain('depuis le groupe « Les copains »');
+    const results = (env.anthropic.requests[1].body!.messages as { content: { content: string }[] }[]).at(-1)!.content.map((c) => c.content);
+    const group = JSON.parse(results[0]);
+    expect(group.bottles[0]).toMatchObject({ name: 'Madiran Château Montus', owner: 'Bruno', set_aside_for_the_group: 2 });
+    expect(group.member_tastes[0]).toMatchObject({ member: 'la personne', wine: 'Cahors partagé', rating_out_of_5: 4 });
+    expect(group.common_wishes[0]).toMatchObject({ wine: 'Château Montus', vintage: 2016, participants: 1 });
+    expect(group.evenings[0]).toMatchObject({ title: 'Soirée des copains', status: 'planned' });
+    const actions = (res.message as { meta: { actions: { type: string; own: boolean; label: string }[] } }).meta.actions;
+    expect(actions).toMatchObject([{ type: 'event_wine', own: false }]);
+    expect(actions[0].label).toContain('Bruno');
+  });
+
   it('message trop long, conversation d’un autre', async () => {
     const env = await makeAiEnv();
     const { bruno, claire } = await cellarWith(env);

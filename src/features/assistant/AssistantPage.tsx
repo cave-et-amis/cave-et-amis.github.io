@@ -54,6 +54,7 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
   const query = routeQuery();
   const contextWine = query.get('vin');
   const contextEvent = query.get('evenement');
+  const contextGroup = query.get('groupe');
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [loadingConv, setLoadingConv] = useState(false);
@@ -72,8 +73,12 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
       const e = snapshot.events.find((x) => x.id === contextEvent);
       return e ? { kind: 'event' as const, id: e.id, label: `Événement : ${e.title}` } : null;
     }
+    if (contextGroup) {
+      const g = snapshot.groups.find((x) => x.id === contextGroup && x.my_status === 'active');
+      return g ? { kind: 'group' as const, id: g.id, label: `Groupe : ${g.name}` } : null;
+    }
     return null;
-  }, [contextWine, contextEvent, snapshot.wines, snapshot.events]);
+  }, [contextWine, contextEvent, contextGroup, snapshot.wines, snapshot.events, snapshot.groups]);
 
   useEffect(() => {
     void api
@@ -163,7 +168,12 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
               ? ['Dois-je carafer ce vin ?', 'À quelle température servir cette bouteille ?', 'Quand l’ouvrir, et avec quels plats ?', 'Quel est le prix actuel de ce millésime ?']
               : context?.kind === 'event'
                 ? ['Propose des vins pour notre dîner à partir des bouteilles que les participants acceptent de partager.', 'Dans quel ordre servir les vins prévus ?']
-                : SUGGESTIONS
+                : context?.kind === 'group'
+                  ? [
+                      'Propose une sélection de vins pour notre prochaine soirée, d’après nos goûts et les bouteilles du groupe.',
+                      'Quels vins de nos envies communes iraient avec une raclette ?',
+                    ]
+                  : SUGGESTIONS
             ).map((s) => (
               <button key={s} type="button" disabled={Boolean(unavailable) || sending} onClick={() => void send(s)}>
                 {s}

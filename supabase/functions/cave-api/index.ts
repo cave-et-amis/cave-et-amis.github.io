@@ -373,6 +373,7 @@ Prix
 Modifications
 - Les bouteilles « mises à disposition d'un groupe » (bottles_set_aside_for_groups) ou réservées pour un événement restent à la personne mais ne sont pas libres : ne propose de sortir que des bouteilles disponibles (bottles_available, available).
 - Une cave peut être gérée à plusieurs : ses bouteilles appartiennent à son propriétaire (« cave de X, gérée à plusieurs ») ; la personne peut les boire, en ajouter ou les ranger, mais n'apporte à un événement que ses propres bouteilles.
+- Pour un groupe (get_group) : appuie-toi sur ses bouteilles (de préférence celles mises à sa disposition), les goûts des membres (notes partagées) et les envies communes ; pour sa soirée, propose des bouteilles avec propose_event_wine (leur propriétaire confirme).
 - Tu ne modifies jamais rien toi-même. Pour proposer une consommation, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour un événement ou une note de dégustation, utilise l'outil propose_* correspondant : la personne verra un bouton pour confirmer. Ne dis jamais qu'une action est faite.
 
 Style
@@ -872,6 +873,59 @@ async function listTastings(sb, userId, q) {
 		tastings: filtered.slice(0, limit).map(compactTasting)
 	};
 }
+/** Vie d'un groupe pour l'assistant (droits de la personne : elle doit en être membre). */
+async function groupDetails(sb, groupId) {
+	const g = (await all(() => sb.rpc("my_groups"))).find((x) => x.id === groupId && x.my_status === "active");
+	if (!g) return { error: "Groupe introuvable, ou la personne n’en est pas membre." };
+	const [members, lots, notes, wishes, events] = await Promise.all([
+		all(() => sb.rpc("group_members_list", { p_group: groupId })),
+		all(() => sb.rpc("group_lots", { p_group: groupId })),
+		all(() => sb.rpc("group_notes", { p_group: groupId })),
+		all(() => sb.rpc("group_wishes_list", { p_group: groupId })),
+		all(() => sb.from("events").select("id, title, starts_at, status").eq("group_id", groupId).order("starts_at", { ascending: false }).limit(10))
+	]);
+	return {
+		group_id: groupId,
+		name: g.name,
+		members: members.filter((m) => m.status === "active").map((m) => m.display_name),
+		bottles: lots.slice(0, 60).map((l) => ({
+			lot_id: l.lot_id,
+			owner: l.mine ? "la personne" : l.owner_name,
+			name: l.name,
+			vintage: l.vintage ?? (l.non_vintage ? "sans millésime" : void 0),
+			producer: l.domaine || l.producer || void 0,
+			color: colorLabel(l.color) || void 0,
+			appellation: l.appellation || void 0,
+			region: l.region || void 0,
+			set_aside_for_the_group: l.allocated || void 0,
+			visible_only: l.allocated ? void 0 : true
+		})),
+		member_tastes: notes.slice(0, 40).map((t) => ({
+			member: t.mine ? "la personne" : t.author_name,
+			wine: t.wine_name,
+			vintage: t.vintage ?? void 0,
+			color: colorLabel(t.color) || void 0,
+			rating_out_of_5: t.rating ?? void 0,
+			comment: clip(t.comment, 200),
+			dish: t.dish ?? void 0,
+			date: t.tasted_on
+		})),
+		common_wishes: wishes.slice(0, 20).map((w) => ({
+			wine: w.wine_name,
+			vintage: w.vintage ?? void 0,
+			producer: w.producer ?? void 0,
+			color: colorLabel(w.color) || void 0,
+			participants: w.votes,
+			note: clip(w.note, 200)
+		})),
+		evenings: events.map((e) => ({
+			event_id: e.id,
+			title: e.title,
+			date: e.starts_at.slice(0, 10),
+			status: e.status
+		}))
+	};
+}
 function compactShared(s) {
 	return {
 		lot_id: s.lot_id,
@@ -908,16 +962,25 @@ async function friendsWines(sb, q) {
 		wines: rows.slice(0, limit).map(compactShared)
 	};
 }
+/** Mes bouteilles mises à disposition d'un groupe (lot → nombre), pour sa soirée : elles sont prises en premier. */
+async function myGroupAllocations(sb, groupId) {
+	if (!groupId) return /* @__PURE__ */ new Map();
+	const rows = await all(() => sb.from("group_shares").select("lot_id, allocated").eq("group_id", groupId).gt("allocated", 0));
+	return new Map(rows.map((r) => [r.lot_id, r.allocated]));
+}
 async function eventDetails(sb, eventId, data, year, me) {
 	const { data: ev, error } = await sb.from("events").select("*").eq("id", eventId).maybeSingle();
 	if (error) throw new AiFailure("internal", sanitize(error.message));
 	if (!ev) return { error: "Événement introuvable ou la personne n’y participe pas." };
-	const [parts, dishes, wines, profiles, suggestable] = await Promise.all([
+	const groupId = ev.group_id ?? null;
+	const [parts, dishes, wines, profiles, suggestable, forGroup, groupRow] = await Promise.all([
 		all(() => sb.from("event_participants").select("*").eq("event_id", eventId)),
 		all(() => sb.from("event_dishes").select("*").eq("event_id", eventId).order("position")),
 		all(() => sb.from("event_wines").select("*").eq("event_id", eventId)),
 		all(() => sb.from("profiles").select("id, display_name")),
-		sb.rpc("event_suggestable_lots", { p_event: eventId }).then((r) => r.data ?? [])
+		sb.rpc("event_suggestable_lots", { p_event: eventId }).then((r) => r.data ?? []),
+		myGroupAllocations(sb, groupId),
+		groupId ? sb.from("groups").select("name").eq("id", groupId).maybeSingle().then((r) => r.data) : Promise.resolve(null)
 	]);
 	const name = (id) => id === me ? "vous" : profiles.find((p) => p.id === id)?.display_name ?? "un participant";
 	const event = ev;
@@ -931,6 +994,7 @@ async function eventDetails(sb, eventId, data, year, me) {
 		budget: event.budget ?? void 0,
 		status: event.status,
 		description: clip(event.description, 500),
+		group_evening: groupRow ? `Soirée du groupe « ${groupRow.name} » (bouteilles du groupe proposables ; celles mises à sa disposition sont prises en premier)` : void 0,
 		organizer: name(event.organizer_id),
 		participants: parts.map((p) => ({
 			name: name(p.user_id),
@@ -954,14 +1018,15 @@ async function eventDetails(sb, eventId, data, year, me) {
 			status: w.status === "confirmed" ? "confirmé par son propriétaire" : w.status === "proposed" ? "proposé, en attente du propriétaire" : "bu",
 			service_position: w.service_position ?? void 0
 		})),
-		my_available_bottles: event.status === "planned" ? data.wines.filter((w) => w.owner_id === me).map((w) => compactWine(w, data, year)).filter((w) => w.bottles_available > 0).slice(0, 40).map((w) => ({
-			...w,
-			lots: data.lots.filter((l) => l.wine_id === w.wine_id && l.quantity - l.reserved > 0).map((l) => ({
+		my_available_bottles: event.status === "planned" ? data.wines.filter((w) => w.owner_id === me).map((w) => ({
+			...compactWine(w, data, year),
+			lots: data.lots.filter((l) => l.wine_id === w.id && l.quantity - l.reserved + (forGroup.get(l.id) ?? 0) > 0).map((l) => ({
 				lot_id: l.id,
-				available: l.quantity - l.reserved,
+				available: l.quantity - l.reserved + (forGroup.get(l.id) ?? 0),
+				of_which_set_aside_for_this_group: forGroup.get(l.id) || void 0,
 				volume_ml: l.volume_ml
 			}))
-		})) : void 0,
+		})).filter((w) => w.lots.length > 0).slice(0, 40) : void 0,
 		friends_bottles_open_to_suggestions: event.status === "planned" ? suggestable.map((s) => ({
 			lot_id: s.lot_id,
 			owner: s.owner_name,
@@ -973,7 +1038,8 @@ async function eventDetails(sb, eventId, data, year, me) {
 			appellation: s.appellation ?? void 0,
 			volume_ml: s.volume_ml,
 			quantity: s.quantity ?? "masquée par le propriétaire",
-			in_stock: s.in_stock
+			in_stock: s.in_stock,
+			set_aside_for_the_group: s.for_group || void 0
 		})) : void 0
 	};
 }
@@ -1252,6 +1318,7 @@ var CHAT_TOOLS = [
 		limit: nullable(int$1)
 	}),
 	tool("get_event", "Détails d’un événement auquel la personne participe : menu, participants, vins prévus, ses bouteilles disponibles et celles de ses amis ouvertes aux suggestions.", { event_id: str$1 }),
+	tool("get_group", "Vie d’un groupe dont la personne est membre : membres, bouteilles visibles ou mises à disposition du groupe, goûts des membres (notes partagées), envies communes, soirées.", { group_id: str$1 }),
 	tool("lookup_market_price", "Recherche web du prix de marché actuel d’un vin de la cave (millésime et contenance exacts), avec sources. Coûteux : seulement si la personne demande un prix.", {
 		wine_id: str$1,
 		volume_ml: nullable(int$1)
@@ -1374,6 +1441,9 @@ var ToolBox = class {
 			case "get_event":
 				if (!isUuid(i.event_id)) return JSON.stringify({ error: "event_id invalide" });
 				return JSON.stringify(await eventDetails(this.user, i.event_id, await this.data(), this.year, this.userId));
+			case "get_group":
+				if (!isUuid(i.group_id)) return JSON.stringify({ error: "group_id invalide" });
+				return JSON.stringify(await groupDetails(this.user, i.group_id));
 			case "lookup_market_price": return this.lookup(i);
 			case "propose_consumption": return this.proposeConsumption(i);
 			case "propose_wishlist_add": {
@@ -1524,14 +1594,14 @@ var ToolBox = class {
 	async proposeEventWine(i) {
 		const qty = intIn(i.quantity, 1, 24);
 		if (!isUuid(i.event_id) || !isUuid(i.lot_id) || !qty) return JSON.stringify({ error: "Paramètres invalides" });
-		const { data: ev } = await this.user.from("events").select("id, title, status").eq("id", i.event_id).maybeSingle();
+		const { data: ev } = await this.user.from("events").select("id, title, status, group_id").eq("id", i.event_id).maybeSingle();
 		const event = ev;
 		if (!event) return JSON.stringify({ error: "Événement introuvable." });
 		if (event.status !== "planned") return JSON.stringify({ error: "Événement terminé ou annulé." });
 		const data = await this.data();
 		const own = data.lots.find((l) => l.id === i.lot_id && l.owner_id === this.userId);
 		if (own) {
-			const available = own.quantity - own.reserved;
+			const available = own.quantity - own.reserved + ((await myGroupAllocations(this.user, event.group_id)).get(own.id) ?? 0);
 			if (qty > available) return JSON.stringify({ error: `Seulement ${available} bouteille(s) disponible(s).` });
 			const wine = data.wines.find((w) => w.id === own.wine_id);
 			return this.propose({
@@ -1555,9 +1625,15 @@ var ToolBox = class {
 			own: false
 		});
 	}
-	/** Contexte d'ouverture (fiche ou événement) : simple rappel, les détails passent par les outils. */
+	/** Contexte d'ouverture (fiche, événement ou groupe) : simple rappel, les détails passent par les outils. */
 	async contextNote(context) {
 		if (!context || !isUuid(context.id)) return null;
+		if (context.kind === "group") {
+			const { data: g } = await this.user.from("groups").select("id, name").eq("id", context.id).maybeSingle();
+			if (!g) return null;
+			const group = g;
+			return `La personne a ouvert l’assistant depuis le groupe « ${sanitize(group.name, 60)} » (group_id ${group.id}). Utilise get_group pour ses bouteilles, les goûts des membres et les envies communes.`;
+		}
 		if (context.kind === "wine") {
 			const data = await this.data();
 			const w = data.wines.find((x) => x.id === context.id);
@@ -1591,7 +1667,11 @@ async function runChat(o) {
 		const { data: historyRows } = await user.from("ai_messages").select("role, content").eq("conversation_id", conversationId).order("created_at", { ascending: false }).limit(settings.history_messages);
 		history = (historyRows ?? []).reverse();
 	}
-	const context = input.context && isUuid(input.context.id) && ["wine", "event"].includes(input.context.kind) ? input.context : null;
+	const context = input.context && isUuid(input.context.id) && [
+		"wine",
+		"event",
+		"group"
+	].includes(input.context.kind) ? input.context : null;
 	const box = new ToolBox({
 		user,
 		svc,

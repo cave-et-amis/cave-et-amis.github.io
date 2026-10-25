@@ -58,10 +58,59 @@ export type GroupActivity = {
   group_id: string;
   actor_id: string | null;
   actor_name: string | null;
-  kind: 'created' | 'updated' | 'invited' | 'joined' | 'left' | 'removed' | 'role' | 'shared' | 'unshared' | 'allocated' | 'consumed';
+  kind:
+    | 'created'
+    | 'updated'
+    | 'invited'
+    | 'joined'
+    | 'left'
+    | 'removed'
+    | 'role'
+    | 'shared'
+    | 'unshared'
+    | 'allocated'
+    | 'consumed'
+    | 'event'
+    | 'note'
+    | 'wish';
   target_name: string | null;
   detail: string | null;
   created_at: string;
+};
+/** Envie commune d'un groupe, avec les personnes qui y participent. */
+export type GroupWish = {
+  id: string;
+  wine_name: string;
+  producer: string | null;
+  vintage: number | null;
+  color: Color | null;
+  note: string | null;
+  created_by: string | null;
+  author_name: string | null;
+  votes: number;
+  voters: string[];
+  voted: boolean;
+  created_at: string;
+};
+/** Dégustation partagée avec un groupe (avec le nom de son auteur). */
+export type GroupNote = {
+  id: string;
+  user_id: string;
+  author_name: string;
+  wine_name: string;
+  producer: string | null;
+  vintage: number | null;
+  non_vintage: boolean;
+  color: Color | null;
+  region: string | null;
+  appellation: string | null;
+  rating: number | null;
+  comment: string | null;
+  dish: string | null;
+  photo: string | null;
+  tasted_on: string;
+  event_id: string | null;
+  mine: boolean;
 };
 /** Bouteille de la cave d'un groupe (mêmes masques que pour les amis, sauf pour les miennes), et combien sont mises à sa disposition. */
 export type GroupLot = SharedLot & { mine: boolean; allocated: number };
@@ -238,6 +287,8 @@ export type CaveEvent = {
   theme: string | null;
   budget: number | null;
   status: EventStatus;
+  /** Soirée d'un groupe (ses membres peuvent y être invités et y suggérer les bouteilles du groupe). */
+  group_id: string | null;
   created_at: string;
   cancelled_at: string | null;
   closed_at: string | null;
@@ -255,6 +306,8 @@ export type EventWine = {
   quantity: number;
   status: EventWineStatus;
   reserved_qty: number;
+  /** Dont prises sur la mise à disposition du groupe (elles y reviennent si elles ne sont pas ouvertes). */
+  from_group: number;
   consumed_qty: number | null;
   service_position: number | null;
   note: string | null;
@@ -289,6 +342,8 @@ export type SuggestableLot = {
   available: number | null;
   in_stock: boolean;
   label_photo: string | null;
+  /** Soirée d'un groupe : bouteille visible dans le groupe, dont tant mises à sa disposition (sinon null). */
+  for_group: number | null;
 };
 
 export type Occasion = 'restaurant' | 'amis' | 'salon' | 'maison' | 'evenement' | 'autre';
@@ -329,6 +384,8 @@ export type Tasting = {
   favorite: boolean;
   photo: string | null;
   share_with_event: boolean;
+  /** Note partagée avec un de mes groupes. */
+  group_id: string | null;
   created_at: string;
   updated_at: string;
 };

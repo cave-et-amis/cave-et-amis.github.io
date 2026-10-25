@@ -1124,6 +1124,14 @@ textarea.input {
   padding: 6px 8px;
 }
 
+.segmented.wrap {
+  flex-wrap: wrap;
+}
+
+.segmented.wrap button {
+  flex: 1 1 30%;
+}
+
 .segmented button[aria-pressed='true'] {
   background: var(--surface);
   color: var(--primary);
