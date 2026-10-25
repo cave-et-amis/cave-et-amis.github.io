@@ -22,7 +22,9 @@ function walk(dir) {
   }
 }
 function check(path, name) {
-  if (/pglite|\.wasm$|\.data$/i.test(name)) problems.push(`Fichier local ou de test inclus : ${name}`);
+  // Seul .wasm admis : le moteur du studio photo (onnxruntime-web), chargé à la demande.
+  const studioEngine = /^ort-wasm-simd-threaded-[A-Za-z0-9_-]+\.wasm$/.test(name);
+  if (/pglite|\.data$/i.test(name) || (/\.wasm$/i.test(name) && !studioEngine)) problems.push(`Fichier local ou de test inclus : ${name}`);
   if (!/\.(js|html|css|json|webmanifest|txt)$/.test(name) && name !== '_headers') return;
   const text = readFileSync(path, 'utf8');
   if (/sb_secret_[A-Za-z0-9_-]{10,}/.test(text)) problems.push(`Clé secrète Supabase dans ${name}`);

@@ -58,3 +58,47 @@ export async function tile(page: Page, label: RegExp) {
 export async function shot(page: Page, name: string) {
   await page.screenshot({ path: `reports/screens/${name}.png`, fullPage: false });
 }
+
+/** Fabrique dans le navigateur une photo JPEG de bouteille entière sur un fond de cuisine (600 × 900). */
+export async function bottlePhoto(page: Page) {
+  const b64 = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 600;
+    c.height = 900;
+    const g = c.getContext('2d')!;
+    const bg = g.createLinearGradient(0, 0, 600, 900);
+    bg.addColorStop(0, '#b9a58c');
+    bg.addColorStop(1, '#6f5a45');
+    g.fillStyle = bg;
+    g.fillRect(0, 0, 600, 900);
+    g.fillStyle = '#8b7355';
+    g.fillRect(0, 720, 600, 180);
+    // Bouteille : goulot, épaules, corps.
+    g.fillStyle = '#1f2a1c';
+    g.fillRect(272, 90, 56, 170);
+    g.beginPath();
+    g.moveTo(272, 250);
+    g.quadraticCurveTo(200, 300, 200, 380);
+    g.lineTo(200, 800);
+    g.quadraticCurveTo(200, 830, 230, 830);
+    g.lineTo(370, 830);
+    g.quadraticCurveTo(400, 830, 400, 800);
+    g.lineTo(400, 380);
+    g.quadraticCurveTo(400, 300, 328, 250);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#7a1b2c';
+    g.fillRect(268, 80, 64, 40);
+    // Étiquette.
+    g.fillStyle = '#f4ead2';
+    g.fillRect(215, 480, 170, 210);
+    g.fillStyle = '#5e1426';
+    g.font = 'bold 26px serif';
+    g.fillText('Château', 250, 560);
+    g.fillText('Studio', 258, 600);
+    g.font = '20px serif';
+    g.fillText('2019', 278, 650);
+    return c.toDataURL('image/jpeg', 0.92).split(',')[1];
+  });
+  return Buffer.from(b64, 'base64');
+}

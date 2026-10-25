@@ -36,7 +36,8 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      // Le modèle du studio photo (cave-modeles, 46 Mo) est gardé d'une version à l'autre.
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION && !k.startsWith('cave-modeles')).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });

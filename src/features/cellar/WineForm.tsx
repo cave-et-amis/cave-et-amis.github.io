@@ -13,6 +13,7 @@ import { Advanced, Button, Check, Field, Notice, Origin, Sheet, useConfirm } fro
 import { go } from '../../ui/router';
 import { ColorChips, PhotoField, Stepper, Uncertain, VisibilityField } from './fields';
 import { OfficialPhoto, PhotoCredit } from './OfficialPhoto';
+import { StudioPanel } from './studio/StudioPanel';
 
 export type WinePrefill = {
   wine?: Partial<Wine>;
@@ -43,6 +44,7 @@ type Form = {
   bottle_photo: string | null;
   bottle_photo_source: BottlePhotoSource | null;
   bottle_photo_credit: string | null;
+  bottle_photo_original: string | null;
   drink_from: string;
   drink_until: string;
   serve_temp_min: string;
@@ -73,6 +75,7 @@ function initialForm(w: Partial<Wine> | undefined): Form {
     bottle_photo: w?.bottle_photo ?? null,
     bottle_photo_source: w?.bottle_photo_source ?? null,
     bottle_photo_credit: w?.bottle_photo_credit ?? null,
+    bottle_photo_original: w?.bottle_photo_original ?? null,
     drink_from: s(w?.drink_from),
     drink_until: s(w?.drink_until),
     serve_temp_min: s(w?.serve_temp_min),
@@ -191,6 +194,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
       bottle_photo: f.bottle_photo,
       bottle_photo_source: f.bottle_photo ? (f.bottle_photo_source ?? 'own') : null,
       bottle_photo_credit: f.bottle_photo ? f.bottle_photo_credit : null,
+      bottle_photo_original: f.bottle_photo && f.bottle_photo_source === 'studio' ? f.bottle_photo_original : null,
       drink_from: from,
       drink_until: until,
       window_source: from || until ? src(['drink_from', 'drink_until'], wine?.window_source) : null,
@@ -217,8 +221,9 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
       setBusy(false);
       if (res.ok) {
         saved.current = true;
-        const removed = [wine!.label_photo, wine!.bottle_photo].filter((p) => p && p !== f.label_photo && p !== f.bottle_photo) as string[];
-        void api.removePhotos(removed).catch(() => undefined);
+        const kept = new Set([f.label_photo, f.bottle_photo, f.bottle_photo_source === 'studio' ? f.bottle_photo_original : null]);
+        const removed = [wine!.label_photo, wine!.bottle_photo, wine!.bottle_photo_original, ...uploaded.current].filter((p) => p && !kept.has(p)) as string[];
+        void api.removePhotos([...new Set(removed)]).catch(() => undefined);
         onClose();
       }
       return;
@@ -234,7 +239,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
           const p = winePayload();
           const patch: Partial<Wine> = {};
           if (p.label_photo && !existing!.label_photo) patch.label_photo = p.label_photo;
-          if (p.bottle_photo && !existing!.bottle_photo) Object.assign(patch, { bottle_photo: p.bottle_photo, bottle_photo_source: p.bottle_photo_source, bottle_photo_credit: p.bottle_photo_credit });
+          if (p.bottle_photo && !existing!.bottle_photo) Object.assign(patch, { bottle_photo: p.bottle_photo, bottle_photo_source: p.bottle_photo_source, bottle_photo_credit: p.bottle_photo_credit, bottle_photo_original: p.bottle_photo_original });
           if (p.barcode && !existing!.barcode) patch.barcode = p.barcode;
           if (Object.keys(patch).length) await api.updateWine(existing!.id, patch);
         }
@@ -270,6 +275,10 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
     setBusy(false);
     if (res.ok) {
       saved.current = true;
+      // Photos ajoutées puis remplacées pendant la saisie (versions studio successives…) : supprimées.
+      const kept = new Set([f.label_photo, f.bottle_photo, f.bottle_photo_source === 'studio' ? f.bottle_photo_original : null]);
+      const unused = uploaded.current.filter((p) => !kept.has(p));
+      if (unused.length) void api.removePhotos(unused).catch(() => undefined);
       onClose();
       go(`/cave/vin/${res.value}`);
     }
@@ -462,10 +471,20 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
           <PhotoField
             label="Photo de la bouteille"
             path={f.bottle_photo}
-            onChange={(p) => set({ bottle_photo: p, bottle_photo_source: p ? 'own' : null, bottle_photo_credit: null })}
+            onChange={(p) => set({ bottle_photo: p, bottle_photo_source: p ? 'own' : null, bottle_photo_credit: null, bottle_photo_original: null })}
             onUploaded={(p) => uploaded.current.push(p)}
           />
           {f.bottle_photo && <PhotoCredit credit={f.bottle_photo_credit} />}
+          {f.bottle_photo && (f.bottle_photo_source === 'own' || f.bottle_photo_source === 'studio' || !f.bottle_photo_source) && (
+            <StudioPanel
+              // Toujours depuis l'original : changer de style ne dégrade pas la photo.
+              photo={(f.bottle_photo_source === 'studio' && f.bottle_photo_original) || f.bottle_photo}
+              onUse={(path) => {
+                uploaded.current.push(path);
+                set({ bottle_photo: path, bottle_photo_source: 'studio', bottle_photo_credit: null, bottle_photo_original: (f.bottle_photo_source === 'studio' && f.bottle_photo_original) || f.bottle_photo });
+              }}
+            />
+          )}
           <OfficialPhoto
             query={{ barcode: f.barcode, name: f.name, vintage: f.non_vintage ? null : vintageNum, appellation: f.appellation, producer: f.domaine || f.producer }}
             auto={!editing && Boolean(prefill?.wine?.barcode) && !f.bottle_photo}
@@ -550,7 +569,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
                 const res = await run(() => api.deleteWine(wine!.id), { success: 'Fiche supprimée' });
                 if (res.ok) {
                   saved.current = true;
-                  void api.removePhotos([wine!.label_photo, wine!.bottle_photo].filter(Boolean) as string[]).catch(() => undefined);
+                  void api.removePhotos([wine!.label_photo, wine!.bottle_photo, wine!.bottle_photo_original].filter(Boolean) as string[]).catch(() => undefined);
                   onClose();
                   go('/cave', { replace: true });
                 }

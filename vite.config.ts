@@ -9,7 +9,8 @@ function assetManifest(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const files = Object.keys(bundle)
-        .filter((f) => f.startsWith('assets/'))
+        // Le moteur du studio photo (.wasm, .mjs) n'est pas préchargé : il n'est téléchargé que si l'on s'en sert.
+        .filter((f) => f.startsWith('assets/') && !/\.(wasm|mjs)$/.test(f))
         .sort();
       this.emitFile({ type: 'asset', fileName: 'asset-manifest.json', source: JSON.stringify({ files }) });
     },
@@ -42,6 +43,8 @@ export default defineConfig({
   base: './',
   plugins: [react(), assetManifest(), metaCsp()],
   server: { port: 5173 },
+  // Moteur du studio photo préparé dès le démarrage (sinon Vite recharge la page à sa première utilisation).
+  optimizeDeps: { include: ['onnxruntime-web/wasm'] },
   preview: { port: 4173 },
   build: {
     target: 'es2020',

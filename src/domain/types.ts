@@ -65,6 +65,8 @@ export type Wine = {
   bottle_photo_source: BottlePhotoSource | null;
   /** Mention à afficher avec la photo (auteur, licence, lien). */
   bottle_photo_credit: string | null;
+  /** Photo d'origine, conservée quand la photo de la bouteille est une version « studio ». Privée. */
+  bottle_photo_original: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -119,5 +119,8 @@ describe('photo officielle (Open Food Facts)', () => {
     const bruno = await env.signUp('Bruno');
     expect((await bruno.sb.from('wines').insert({ name: 'A', barcode: '12ab' })).error).not.toBeNull();
     expect((await bruno.sb.from('wines').insert({ name: 'B', bottle_photo_source: 'pinterest' })).error).not.toBeNull();
+    // Photo d'origine (studio) : seulement dans le dossier de la personne.
+    expect((await bruno.sb.from('wines').insert({ name: 'C', bottle_photo_original: 'quelqu-un/photo.jpg' })).error).not.toBeNull();
+    expect((await bruno.sb.from('wines').insert({ name: 'D', bottle_photo_source: 'studio', bottle_photo_original: `${bruno.id}/origine.jpg` })).error).toBeNull();
   });
 });

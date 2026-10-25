@@ -1771,6 +1771,21 @@ details.advanced .form {
 .photo-credit {
   margin: 4px 0 0;
 }
+/* Studio photo : avant / après. */
+.studio-figure {
+  margin: 0;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.studio-result {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 260px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: var(--bg-deep);
+}
 /* Étiquette et contre-étiquette côte à côte. */
 .photo-pair {
   display: flex;
