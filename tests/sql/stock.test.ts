@@ -116,7 +116,7 @@ describe('entrées, sorties, corrections', () => {
   });
 
   it('les photos d’une fiche doivent être dans le dossier de son propriétaire', async () => {
-    await expectError(as(db, bruno, `insert into wines (name, label_photo) values ('X', $1)`, [`${claire}/photo.jpg`]), /check constraint/);
+    await expectError(as(db, bruno, `insert into wines (name, label_photo) values ('X', $1)`, [`${claire}/photo.jpg`]), /forbidden/);
     await as(db, bruno, `insert into wines (name, label_photo) values ('X', $1)`, [`${bruno}/photo.jpg`]);
   });
 });

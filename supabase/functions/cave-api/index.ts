@@ -372,6 +372,7 @@ Prix
 
 Modifications
 - Les bouteilles « mises à disposition d'un groupe » (bottles_set_aside_for_groups) ou réservées pour un événement restent à la personne mais ne sont pas libres : ne propose de sortir que des bouteilles disponibles (bottles_available, available).
+- Une cave peut être gérée à plusieurs : ses bouteilles appartiennent à son propriétaire (« cave de X, gérée à plusieurs ») ; la personne peut les boire, en ajouter ou les ranger, mais n'apporte à un événement que ses propres bouteilles.
 - Tu ne modifies jamais rien toi-même. Pour proposer une consommation, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour un événement ou une note de dégustation, utilise l'outil propose_* correspondant : la personne verra un bouton pour confirmer. Ne dis jamais qu'une action est faite.
 
 Style
@@ -630,6 +631,34 @@ function maturityOf(win, year, storage) {
 	return "ready";
 }
 //#endregion
+//#region src/domain/format.ts
+/** « de Bruno », « d’Alice » : élision devant une voyelle ou un h. */
+function deName(name) {
+	return /^[aeiouyhàâäéèêëîïôöùûü]/i.test(name) ? `d’${name}` : `de ${name}`;
+}
+new Intl.DateTimeFormat("fr-FR", {
+	day: "numeric",
+	month: "long",
+	year: "numeric",
+	timeZone: "Europe/Paris"
+});
+new Intl.DateTimeFormat("fr-FR", {
+	day: "numeric",
+	month: "short",
+	timeZone: "Europe/Paris"
+});
+new Intl.DateTimeFormat("fr-FR", {
+	weekday: "long",
+	day: "numeric",
+	month: "long",
+	timeZone: "Europe/Paris"
+});
+new Intl.DateTimeFormat("fr-FR", {
+	hour: "2-digit",
+	minute: "2-digit",
+	timeZone: "Europe/Paris"
+});
+//#endregion
 //#region server/api/data.ts
 async function all(q) {
 	const { data, error } = await q();
@@ -646,28 +675,40 @@ async function paged(page, max = 5e3) {
 	}
 	return out;
 }
-async function loadCellar(sb) {
-	const [wines, lots, cellars, locations, shares, groups] = await Promise.all([
+async function loadCellar(sb, me) {
+	const [wines, lots, cellars, locations, shares, groups, links] = await Promise.all([
 		paged((a, b) => sb.from("wines").select("*").order("name").order("id").range(a, b)),
 		paged((a, b) => sb.from("lots").select("*").order("id").range(a, b)),
 		paged((a, b) => sb.from("cellars").select("*").order("id").range(a, b)),
 		paged((a, b) => sb.from("locations").select("*").order("id").range(a, b)),
 		paged((a, b) => sb.from("group_shares").select("lot_id, group_id, allocated").gt("allocated", 0).range(a, b)),
-		paged((a, b) => sb.from("groups").select("id, name").range(a, b))
+		paged((a, b) => sb.from("groups").select("id, name").range(a, b)),
+		all(() => sb.rpc("my_cellar_links"))
 	]);
+	const allocations = shares.map((s) => ({
+		lot_id: s.lot_id,
+		group: groups.find((g) => g.id === s.group_id)?.name ?? "un groupe",
+		bottles: s.allocated
+	}));
+	const owners = Object.fromEntries(links.filter((l) => me && l.owner_id !== me).map((l) => [l.cellar_id, l.owner_name]));
 	return {
 		wines,
 		lots,
-		cellars,
+		cellars: cellars.map((c) => ({
+			...c,
+			owner_name: owners[c.id]
+		})),
 		locations,
-		allocations: shares.map((s) => ({
-			lot_id: s.lot_id,
-			group: groups.find((g) => g.id === s.group_id)?.name ?? "un groupe",
-			bottles: s.allocated
-		}))
+		allocations
 	};
 }
 var clip = (s, n) => s ? s.length > n ? `${s.slice(0, n)}…` : s : void 0;
+/** « Cave de la maison (cave de Bruno, gérée à plusieurs) » pour une cave dont la personne n'est pas propriétaire. */
+function cellarName(data, id) {
+	const c = data.cellars.find((x) => x.id === id);
+	if (!c) return void 0;
+	return c.owner_name ? `${c.name} (cave ${deName(c.owner_name)}, gérée à plusieurs)` : c.name;
+}
 function adviceTag(source) {
 	return source ? ADVICE_SOURCES[source] : void 0;
 }
@@ -741,7 +782,7 @@ function compactWine(w, data, year, detail = false) {
 			quantity: l.quantity,
 			available: l.quantity - l.reserved,
 			volume_ml: l.volume_ml,
-			cellar: data.cellars.find((c) => c.id === l.cellar_id)?.name,
+			cellar: cellarName(data, l.cellar_id),
 			location: data.locations.find((x) => x.id === l.location_id)?.name,
 			purchase_price: l.purchase_price === null ? void 0 : `${l.purchase_price} ${l.currency}`,
 			purchase_date: l.purchase_date ?? void 0,
@@ -913,7 +954,7 @@ async function eventDetails(sb, eventId, data, year, me) {
 			status: w.status === "confirmed" ? "confirmé par son propriétaire" : w.status === "proposed" ? "proposé, en attente du propriétaire" : "bu",
 			service_position: w.service_position ?? void 0
 		})),
-		my_available_bottles: event.status === "planned" ? data.wines.map((w) => compactWine(w, data, year)).filter((w) => w.bottles_available > 0).slice(0, 40).map((w) => ({
+		my_available_bottles: event.status === "planned" ? data.wines.filter((w) => w.owner_id === me).map((w) => compactWine(w, data, year)).filter((w) => w.bottles_available > 0).slice(0, 40).map((w) => ({
 			...w,
 			lots: data.lots.filter((l) => l.wine_id === w.wine_id && l.quantity - l.reserved > 0).map((l) => ({
 				lot_id: l.id,
@@ -1276,7 +1317,7 @@ var ToolBox = class {
 		this.year = o.year;
 	}
 	async data() {
-		this.cellar ??= await loadCellar(this.user);
+		this.cellar ??= await loadCellar(this.user, this.userId);
 		return this.cellar;
 	}
 	propose(action) {
@@ -1488,7 +1529,7 @@ var ToolBox = class {
 		if (!event) return JSON.stringify({ error: "Événement introuvable." });
 		if (event.status !== "planned") return JSON.stringify({ error: "Événement terminé ou annulé." });
 		const data = await this.data();
-		const own = data.lots.find((l) => l.id === i.lot_id);
+		const own = data.lots.find((l) => l.id === i.lot_id && l.owner_id === this.userId);
 		if (own) {
 			const available = own.quantity - own.reserved;
 			if (qty > available) return JSON.stringify({ error: `Seulement ${available} bouteille(s) disponible(s).` });

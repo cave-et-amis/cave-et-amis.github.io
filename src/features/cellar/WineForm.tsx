@@ -5,7 +5,7 @@
 import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
-import { currentYear, parseNumber, todayIso } from '../../domain/format';
+import { currentYear, deName, parseNumber, todayIso } from '../../domain/format';
 import { fold, LOCATION_KINDS, VOLUMES, WINE_TYPES, wineTitle } from '../../domain/wine';
 import { normalizeBarcode } from '../../domain/barcode';
 import type { AdviceSource, BottlePhotoSource, Color, Visibility, Wine, WineType } from '../../domain/types';
@@ -90,7 +90,7 @@ function initialForm(w: Partial<Wine> | undefined): Form {
 const nul = (s: string) => (s.trim() ? s.trim() : null);
 
 export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill?: WinePrefill; onClose: () => void }) {
-  const { snapshot, api, run, me, lotsOf } = useStore();
+  const { snapshot, api, run, me, lotsOf, userId, cellarLabel, cellarPeople, profileName } = useStore();
   const confirm = useConfirm();
   const editing = Boolean(wine);
   const [f, setF] = useState<Form>(() => initialForm(wine ?? prefill?.wine));
@@ -128,12 +128,20 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
   const saved = useRef(false);
 
   const vintageNum = parseNumber(f.vintage);
+  // Cave gérée à plusieurs : les bouteilles (et la fiche) appartiennent au propriétaire de la cave choisie.
+  const cellarOwner = snapshot.cellars.find((c) => c.id === cellarId)?.owner_id ?? userId;
+  const forOther = cellarOwner !== userId;
+  const sharedCellar = forOther || cellarPeople(cellarId).some((p) => p.status === 'active');
   const existing = useMemo(() => {
     if (editing || !f.name.trim()) return undefined;
     return snapshot.wines.find(
-      (w) => fold(w.name) === fold(f.name) && (w.vintage ?? null) === (f.non_vintage ? null : vintageNum) && Boolean(w.non_vintage) === f.non_vintage,
+      (w) =>
+        w.owner_id === cellarOwner &&
+        fold(w.name) === fold(f.name) &&
+        (w.vintage ?? null) === (f.non_vintage ? null : vintageNum) &&
+        Boolean(w.non_vintage) === f.non_vintage,
     );
-  }, [editing, f.name, f.non_vintage, vintageNum, snapshot.wines]);
+  }, [editing, f.name, f.non_vintage, vintageNum, snapshot.wines, cellarOwner]);
   const reuse = existing && !forceNew;
   const locations = snapshot.locations.filter((l) => l.cellar_id === cellarId);
 
@@ -233,7 +241,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
         let target = existing?.id;
         if (!reuse) {
           target = wineId.current;
-          await api.saveNewWine({ id: target, ...winePayload() } as Wine);
+          await api.saveNewWine({ id: target, ...winePayload(), owner_id: cellarOwner } as Wine);
         } else {
           // Fiche existante : on complète seulement ce qui lui manque (photos, code-barres).
           const p = winePayload();
@@ -270,7 +278,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
         );
         return target!;
       },
-      { success: reuse ? 'Bouteilles ajoutées à la fiche existante' : 'Vin ajouté à votre cave' },
+      { success: reuse ? 'Bouteilles ajoutées à la fiche existante' : forOther ? `Vin ajouté à la cave ${deName(profileName(cellarOwner))}` : 'Vin ajouté à votre cave' },
     );
     setBusy(false);
     if (res.ok) {
@@ -340,7 +348,8 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
 
         {existing && !editing && (
           <Notice tone="info">
-            « {wineTitle(existing)} » est déjà dans votre cave ({lotsOf(existing.id).reduce((s, l) => s + l.quantity, 0)} bouteille(s)).{' '}
+            « {wineTitle(existing)} » est déjà {forOther ? `dans la cave ${deName(profileName(cellarOwner))}` : 'dans votre cave'} (
+            {lotsOf(existing.id).reduce((s, l) => s + l.quantity, 0)} bouteille(s)).{' '}
             {reuse ? 'Ces bouteilles seront ajoutées comme un nouveau lot de cette fiche.' : 'Une nouvelle fiche distincte sera créée.'}
             <Check checked={forceNew} onChange={setForceNew} label="Créer une fiche séparée" />
           </Notice>
@@ -362,7 +371,11 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
                 </select>
               </Field>
             </div>
-            <Field label="Prix d’achat par bouteille (facultatif)" htmlFor="w-price" hint="Visible par vous seul, sauf si vous décidez de le montrer.">
+            <Field
+              label="Prix d’achat par bouteille (facultatif)"
+              htmlFor="w-price"
+              hint={sharedCellar ? 'Visible par les personnes qui gèrent cette cave.' : 'Visible par vous seul, sauf si vous décidez de le montrer.'}
+            >
               <input id="w-price" className="input" inputMode="decimal" placeholder="Ex. 18,50" value={price} onChange={(e) => setPrice(e.target.value)} />
             </Field>
             <Field label="Rangement">
@@ -371,7 +384,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
                   <select className="input" aria-label="Cave" value={cellarId} onChange={(e) => (setCellarId(e.target.value), setLocationId(''))}>
                     {snapshot.cellars.map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name}
+                        {cellarLabel(c)}
                       </option>
                     ))}
                   </select>
@@ -394,9 +407,15 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
                 <input className="input" placeholder={`Ex. ${LOCATION_KINDS[0].label} B, étagère du bas…`} aria-label="Nom du nouvel emplacement" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} />
               )}
             </Field>
-            <Field label="Qui peut voir ces bouteilles ?">
-              <VisibilityField value={visibility} onChange={setVisibility} />
-            </Field>
+            {forOther ? (
+              <p className="small muted">
+                Ces bouteilles rejoignent la cave {deName(profileName(cellarOwner))} : le partage avec ses amis reste son choix.
+              </p>
+            ) : (
+              <Field label="Qui peut voir ces bouteilles ?">
+                <VisibilityField value={visibility} onChange={setVisibility} />
+              </Field>
+            )}
           </>
         )}
 
@@ -554,7 +573,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
           <Field label="Notes personnelles" htmlFor="w-notes">
             <textarea id="w-notes" className="input" value={f.notes} onChange={(e) => set({ notes: e.target.value })} maxLength={2000} />
           </Field>
-          {editing && (
+          {editing && wine!.owner_id === userId && (
             <Button
               variant="danger-ghost"
               onClick={async () => {

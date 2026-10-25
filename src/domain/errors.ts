@@ -25,6 +25,8 @@ const DB_MESSAGES: Record<string, string> = {
   invite_self: 'C’est votre propre invitation : envoyez-la à un ami.',
   not_friend: 'Seuls vos amis peuvent être invités.',
   group_full: 'Un groupe compte 50 personnes au plus.',
+  cellar_members_full: '10 personnes au plus peuvent être associées à une cave.',
+  owner_only: 'Cette action est réservée à la personne propriétaire de la cave (partage, groupes, événements).',
   too_many_groups: 'Vous avez déjà créé 50 groupes.',
   last_admin: 'Vous êtes le seul administrateur : nommez d’abord un autre administrateur parmi les membres.',
   not_participant: 'Vous ne participez pas à cet événement.',

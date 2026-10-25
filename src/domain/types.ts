@@ -25,7 +25,7 @@ export type FriendRequest = { id: string; direction: 'in' | 'out'; other_id: str
 export type Block = { blocked_id: string; display_name: string; created_at: string };
 export type AppNotification = {
   id: string;
-  kind: 'friend_request' | 'friend_accepted' | 'event_invite' | 'group_invite' | 'group_joined';
+  kind: 'friend_request' | 'friend_accepted' | 'event_invite' | 'group_invite' | 'group_joined' | 'cellar_invite' | 'cellar_joined';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;
@@ -65,6 +65,22 @@ export type GroupActivity = {
 };
 /** Bouteille de la cave d'un groupe (mêmes masques que pour les amis, sauf pour les miennes), et combien sont mises à sa disposition. */
 export type GroupLot = SharedLot & { mine: boolean; allocated: number };
+
+/**
+ * Cave gérée à plusieurs : une personne associée (ou invitée) à une cave. Le propriétaire reste unique ; la personne
+ * associée gère les bouteilles de cette cave avec son propre compte.
+ */
+export type CellarLink = {
+  cellar_id: string;
+  cellar_name: string;
+  owner_id: string;
+  owner_name: string;
+  user_id: string;
+  user_name: string;
+  status: 'invited' | 'active';
+  invited_at: string;
+  joined_at: string | null;
+};
 
 /** Résultat de la recherche d'amis, avec la relation actuelle. */
 export type UserResult = { id: string; display_name: string; relation: 'friend' | 'requested' | 'incoming' | 'none' };
@@ -156,6 +172,8 @@ export type Movement = {
   event_wine_id: string | null;
   /** Bouteille mise à disposition d'un groupe puis ouverte. */
   group_id: string | null;
+  /** Personne qui a fait le mouvement (le propriétaire ou une personne associée à la cave). */
+  done_by: string | null;
   reverses_id: string | null;
   created_at: string;
 };

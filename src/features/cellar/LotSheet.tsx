@@ -1,4 +1,7 @@
-/** Nouveau lot d'un vin existant, ou modification d'un lot (rangement, prix, partage et masques). */
+/**
+ * Nouveau lot d'un vin existant, ou modification d'un lot (rangement, prix, partage et masques). Dans une cave gérée à
+ * plusieurs, la personne associée range et complète l'achat ; le partage et les masques restent au propriétaire.
+ */
 import { useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
@@ -9,12 +12,15 @@ import { Advanced, Button, Check, Field, Sheet, useConfirm } from '../../ui/kit'
 import { Stepper, VisibilityField } from './fields';
 
 export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClose: () => void }) {
-  const { snapshot, api, run, me } = useStore();
+  const { snapshot, api, run, me, userId, cellarLabel, profileName } = useStore();
   const confirm = useConfirm();
   const editing = Boolean(lot);
+  const isOwner = wine.owner_id === userId;
+  // Un lot reste dans une cave du propriétaire du vin.
+  const cellars = snapshot.cellars.filter((c) => c.owner_id === wine.owner_id);
   const [quantity, setQuantity] = useState(1);
   const [volume, setVolume] = useState(lot?.volume_ml ?? 750);
-  const [cellarId, setCellarId] = useState(lot?.cellar_id ?? snapshot.cellars[0]?.id ?? '');
+  const [cellarId, setCellarId] = useState(lot?.cellar_id ?? cellars[0]?.id ?? '');
   const [locationId, setLocationId] = useState(lot?.location_id ?? '');
   const [newLocation, setNewLocation] = useState('');
   const [price, setPrice] = useState(lot?.purchase_price !== null && lot?.purchase_price !== undefined ? String(lot.purchase_price).replace('.', ',') : '');
@@ -47,11 +53,8 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
           purchase_price: parseNumber(price),
           purchase_date: date || null,
           purchase_place: place.trim() || null,
-          visibility,
-          hide_price: hidePrice,
-          hide_quantity: hideQuantity,
-          hide_notes: hideNotes,
           notes: notes.trim() || null,
+          ...(isOwner ? { visibility, hide_price: hidePrice, hide_quantity: hideQuantity, hide_notes: hideNotes } : {}),
         };
         if (editing) await api.updateLot(lot!.id, common);
         else await api.createLot({ ...common, wine_id: wine.id, quantity, origin, currency: me.currency }, requestId.current);
@@ -110,9 +113,9 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
         <Field label="Rangement">
           <div className="grid-2-always">
             <select className="input" aria-label="Cave" value={cellarId} onChange={(e) => (setCellarId(e.target.value), setLocationId(''))}>
-              {snapshot.cellars.map((c) => (
+              {cellars.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {cellarLabel(c)}
                 </option>
               ))}
             </select>
@@ -128,10 +131,14 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
           </div>
           {locationId === '__new' && <input className="input" aria-label="Nom du nouvel emplacement" value={newLocation} onChange={(e) => setNewLocation(e.target.value)} placeholder="Casier B…" />}
         </Field>
-        <Field label="Qui peut voir ce lot ?">
-          <VisibilityField value={visibility} onChange={setVisibility} />
-        </Field>
-        {visibility !== 'private' && (
+        {isOwner ? (
+          <Field label="Qui peut voir ce lot ?">
+            <VisibilityField value={visibility} onChange={setVisibility} />
+          </Field>
+        ) : (
+          <p className="small muted">Le partage de ce lot avec les amis reste choisi par {profileName(wine.owner_id)}.</p>
+        )}
+        {isOwner && visibility !== 'private' && (
           <div className="card soft">
             <p className="strong small">Ce que vos amis ne verront pas :</p>
             <Check checked={hidePrice} onChange={setHidePrice} label="Masquer mon prix d’achat" />
@@ -153,7 +160,7 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
             <input id="l-notes" className="input" value={notes} onChange={(e) => setNotes(e.target.value)} />
           </Field>
         </Advanced>
-        {editing && lot!.quantity === 0 && (
+        {editing && isOwner && lot!.quantity === 0 && (
           <Button
             variant="danger-ghost"
             onClick={async () => {

@@ -13,9 +13,10 @@ import { go } from '../../ui/router';
 import { Stepper } from '../cellar/fields';
 
 export function AllocateSheet({ lotIds, initialLot, groupId, onClose }: { lotIds?: string[]; initialLot?: string; groupId?: string; onClose: () => void }) {
-  const { snapshot, api, run, wine, location } = useStore();
+  const { snapshot, api, run, wine, location, userId } = useStore();
   const groups = snapshot.groups.filter((g) => g.my_status === 'active' && (!groupId || g.id === groupId));
-  const lots = snapshot.lots.filter((l) => l.quantity > 0 && (!lotIds || lotIds.includes(l.id)));
+  // Mes propres bouteilles seulement (celles d'une cave gérée avec quelqu'un d'autre restent à la personne propriétaire).
+  const lots = snapshot.lots.filter((l) => l.owner_id === userId && l.quantity > 0 && (!lotIds || lotIds.includes(l.id)));
   const allocated = (lot: string, group: string) => snapshot.groupShares.find((s) => s.lot_id === lot && s.group_id === group)?.allocated ?? 0;
   const [lotId, setLotId] = useState(initialLot && lots.some((l) => l.id === initialLot) ? initialLot : (lots[0]?.id ?? ''));
   const [gid, setGid] = useState(groupId ?? groups[0]?.id ?? '');

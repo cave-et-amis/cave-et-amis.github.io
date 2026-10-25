@@ -147,7 +147,7 @@ export class ToolBox {
   }
 
   private async data() {
-    this.cellar ??= await loadCellar(this.user);
+    this.cellar ??= await loadCellar(this.user, this.userId);
     return this.cellar;
   }
 
@@ -313,7 +313,8 @@ export class ToolBox {
     if (!event) return JSON.stringify({ error: 'Événement introuvable.' });
     if (event.status !== 'planned') return JSON.stringify({ error: 'Événement terminé ou annulé.' });
     const data = await this.data();
-    const own = data.lots.find((l) => l.id === i.lot_id);
+    // Seulement les bouteilles de la personne : celles d'une cave gérée avec quelqu'un d'autre restent à la personne propriétaire.
+    const own = data.lots.find((l) => l.id === i.lot_id && l.owner_id === this.userId);
     if (own) {
       const available = own.quantity - own.reserved;
       if (qty > available) return JSON.stringify({ error: `Seulement ${available} bouteille(s) disponible(s).` });

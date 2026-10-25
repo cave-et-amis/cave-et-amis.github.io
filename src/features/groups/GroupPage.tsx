@@ -448,11 +448,11 @@ function InviteSheet({ group, members, onClose }: { group: MyGroup; members: Gro
 
 /** Mes lots en stock, à rendre visibles (ou non) dans ce groupe. */
 function ShareSheet({ group, onClose }: { group: MyGroup; onClose: () => void }) {
-  const { snapshot, api, run, wine } = useStore();
+  const { snapshot, api, run, wine, userId } = useStore();
   const confirm = useConfirm();
   // Cochée ou décochée aussitôt ; revient en arrière seulement si l'enregistrement échoue.
   const [shared, setShared] = useState(() => new Set(snapshot.groupShares.filter((s) => s.group_id === group.id).map((s) => s.lot_id)));
-  const lots = snapshot.lots.filter((l) => l.quantity > 0);
+  const lots = snapshot.lots.filter((l) => l.owner_id === userId && l.quantity > 0);
   const [busy, setBusy] = useState<string | null>(null);
   const toggle = (lot: string, on: boolean) => setShared((s) => (on ? new Set(s).add(lot) : new Set([...s].filter((x) => x !== lot))));
   return (

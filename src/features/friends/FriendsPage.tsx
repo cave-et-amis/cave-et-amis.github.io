@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon, Copy, Search, Share2, UserPlus, Users, X } from 'lucide-react';
 import type { SharedLot, UserResult } from '../../domain/types';
 import { useStore } from '../../data/store';
-import { dateLong } from '../../domain/format';
+import { dateLong, deName } from '../../domain/format';
 import { toMessage } from '../../domain/errors';
 import { fold, vintageLabel } from '../../domain/wine';
 import { Avatar, Button, copyText, EmptyState, InlineLoading, Notice, Segmented, Sheet, useConfirm, useToast } from '../../ui/kit';
@@ -15,14 +15,15 @@ import { GroupsTab } from '../groups/GroupsTab';
 type Tab = 'amis' | 'invitations' | 'groupes';
 
 export function FriendsPage() {
-  const { snapshot } = useStore();
+  const { snapshot, userId } = useStore();
   const route = useRoute();
   const requested = routeQuery(route).get('onglet');
   const [tab, setTab] = useState<Tab>(requested === 'invitations' || requested === 'groupes' ? requested : 'amis');
   useEffect(() => {
     if (requested === 'invitations' || requested === 'groupes' || requested === 'amis') setTab(requested);
   }, [requested]);
-  const incoming = snapshot.requests.filter((r) => r.direction === 'in').length;
+  const incoming =
+    snapshot.requests.filter((r) => r.direction === 'in').length + snapshot.cellarLinks.filter((l) => l.user_id === userId && l.status === 'invited').length;
   const groupInvites = snapshot.groups.filter((g) => g.my_status === 'invited').length;
 
   return (
@@ -211,6 +212,8 @@ function InvitationsTab() {
   const [invite, setInvite] = useState<{ code: string; expires_at: string } | null>(null);
   const received = snapshot.requests.filter((r) => r.direction === 'in');
   const sent = snapshot.requests.filter((r) => r.direction === 'out');
+  // Caves dont la personne propriétaire me propose la gestion à plusieurs.
+  const cellarInvites = snapshot.cellarLinks.filter((l) => l.user_id === userId && l.status === 'invited');
   const pendingLinks = snapshot.invites.filter((i) => i.inviter_id === userId && i.status === 'pending' && new Date(i.expires_at) > new Date());
 
   async function createInvite() {
@@ -220,6 +223,49 @@ function InvitationsTab() {
 
   return (
     <>
+      {cellarInvites.length > 0 && (
+        <section aria-labelledby="h-cellar-invites">
+          <div className="section-title">
+            <h2 id="h-cellar-invites">Caves à gérer à plusieurs</h2>
+            <span className="small muted">{cellarInvites.length}</span>
+          </div>
+          <div className="list">
+            {cellarInvites.map((c) => (
+              <div key={c.cellar_id} className="row static" style={{ alignItems: 'flex-start' }}>
+                <Avatar name={c.owner_name} seed={c.owner_id} />
+                <span className="row-main">
+                  <span className="row-title" style={{ whiteSpace: 'normal' }}>
+                    « {c.cellar_name} », la cave {deName(c.owner_name)}
+                  </span>
+                  <span className="row-sub" style={{ whiteSpace: 'normal' }}>
+                    {c.owner_name} vous propose de la gérer à plusieurs : vous la verrez comme la vôtre (ajouter, boire, corriger, ranger), avec votre compte.
+                  </span>
+                  <span className="inline" style={{ marginTop: 8 }}>
+                    <Button
+                      size="sm"
+                      icon={<CheckIcon />}
+                      aria-label={`Accepter de gérer « ${c.cellar_name} » ${deName(c.owner_name)}`}
+                      onClick={() => void run(() => api.respondCellarInvite(c.cellar_id, true), { success: `Vous gérez maintenant « ${c.cellar_name} » avec ${c.owner_name}` })}
+                    >
+                      Accepter
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      icon={<X />}
+                      aria-label={`Refuser de gérer « ${c.cellar_name} » ${deName(c.owner_name)}`}
+                      onClick={() => void run(() => api.respondCellarInvite(c.cellar_id, false), { success: 'Invitation refusée' })}
+                    >
+                      Refuser
+                    </Button>
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section aria-labelledby="h-received">
         <div className="section-title">
           <h2 id="h-received">Demandes reçues</h2>

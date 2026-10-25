@@ -9,6 +9,11 @@ export function moneyRange(low: number, high: number, currency = 'EUR') {
   return Math.round(low * 100) === Math.round(high * 100) ? money(low, currency) : `${money(low, currency)} – ${money(high, currency)}`;
 }
 
+/** « de Bruno », « d’Alice » : élision devant une voyelle ou un h. */
+export function deName(name: string) {
+  return /^[aeiouyhàâäéèêëîïôöùûü]/i.test(name) ? `d’${name}` : `de ${name}`;
+}
+
 export function bottles(n: number) {
   return `${n} bouteille${Math.abs(n) > 1 ? 's' : ''}`;
 }

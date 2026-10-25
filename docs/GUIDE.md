@@ -50,6 +50,19 @@ Personne d'autre que vous n'ouvre vos bouteilles : « J'en ai ouvert une » (pag
 seule fois, et l'activité du groupe le garde. Vous pouvez reprendre vos bouteilles à tout moment ; quitter le groupe (ou en
 être retiré) vous les rend automatiquement.
 
+## Gérer une cave à plusieurs
+
+Un couple, une famille : **Réglages › Mes caves › « Associer une personne »**, puis choisissez la personne parmi vos amis :
+elle garde son propre compte. Une fois l'invitation acceptée (Amis & Groupes › Invitations), la cave apparaît chez elle,
+marquée « cave de … ».
+
+- La personne associée voit cette cave comme la sienne : elle ajoute, boit, corrige et range les bouteilles, et chaque
+  mouvement est noté à son nom dans l'historique (« par Claire »). Il n'y a qu'un seul stock, celui de la cave.
+- Restent au propriétaire : supprimer la cave, un vin ou un lot ; le partage avec ses amis, ses groupes et ses événements ;
+  associer ou retirer quelqu'un. Les autres caves de chacun restent séparées.
+- La personne associée peut partir quand elle veut (Mes caves › « Quitter cette cave ») et le propriétaire peut la retirer :
+  rien ne bouge, les bouteilles sont celles de la cave. Bloquer quelqu'un met aussi fin à l'association.
+
 ## Organiser un événement
 
 1. **Événements › Organiser** : type, titre, date, lieu, invités (parmi vos amis), puis menu, thème, budget.
