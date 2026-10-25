@@ -221,7 +221,14 @@ L'adéquation à vos goûts (forte, moyenne, faible) compte dans la note sur 10,
 Tout est calculé sur votre appareil, à partir de vos seules données : rien n'est envoyé à l'IA. Votre budget reste privé
 (enregistré avec l'analyse, jamais dans votre profil).
 
-*À venir* : le comparateur de plusieurs bouteilles d'un même magasin, avec une question à Lia sur la sélection.
+**Comparer plusieurs bouteilles** : sur une bouteille vérifiée, « Comparer avec une autre bouteille » ouvre une
+comparaison (le magasin, votre budget par bouteille et l'occasion sont facultatifs), puis le scanner pour la bouteille
+suivante. La comparaison montre pour chaque vin la photo, le millésime, le prix du rayon, la qualité estimée, le rapport
+qualité-prix (écart avec le marché), l'adéquation à vos goûts et la recommandation. Seules les bouteilles assez
+documentées sont **classées** (meilleure note d'abord) ; les autres sont listées à part avec ce qui leur manque.
+« Demander à Lia laquelle choisir » prépare une question (par exemple « Parmi ces 4 bouteilles, laquelle me conseilles-tu
+pour un dîner avec des amis, avec un budget maximal de 25 € ? ») que vous envoyez ou modifiez : Lia relit la comparaison
+avec vos droits et ne recommande que les bouteilles assez documentées. Les comparaisons sont dans « Mes analyses ».
 
 ## L'assistant
 

@@ -39,6 +39,7 @@ import type {
   Preferences,
   PriceCheck,
   Scan,
+  ScanVisit,
   Profile,
   SharedLot,
   SuggestableLot,
@@ -99,7 +100,7 @@ export type AiStatus = {
 
 export type AiReply = { ok: true; [k: string]: unknown } | { ok: false; code: string; message: string };
 
-export type Conversation = { id: string; title: string; context_kind: 'wine' | 'event' | 'group' | null; context_id: string | null; created_at: string; updated_at: string };
+export type Conversation = { id: string; title: string; context_kind: 'wine' | 'event' | 'group' | 'scan' | null; context_id: string | null; created_at: string; updated_at: string };
 export type AiMessage = { id: string; conversation_id: string; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; created_at: string };
 
 type Result<T> = { data: T | null; error: unknown };
@@ -655,10 +656,10 @@ export class Api {
     return must(await this.sb.from('scans').select('*').eq('id', id).maybeSingle()) as Scan | null;
   }
   /** Analyse saisie à la main (assistant indisponible) : sans lecture de Lia. */
-  async createManualScan(row: Pick<Scan, 'photos' | 'wine'> & { barcode?: string | null }) {
+  async createManualScan(row: Pick<Scan, 'photos' | 'wine'> & { barcode?: string | null; visit_id?: string | null }) {
     return must(await this.sb.from('scans').insert(row).select('*').single()) as Scan;
   }
-  async updateScan(id: string, patch: Partial<Pick<Scan, 'status' | 'barcode' | 'wine' | 'store_price' | 'currency' | 'store_name' | 'price_confirmed' | 'budget'>>) {
+  async updateScan(id: string, patch: Partial<Pick<Scan, 'status' | 'barcode' | 'wine' | 'store_price' | 'currency' | 'store_name' | 'price_confirmed' | 'budget' | 'visit_id'>>) {
     return must(await this.sb.from('scans').update(patch).eq('id', id).select('*').single()) as Scan;
   }
   /** Supprime des analyses et leurs photos. */
@@ -666,6 +667,25 @@ export class Api {
     if (!list.length) return;
     await this.removePhotos(list.flatMap((s) => s.photos.map((p) => p.path))).catch(() => undefined);
     must(await this.sb.from('scans').delete().in('id', list.map((s) => s.id)));
+  }
+  async visits() {
+    return must(await this.sb.from('scan_visits').select('*').order('created_at', { ascending: false }).limit(50)) as ScanVisit[];
+  }
+  async visit(id: string) {
+    return must(await this.sb.from('scan_visits').select('*').eq('id', id).maybeSingle()) as ScanVisit | null;
+  }
+  async visitScans(id: string) {
+    return must(await this.sb.from('scans').select('*').eq('visit_id', id).order('created_at').limit(50)) as Scan[];
+  }
+  async createVisit(row: Partial<Pick<ScanVisit, 'store_name' | 'budget' | 'occasion'>>) {
+    return must(await this.sb.from('scan_visits').insert(row).select('*').single()) as ScanVisit;
+  }
+  async updateVisit(id: string, patch: Partial<Pick<ScanVisit, 'store_name' | 'budget' | 'occasion'>>) {
+    return must(await this.sb.from('scan_visits').update(patch).eq('id', id).select('*').single()) as ScanVisit;
+  }
+  /** Supprime la visite seulement (ses analyses restent dans l'historique). */
+  async deleteVisit(id: string) {
+    must(await this.sb.from('scan_visits').delete().eq('id', id));
   }
   async scanStatus() {
     return must(await this.sb.rpc('my_scan_status')) as { used: number; limit: number; retention_days: number };

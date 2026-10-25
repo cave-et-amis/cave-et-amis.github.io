@@ -59,6 +59,7 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
   const contextWine = query.get('vin');
   const contextEvent = query.get('evenement');
   const contextGroup = query.get('groupe');
+  const contextVisit = query.get('visite');
   // Ouverte depuis l'aide d'une page (« Demander à Lia ») : Lia sait d'où vient la question.
   const aide = query.get('aide');
   const contextPage = aide && Object.hasOwn(HELP_PAGES, aide) ? (aide as HelpPage) : null;
@@ -86,8 +87,10 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
       const g = snapshot.groups.find((x) => x.id === contextGroup && x.my_status === 'active');
       return g ? { kind: 'group' as const, id: g.id, label: `Groupe : ${g.name}` } : null;
     }
+    // Comparaison en magasin : le serveur relit la visite avec vos droits.
+    if (contextVisit && /^[0-9a-f-]{36}$/i.test(contextVisit)) return { kind: 'scan' as const, id: contextVisit, label: 'Comparaison en magasin' };
     return null;
-  }, [contextPage, contextWine, contextEvent, contextGroup, snapshot.wines, snapshot.events, snapshot.groups]);
+  }, [contextPage, contextWine, contextEvent, contextGroup, contextVisit, snapshot.wines, snapshot.events, snapshot.groups]);
   // Rubrique « Aide avec Cave & Amis » : les fiches de la page d'origine, sinon les questions les plus courantes.
   const helpTopics = (contextPage ? topicsForPage(contextPage, perms).slice(0, 6) : HELP_QUESTIONS.map(helpTopic)).filter((t): t is HelpTopic => Boolean(t));
 
@@ -189,7 +192,9 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
                       'Propose une sélection de vins pour notre prochaine soirée, d’après nos goûts et les bouteilles du groupe.',
                       'Quels vins de nos envies communes iraient avec une raclette ?',
                     ]
-                  : context?.kind === 'page'
+                  : context?.kind === 'scan'
+                    ? ['Laquelle de ces bouteilles est la meilleure affaire ?', 'Laquelle ira le mieux avec un plat de viande rouge ?']
+                    : context?.kind === 'page'
                     ? helpTopics
                         .filter((t) => availability(t, perms).available)
                         .slice(0, 3)

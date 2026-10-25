@@ -5,7 +5,7 @@ import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
 import { dateShort, money } from '../../domain/format';
 import { toMessage } from '../../domain/errors';
-import type { Scan } from '../../domain/types';
+import type { Scan, ScanVisit } from '../../domain/types';
 import { wineTitle } from '../../domain/wine';
 import { Button, EmptyState, InlineLoading, Notice, Pill, Thumb, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
@@ -14,6 +14,7 @@ export function ScanHistory() {
   const { api, run } = useStore();
   const confirm = useConfirm();
   const [list, setList] = useState<Scan[] | null>(null);
+  const [visits, setVisits] = useState<ScanVisit[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -24,6 +25,7 @@ export function ScanHistory() {
       const expired = all.filter((s) => Date.parse(s.expires_at) <= now);
       if (expired.length) void api.deleteScans(expired).catch(() => undefined);
       setList(all.filter((s) => Date.parse(s.expires_at) > now));
+      setVisits(await api.visits().catch(() => []));
     } catch (e) {
       setError(toMessage(e));
     }
@@ -53,8 +55,28 @@ export function ScanHistory() {
         En magasin, photographiez une bouteille : Lia l’identifie et relève le prix du rayon.
       </EmptyState>
     );
+  const kept = visits.map((v) => ({ v, n: list.filter((s) => s.visit_id === v.id).length })).filter((x) => x.n > 0);
   return (
     <div className="stack">
+      {kept.length > 0 && (
+        <section aria-labelledby="h-visits" className="stack-sm">
+          <h3 id="h-visits" className="section-title">
+            Comparaisons
+          </h3>
+          <div className="list">
+            {kept.map(({ v, n }) => (
+              <a key={v.id} className="row" href={`#/scanner/visite/${v.id}`}>
+                <span className="row-main">
+                  <span className="row-title">
+                    {n} bouteilles{v.store_name ? ` · ${v.store_name}` : ''}
+                  </span>
+                  <span className="row-sub">{dateShort(v.created_at)}</span>
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="list">
         {list.map((s) => (
           <HistoryRow key={s.id} scan={s} onRemove={() => void removeOne(s)} />

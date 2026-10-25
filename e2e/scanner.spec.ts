@@ -115,6 +115,34 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await form.getByRole('button', { name: 'Ajouter à ma cave' }).click();
   await toast(page, 'Vin ajouté');
 
+  // Lot 3d : comparer avec une autre bouteille du même magasin, puis demander à Lia.
+  await goto(page, '/scanner/historique');
+  await page.getByRole('link', { name: /Château Labeille 2016/ }).first().click();
+  await page.getByRole('button', { name: 'Comparer avec une autre bouteille' }).click();
+  await expect(page.getByText(/Bouteille ajoutée à votre comparaison \(1 déjà analysée\)/)).toBeVisible();
+  await page.getByRole('button', { name: 'Photographier' }).first().click();
+  await camera.setInputFiles({ name: 'face-2.jpg', mimeType: 'image/jpeg', buffer: await priceTagPhoto(page) });
+  await page.getByRole('button', { name: 'Analyser' }).click();
+  await page.getByRole('button', { name: /Grand vin/ }).click();
+  await page.getByRole('button', { name: 'Confirmer le vin et le prix' }).click();
+  await expect(page.getByRole('heading', { name: 'Excellente affaire' })).toBeVisible();
+  await page.getByRole('button', { name: 'Voir la comparaison' }).click();
+  await expect(page.getByRole('heading', { name: /2 bouteilles · Caviste du coin/ })).toBeVisible();
+  const ranked = page.locator('ol.cmp-list > li');
+  await expect(ranked).toHaveCount(2);
+  // Mieux noté d'abord : 23,50 € (−13 %) devant 24,90 € (−8 %).
+  await expect(ranked.first()).toContainText('23,50 €');
+  await expect(ranked.first()).toContainText('Excellente affaire');
+  await page.getByLabel('Budget par bouteille (€)').fill('25');
+  await page.getByLabel('Occasion (facultatif)').fill('un dîner avec des amis');
+  await page.getByLabel('Occasion (facultatif)').blur();
+  await shot(page, '24-scanner-comparaison');
+  await page.getByRole('button', { name: 'Demander à Lia laquelle choisir' }).click();
+  await expect(page.getByText('Comparaison en magasin')).toBeVisible();
+  await expect(page.getByPlaceholder(/Posez votre question/)).toHaveValue(/^Parmi ces 2 bouteilles, laquelle me conseilles-tu pour un dîner avec des amis, avec un budget maximal de 25\s€ \?$/);
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.locator('.bubble.assistant').last()).toContainText('je vous propose');
+
   // Suppression de tout l'historique.
   await goto(page, '/scanner/historique');
   await page.getByRole('button', { name: 'Supprimer tout l’historique' }).click();

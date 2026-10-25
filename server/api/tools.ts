@@ -13,6 +13,8 @@ import { availability, HELP_PAGES, helpTopic, searchHelp, topicsForPage, type He
 import type { Meter } from './claude.ts';
 import { compactWine, eventDetails, friendsWines, groupDetails, listTastings, loadCellar, myGroupAllocations, searchWines, wineDetails, type CellarData } from './data.ts';
 import { lookupPrice, type PriceResult } from './price.ts';
+import { computeVerdict, wineKey } from '../../src/domain/scan.ts';
+import type { Scan } from '../../src/domain/types.ts';
 import { AiFailure, isUuid, sanitize } from './util.ts';
 
 export type PendingAction =
@@ -37,7 +39,7 @@ export type PendingAction =
   | { id: string; type: 'open'; label: string; path: string };
 
 export type ChatSource = { title: string; url: string; note?: string };
-export type ChatContext = { kind: 'wine' | 'event' | 'group'; id: string } | { kind: 'page'; id: HelpPage };
+export type ChatContext = { kind: 'wine' | 'event' | 'group' | 'scan'; id: string } | { kind: 'page'; id: HelpPage };
 
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
@@ -433,6 +435,7 @@ export class ToolBox {
       const group = g as { id: string; name: string };
       return `La personne a ouvert l’assistant depuis le groupe « ${sanitize(group.name, 60)} » (group_id ${group.id}). Utilise get_group pour ses bouteilles, les goûts des membres et les envies communes.`;
     }
+    if (context.kind === 'scan') return this.visitNote(context.id);
     if (context.kind === 'wine') {
       const data = await this.data();
       const w = data.wines.find((x) => x.id === context.id);
@@ -443,5 +446,52 @@ export class ToolBox {
     if (!ev) return null;
     const e = ev as { id: string; title: string; starts_at: string };
     return `La personne a ouvert l’assistant depuis l’événement « ${sanitize(e.title, 100)} » du ${e.starts_at.slice(0, 10)} (event_id ${e.id}). Utilise get_event pour les détails.`;
+  }
+
+  /**
+   * Comparaison en magasin (lot 3d) : les bouteilles analysées pendant la visite, lues avec les droits de la personne,
+   * avec le verdict calculé par l'application (méthode fixe). Les textes viennent d'étiquettes et de pages web : données.
+   */
+  private async visitNote(visitId: string): Promise<string | null> {
+    const { data: v } = await this.user.from('scan_visits').select('id, store_name, budget, occasion').eq('id', visitId).maybeSingle();
+    if (!v) return null;
+    const visit = v as { id: string; store_name: string | null; budget: number | null; occasion: string | null };
+    const { data: rows } = await this.user
+      .from('scans')
+      .select('id, status, wine, store_price, price_confirmed, currency, store_name, budget, assessment, market')
+      .eq('visit_id', visit.id)
+      .order('created_at')
+      .limit(12);
+    const bottles = ((rows ?? []) as Pick<Scan, 'id' | 'status' | 'wine' | 'store_price' | 'price_confirmed' | 'currency' | 'store_name' | 'budget' | 'assessment' | 'market'>[]).map((r, i) => {
+      const key = wineKey(r.wine);
+      const assessment = r.assessment?.key === key ? r.assessment : null;
+      const market = r.market?.key === key ? r.market : null;
+      const verdict = computeVerdict({ storePrice: r.store_price, priceConfirmed: r.price_confirmed, currency: r.currency, assessment, market });
+      return {
+        n: i + 1,
+        vin: sanitize(wineTitle({ name: r.wine.name ?? 'Vin non identifié', vintage: r.wine.vintage ?? null, non_vintage: r.wine.non_vintage }), 140),
+        cuvee: r.wine.cuvee ? sanitize(r.wine.cuvee, 80) : null,
+        appellation: r.wine.appellation ? sanitize(r.wine.appellation, 80) : null,
+        couleur: r.wine.color ?? null,
+        contenance_ml: r.wine.volume_ml ?? 750,
+        verifiee: r.status === 'confirmed',
+        prix_rayon: r.price_confirmed ? r.store_price : null,
+        qualite_estimee: assessment?.quality ? { niveau: assessment.quality.tier, sources: assessment.quality.sources } : null,
+        millesime: assessment?.vintage.rating ?? null,
+        avis_sources: (assessment?.critics ?? []).slice(0, 3).map((c) => `${sanitize(c.publication, 60)}${c.score ? ` ${sanitize(c.score, 20)}` : ''}`),
+        accords: assessment?.pairings ? sanitize(assessment.pairings, 160) : null,
+        marche: market && market.status === 'verified' ? { mediane: market.median, plus_bas: market.low, offres: market.count, fiabilite: market.reliability } : 'prix de marché non vérifié',
+        verdict: verdict.verdict,
+        note_sur_10: verdict.score,
+        manque: verdict.missing,
+      };
+    });
+    const context = {
+      magasin: visit.store_name ? sanitize(visit.store_name, 80) : null,
+      budget_par_bouteille: visit.budget,
+      occasion: visit.occasion ? sanitize(visit.occasion, 120) : null,
+      bouteilles: bottles,
+    };
+    return `La personne compare des bouteilles vues en magasin (visite ${visit.id}). Bouteilles, avec le verdict et la note calculés par l'application (méthode fixe : qualité sourcée + prix comparé à des offres vérifiées ; « insufficient » = informations insuffisantes) : ${JSON.stringify(context)}. Règles : ne classe et ne recommande que les bouteilles dont le verdict n'est pas « insufficient » (cite les autres comme non comparables, en disant ce qui manque) ; respecte le budget et l'occasion de la question ; pour ses goûts, consulte list_my_tastings et search_my_cellar ; ne donne aucun prix qui ne figure pas ci-dessus ; présente la note sur 10 comme une estimation de l'application, jamais comme une note officielle.`;
   }
 }

@@ -599,7 +599,12 @@ export type Scan = {
   market_checked_at: string | null;
   /** Lot 3c : budget de la personne pour cette bouteille (privé). */
   budget: number | null;
+  /** Lot 3d : visite en magasin à laquelle appartient l'analyse. */
+  visit_id: string | null;
 };
+
+/** Visite en magasin : plusieurs bouteilles comparées (privée). */
+export type ScanVisit = { id: string; user_id: string; store_name: string | null; budget: number | null; occasion: string | null; created_at: string; updated_at: string };
 
 export type QualityTier = 'remarquable' | 'tres_bon' | 'bon' | 'correct' | 'decevant';
 

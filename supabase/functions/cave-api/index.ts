@@ -1788,6 +1788,88 @@ Trouve des offres de vente actuelles pour ce vin exact, puis appelle report_offe
 	};
 }
 //#endregion
+//#region src/domain/scan.ts
+/** Même producteur, même vin et cuvée, même millésime, même contenance. */
+function wineKey(w) {
+	const part = (v) => fold(String(v ?? "")).replace(/[^a-z0-9]+/g, " ").trim();
+	const vintage = w.vintage ? String(w.vintage) : w.non_vintage ? "nv" : "?";
+	return [
+		part(w.producer || w.domaine),
+		part(w.name),
+		part(w.cuvee),
+		vintage,
+		w.volume_ml ?? 750
+	].join("|");
+}
+var QUALITY_POINTS = {
+	remarquable: 4,
+	tres_bon: 3,
+	bon: 2,
+	correct: 1,
+	decevant: 0
+};
+/** Points de prix (0 à 4) selon le rapport prix du magasin / prix médian des offres vérifiées. */
+function pricePoints(ratio) {
+	if (ratio <= .8) return 4;
+	if (ratio <= .95) return 3;
+	if (ratio <= 1.05) return 2;
+	if (ratio <= 1.2) return 1;
+	return 0;
+}
+var round2 = (n) => Math.round(n * 100) / 100;
+function computeVerdict(o) {
+	const fit = o.fit ?? null;
+	const missing = [];
+	const tier = o.assessment?.quality?.tier ?? null;
+	const quality = tier ? QUALITY_POINTS[tier] : null;
+	if (quality === null) missing.push(o.assessment ? "qualité non établie par des sources vérifiables" : "analyse du vin non faite");
+	const store = o.priceConfirmed ? o.storePrice : null;
+	if (store === null) missing.push("prix du rayon non confirmé");
+	const m = o.market;
+	const usable = m && m.status === "verified" && m.currency === o.currency && m.median !== null && m.low !== null;
+	if (!usable) missing.push(m ? "prix de marché non vérifié" : "prix de marché non recherché");
+	let price = null;
+	let gap = null;
+	if (store !== null && usable) {
+		const ratio = store / m.median;
+		price = pricePoints(ratio);
+		gap = {
+			vsMedian: round2(store - m.median),
+			vsMedianPct: Math.round((ratio - 1) * 100),
+			vsLow: round2(store - m.low),
+			vsLowPct: Math.round((store / m.low - 1) * 100)
+		};
+	}
+	if (quality === null || price === null) return {
+		verdict: "insufficient",
+		score: null,
+		quality,
+		price,
+		fit,
+		gap,
+		missing
+	};
+	const total = quality + price;
+	const verdict = price >= 3 && quality >= 3 || price === 4 && quality >= 2 ? "excellent" : total >= 5 ? "good" : total >= 3 ? "fair" : "poor";
+	const score = fit === null ? total / 8 : (total + fit) / 10;
+	return {
+		verdict,
+		score: Math.round(score * 20) / 2,
+		quality,
+		price,
+		fit,
+		gap,
+		missing
+	};
+}
+/** Médiane d'une liste de prix. */
+function median(values) {
+	if (!values.length) return null;
+	const s = [...values].sort((a, b) => a - b);
+	const mid = Math.floor(s.length / 2);
+	return s.length % 2 ? s[mid] : round2((s[mid - 1] + s[mid]) / 2);
+}
+//#endregion
 //#region server/api/tools.ts
 var nullable = (schema) => ({ anyOf: [schema, { type: "null" }] });
 var str$3 = { type: "string" };
@@ -2233,6 +2315,7 @@ var ToolBox = class {
 			const group = g;
 			return `La personne a ouvert l’assistant depuis le groupe « ${sanitize(group.name, 60)} » (group_id ${group.id}). Utilise get_group pour ses bouteilles, les goûts des membres et les envies communes.`;
 		}
+		if (context.kind === "scan") return this.visitNote(context.id);
 		if (context.kind === "wine") {
 			const data = await this.data();
 			const w = data.wines.find((x) => x.id === context.id);
@@ -2243,6 +2326,65 @@ var ToolBox = class {
 		if (!ev) return null;
 		const e = ev;
 		return `La personne a ouvert l’assistant depuis l’événement « ${sanitize(e.title, 100)} » du ${e.starts_at.slice(0, 10)} (event_id ${e.id}). Utilise get_event pour les détails.`;
+	}
+	/**
+	* Comparaison en magasin (lot 3d) : les bouteilles analysées pendant la visite, lues avec les droits de la personne,
+	* avec le verdict calculé par l'application (méthode fixe). Les textes viennent d'étiquettes et de pages web : données.
+	*/
+	async visitNote(visitId) {
+		const { data: v } = await this.user.from("scan_visits").select("id, store_name, budget, occasion").eq("id", visitId).maybeSingle();
+		if (!v) return null;
+		const visit = v;
+		const { data: rows } = await this.user.from("scans").select("id, status, wine, store_price, price_confirmed, currency, store_name, budget, assessment, market").eq("visit_id", visit.id).order("created_at").limit(12);
+		const bottles = (rows ?? []).map((r, i) => {
+			const key = wineKey(r.wine);
+			const assessment = r.assessment?.key === key ? r.assessment : null;
+			const market = r.market?.key === key ? r.market : null;
+			const verdict = computeVerdict({
+				storePrice: r.store_price,
+				priceConfirmed: r.price_confirmed,
+				currency: r.currency,
+				assessment,
+				market
+			});
+			return {
+				n: i + 1,
+				vin: sanitize(wineTitle({
+					name: r.wine.name ?? "Vin non identifié",
+					vintage: r.wine.vintage ?? null,
+					non_vintage: r.wine.non_vintage
+				}), 140),
+				cuvee: r.wine.cuvee ? sanitize(r.wine.cuvee, 80) : null,
+				appellation: r.wine.appellation ? sanitize(r.wine.appellation, 80) : null,
+				couleur: r.wine.color ?? null,
+				contenance_ml: r.wine.volume_ml ?? 750,
+				verifiee: r.status === "confirmed",
+				prix_rayon: r.price_confirmed ? r.store_price : null,
+				qualite_estimee: assessment?.quality ? {
+					niveau: assessment.quality.tier,
+					sources: assessment.quality.sources
+				} : null,
+				millesime: assessment?.vintage.rating ?? null,
+				avis_sources: (assessment?.critics ?? []).slice(0, 3).map((c) => `${sanitize(c.publication, 60)}${c.score ? ` ${sanitize(c.score, 20)}` : ""}`),
+				accords: assessment?.pairings ? sanitize(assessment.pairings, 160) : null,
+				marche: market && market.status === "verified" ? {
+					mediane: market.median,
+					plus_bas: market.low,
+					offres: market.count,
+					fiabilite: market.reliability
+				} : "prix de marché non vérifié",
+				verdict: verdict.verdict,
+				note_sur_10: verdict.score,
+				manque: verdict.missing
+			};
+		});
+		const context = {
+			magasin: visit.store_name ? sanitize(visit.store_name, 80) : null,
+			budget_par_bouteille: visit.budget,
+			occasion: visit.occasion ? sanitize(visit.occasion, 120) : null,
+			bouteilles: bottles
+		};
+		return `La personne compare des bouteilles vues en magasin (visite ${visit.id}). Bouteilles, avec le verdict et la note calculés par l'application (méthode fixe : qualité sourcée + prix comparé à des offres vérifiées ; « insufficient » = informations insuffisantes) : ${JSON.stringify(context)}. Règles : ne classe et ne recommande que les bouteilles dont le verdict n'est pas « insufficient » (cite les autres comme non comparables, en disant ce qui manque) ; respecte le budget et l'occasion de la question ; pour ses goûts, consulte list_my_tastings et search_my_cellar ; ne donne aucun prix qui ne figure pas ci-dessus ; présente la note sur 10 comme une estimation de l'application, jamais comme une note officielle.`;
 	}
 };
 //#endregion
@@ -2255,7 +2397,7 @@ function validContext(c) {
 		kind: "page",
 		id
 	} : null;
-	return (kind === "wine" || kind === "event" || kind === "group") && isUuid(id) ? {
+	return (kind === "wine" || kind === "event" || kind === "group" || kind === "scan") && isUuid(id) ? {
 		kind,
 		id
 	} : null;
@@ -3388,28 +3530,14 @@ async function purgeExpired(svc, userId, now) {
 		await svc.from("scans").delete().in("id", rows.map((r) => r.id));
 	}
 	await svc.from("scan_cache").delete().lt("expires_at", now.toISOString());
-}
-//#endregion
-//#region src/domain/scan.ts
-/** Même producteur, même vin et cuvée, même millésime, même contenance. */
-function wineKey(w) {
-	const part = (v) => fold(String(v ?? "")).replace(/[^a-z0-9]+/g, " ").trim();
-	const vintage = w.vintage ? String(w.vintage) : w.non_vintage ? "nv" : "?";
-	return [
-		part(w.producer || w.domaine),
-		part(w.name),
-		part(w.cuvee),
-		vintage,
-		w.volume_ml ?? 750
-	].join("|");
-}
-var round2 = (n) => Math.round(n * 100) / 100;
-/** Médiane d'une liste de prix. */
-function median(values) {
-	if (!values.length) return null;
-	const s = [...values].sort((a, b) => a - b);
-	const mid = Math.floor(s.length / 2);
-	return s.length % 2 ? s[mid] : round2((s[mid - 1] + s[mid]) / 2);
+	const { data: visits } = await svc.from("scan_visits").select("id").eq("user_id", userId).lt("created_at", (/* @__PURE__ */ new Date(now.getTime() - 864e5)).toISOString()).limit(200);
+	const ids = (visits ?? []).map((v) => v.id);
+	if (ids.length) {
+		const { data: used } = await svc.from("scans").select("visit_id").in("visit_id", ids);
+		const busy = new Set((used ?? []).map((u) => u.visit_id));
+		const empty = ids.filter((id) => !busy.has(id));
+		if (empty.length) await svc.from("scan_visits").delete().in("id", empty);
+	}
 }
 //#endregion
 //#region server/api/scanAssess.ts
@@ -4039,6 +4167,13 @@ function createApiHandler(env, deps = {}) {
 			case "scan_identify": {
 				const photos = parsePhotos(body.photos);
 				const typed = normalizeBarcode(body.barcode);
+				let visitId = null;
+				if (body.visit_id !== void 0 && body.visit_id !== null) {
+					if (!isUuid(body.visit_id)) throw new AiFailure("invalid");
+					const { data: visit } = await user.from("scan_visits").select("id").eq("id", body.visit_id).maybeSingle();
+					if (!visit) throw new AiFailure("not_found");
+					visitId = body.visit_id;
+				}
 				const s = await settings();
 				await purgeExpired(svc, userId, now()).catch(() => void 0);
 				const images = [];
@@ -4083,7 +4218,8 @@ function createApiHandler(env, deps = {}) {
 					wine: initialWine(result),
 					store_price: result.price_tag.price,
 					currency: result.price_tag.currency,
-					from_cache: fromCache
+					from_cache: fromCache,
+					visit_id: visitId
 				}).select("*").single();
 				if (error) throw new AiFailure("internal", sanitize(error.message));
 				return { scan };

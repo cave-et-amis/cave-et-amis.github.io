@@ -157,6 +157,14 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         // Scanner avant d'acheter : 1 à 3 photos (étiquette, contre-étiquette, prix du rayon), toutes dans le dossier de la personne.
         const photos = parsePhotos(body.photos);
         const typed = normalizeBarcode(body.barcode);
+        // Lot 3d : l'analyse peut rejoindre une visite en magasin de la personne (lue avec ses droits).
+        let visitId: string | null = null;
+        if (body.visit_id !== undefined && body.visit_id !== null) {
+          if (!isUuid(body.visit_id)) throw new AiFailure('invalid');
+          const { data: visit } = await user.from('scan_visits').select('id').eq('id', body.visit_id).maybeSingle();
+          if (!visit) throw new AiFailure('not_found');
+          visitId = body.visit_id;
+        }
         const s = await settings();
         await purgeExpired(svc, userId, now()).catch(() => undefined);
         const images: (Awaited<ReturnType<typeof readPhoto>> & { role: (typeof photos)[number]['role'] })[] = [];
@@ -197,6 +205,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
             store_price: result.price_tag.price,
             currency: result.price_tag.currency,
             from_cache: fromCache,
+            visit_id: visitId,
           })
           .select('*')
           .single();

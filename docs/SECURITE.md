@@ -129,6 +129,16 @@
 - Le budget est enregistré **sur l'analyse** (privée, RLS), et non dans les préférences du profil, que vos contacts peuvent
   lire. Un budget habituel est seulement gardé sur l'appareil (stockage local du navigateur).
 
+### Comparer plusieurs bouteilles (lot 3d)
+
+- Les visites en magasin (`scan_visits`) sont privées (RLS) ; la base refuse de rattacher une analyse à la visite d'une autre
+  personne, et le serveur vérifie la visite avec les droits de la personne avant d'y ajouter une identification.
+- Pour une question sur une comparaison, le serveur relit la visite **avec les droits de la personne** et transmet à Lia les
+  bouteilles, leur verdict et leur note calculés par l'application ; une visite d'une autre personne ne transmet rien.
+- Fréquence par minute : l'analyse et le prix d'une bouteille, lancés automatiquement après sa confirmation, n'y sont pas
+  comptés (sinon deux bouteilles d'affilée bloqueraient Lia) ; le nombre de bouteilles par jour, les demandes par jour et
+  les budgets s'appliquent toujours.
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

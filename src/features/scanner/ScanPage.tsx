@@ -4,7 +4,7 @@
  * « Ajouter à ma cave » ouvre le formulaire habituel (quantité, prix payé, cave, emplacement) à confirmer.
  */
 import { useEffect, useState, type FormEvent } from 'react';
-import { BookmarkPlus, Camera, Heart, Pencil, Trash2, Wine as WineIcon } from 'lucide-react';
+import { BookmarkPlus, Camera, Columns3, Heart, Pencil, Trash2, Wine as WineIcon } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
 import { normalizeBarcode } from '../../domain/barcode';
@@ -359,6 +359,17 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
     w.grapes?.length ? w.grapes.join(', ') : null,
   ].filter(Boolean);
 
+  /** Lot 3d : rattache l'analyse à une comparaison (créée au besoin), puis on scanne la bouteille suivante. */
+  async function compare() {
+    const res = await run(async () => {
+      if (scan.visit_id) return scan.visit_id;
+      const visit = await api.createVisit({ store_name: scan.store_name, budget: scan.budget });
+      await api.updateScan(scan.id, { visit_id: visit.id });
+      return visit.id;
+    });
+    if (res.ok) go(`/scanner?visite=${res.value}`);
+  }
+
   async function remove() {
     if (!(await confirm({ title: 'Supprimer cette analyse ?', message: 'Elle disparaît de votre historique, avec ses photos.', confirmLabel: 'Supprimer', danger: true }))) return;
     const res = await run(() => api.deleteScans([scan]), { success: 'Analyse supprimée' });
@@ -416,10 +427,18 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
         >
           Ajouter à ma cave
         </Button>
+        <Button variant="secondary" icon={<Columns3 />} onClick={() => void compare()}>
+          Comparer avec une autre bouteille
+        </Button>
+        {scan.visit_id && (
+          <Button variant="ghost" onClick={() => go(`/scanner/visite/${scan.visit_id}`)}>
+            Voir la comparaison
+          </Button>
+        )}
         <Button variant="ghost" icon={<Pencil />} onClick={onEdit}>
           Modifier
         </Button>
-        <Button variant="ghost" icon={<WineIcon />} onClick={() => go('/scanner')}>
+        <Button variant="ghost" icon={<WineIcon />} onClick={() => go(scan.visit_id ? `/scanner?visite=${scan.visit_id}` : '/scanner')}>
           Scanner une autre bouteille
         </Button>
         <Button variant="ghost" icon={<Trash2 />} onClick={() => void remove()}>

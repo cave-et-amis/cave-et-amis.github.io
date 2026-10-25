@@ -14,7 +14,7 @@ function validContext(c: unknown): ChatContext | null {
   if (!c || typeof c !== 'object') return null;
   const { kind, id } = c as { kind?: unknown; id?: unknown };
   if (kind === 'page') return typeof id === 'string' && Object.hasOwn(HELP_PAGES, id) ? { kind: 'page', id: id as HelpPage } : null;
-  return (kind === 'wine' || kind === 'event' || kind === 'group') && isUuid(id) ? { kind, id } : null;
+  return (kind === 'wine' || kind === 'event' || kind === 'group' || kind === 'scan') && isUuid(id) ? { kind, id } : null;
 }
 
 export type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string; meta: Record<string, unknown>; created_at: string };

@@ -31,6 +31,7 @@ import { AdminPage } from '../features/admin/AdminPage';
 import { ScannerPage } from '../features/scanner/ScannerPage';
 import { ScanPage } from '../features/scanner/ScanPage';
 import { ScanHistory } from '../features/scanner/ScanHistory';
+import { ComparePage } from '../features/scanner/ComparePage';
 import { Avatar, Button, EmptyState } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 
@@ -189,7 +190,11 @@ function ShellInner() {
       }
       break;
     case 'scanner':
-      if (seg[1] === 'historique') {
+      if (seg[1] === 'visite' && seg[2]) {
+        title = 'Comparer les bouteilles';
+        back = '/scanner/historique';
+        page = <ComparePage id={seg[2]} />;
+      } else if (seg[1] === 'historique') {
         title = 'Mes analyses';
         back = '/scanner';
         page = <ScanHistory />;

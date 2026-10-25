@@ -11,7 +11,7 @@ import { normalizeBarcode } from '../../domain/barcode';
 import { toMessage } from '../../domain/errors';
 import type { Scan, ScanPhotoRole } from '../../domain/types';
 import { Button, Field, InlineLoading, Notice, useToast } from '../../ui/kit';
-import { go } from '../../ui/router';
+import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
 import { barcodeSupported, detectBarcode, photoHash } from './capture';
 
@@ -37,9 +37,20 @@ export function ScannerPage() {
   const [quota, setQuota] = useState<{ used: number; limit: number; retention_days: number } | null>(null);
   // Photos déjà envoyées (par empreinte) : réutilisées si l'on réessaie ; supprimées si l'on abandonne.
   const sent = useRef(new Map<string, string>());
+  // Lot 3d : bouteille ajoutée à une comparaison en cours (visite en magasin).
+  const visitId = routeQuery().get('visite');
+  const [visitCount, setVisitCount] = useState<number | null>(null);
   const kept = useRef(false);
   const slotsRef = useRef(slots);
   slotsRef.current = slots;
+
+  useEffect(() => {
+    if (!visitId) return;
+    void api
+      .visitScans(visitId)
+      .then((l) => setVisitCount(l.length))
+      .catch(() => setVisitCount(null));
+  }, [api, visitId]);
 
   useEffect(() => {
     void api
@@ -134,7 +145,7 @@ export function ScannerPage() {
     }
     if (unavailable) return manual(photos);
     setBusy('Lia lit les étiquettes… (quelques secondes)');
-    const res = await api.ai('scan_identify', { photos, barcode: normalizeBarcode(barcode) });
+    const res = await api.ai('scan_identify', { photos, barcode: normalizeBarcode(barcode), visit_id: visitId });
     setBusy(null);
     if (!res.ok) {
       setFailure(res.message);
@@ -149,7 +160,7 @@ export function ScannerPage() {
     setBusy('Préparation de la fiche…');
     try {
       const list = photos ?? (filled.length ? await upload() : []);
-      const scan = await api.createManualScan({ photos: list, wine: {}, barcode: normalizeBarcode(barcode) });
+      const scan = await api.createManualScan({ photos: list, wine: {}, barcode: normalizeBarcode(barcode), visit_id: visitId });
       kept.current = true;
       go(`/scanner/${scan.id}`);
     } catch (e) {
@@ -165,6 +176,12 @@ export function ScannerPage() {
         <p>Photographiez la bouteille en rayon : Lia identifie le vin et relève le prix affiché. Vous vérifiez avant tout enregistrement.</p>
       </section>
 
+      {visitId && (
+        <Notice tone="gold">
+          Bouteille ajoutée à votre comparaison{visitCount ? ` (${visitCount} déjà analysée${visitCount > 1 ? 's' : ''})` : ''}.{' '}
+          <a href={`#/scanner/visite/${visitId}`}>Voir la comparaison</a>
+        </Notice>
+      )}
       {!online && <Notice tone="warn">Pas de connexion : vous pouvez prendre vos photos maintenant et lancer l’analyse quand le réseau revient.</Notice>}
       {online && unavailable && (
         <Notice tone="warn">{unavailable} Vous pouvez tout de même photographier la bouteille et remplir la fiche à la main.</Notice>

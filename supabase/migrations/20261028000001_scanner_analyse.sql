@@ -34,3 +34,55 @@ alter table public.ai_usage add constraint ai_usage_action_check
 -- peuvent lire). La comparaison avec les goûts est calculée par l'application à partir de ses propres données.
 alter table public.scans add column if not exists budget numeric(10, 2) check (budget is null or (budget > 0 and budget < 100000));
 grant update (budget) on public.scans to authenticated;
+
+-- Fréquence par minute : mêmes règles qu'avant, sauf pour l'analyse et le prix d'une bouteille scannée (lancés
+-- automatiquement, trois demandes par bouteille). Le nombre de demandes par jour et les budgets s'appliquent toujours.
+create or replace function public.ai_begin(p_user uuid, p_action text, p_model text, p_amount numeric) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  s ai_settings;
+  v_lim record;
+  v_count integer;
+  v_user_month numeric;
+  v_month numeric;
+  v_id uuid;
+begin
+  select * into s from ai_settings where id = 1 for update;
+  perform ai_close_stale();
+  if not s.enabled and p_action <> 'admin_test' then
+    return jsonb_build_object('ok', false, 'code', 'ai_disabled');
+  end if;
+  select * into v_lim from ai_effective_limits(p_user);
+  if p_action <> 'admin_test' then
+    if v_lim.blocked then
+      return jsonb_build_object('ok', false, 'code', 'user_blocked');
+    end if;
+    -- L'analyse et le prix d'une bouteille scannée partent automatiquement après sa confirmation, et le nombre de
+    -- bouteilles par jour les borne déjà : ils ne comptent pas dans la fréquence par minute.
+    select count(*) into v_count from ai_usage where user_id = p_user and created_at > now() - interval '1 minute'
+      and action not in ('scan_quality', 'scan_price');
+    if v_count >= s.rate_per_minute then
+      return jsonb_build_object('ok', false, 'code', 'rate_limited');
+    end if;
+    select count(*) into v_count from ai_usage where user_id = p_user and status = 'reserved';
+    if v_count >= s.max_concurrent_per_user then
+      return jsonb_build_object('ok', false, 'code', 'too_many_concurrent');
+    end if;
+    select count(*) into v_count from ai_usage
+    where user_id = p_user and action <> 'admin_test' and (created_at at time zone 'Europe/Paris')::date = today_paris();
+    if v_count >= v_lim.daily then
+      return jsonb_build_object('ok', false, 'code', 'quota_daily');
+    end if;
+    select coalesce(sum(cost_usd + reserved_usd), 0) into v_user_month from ai_usage
+    where user_id = p_user and created_at >= month_start_paris();
+    if v_user_month + p_amount > v_lim.monthly then
+      return jsonb_build_object('ok', false, 'code', 'quota_monthly');
+    end if;
+  end if;
+  select coalesce(sum(cost_usd + reserved_usd), 0) into v_month from ai_usage where created_at >= month_start_paris();
+  if v_month + p_amount > s.monthly_budget_usd then
+    return jsonb_build_object('ok', false, 'code', 'budget_exhausted');
+  end if;
+  insert into ai_usage (user_id, action, model, reserved_usd) values (p_user, p_action, p_model, p_amount) returning id into v_id;
+  return jsonb_build_object('ok', true, 'usage_id', v_id);
+end $$;

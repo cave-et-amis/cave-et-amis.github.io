@@ -207,4 +207,13 @@ export async function purgeExpired(svc: SupabaseClient, userId: string, now: Dat
     await svc.from('scans').delete().in('id', rows.map((r) => r.id));
   }
   await svc.from('scan_cache').delete().lt('expires_at', now.toISOString());
+  // Visites devenues vides (leurs analyses ont été supprimées) depuis au moins un jour.
+  const { data: visits } = await svc.from('scan_visits').select('id').eq('user_id', userId).lt('created_at', new Date(now.getTime() - 86_400_000).toISOString()).limit(200);
+  const ids = ((visits ?? []) as { id: string }[]).map((v) => v.id);
+  if (ids.length) {
+    const { data: used } = await svc.from('scans').select('visit_id').in('visit_id', ids);
+    const busy = new Set(((used ?? []) as { visit_id: string }[]).map((u) => u.visit_id));
+    const empty = ids.filter((id) => !busy.has(id));
+    if (empty.length) await svc.from('scan_visits').delete().in('id', empty);
+  }
 }
