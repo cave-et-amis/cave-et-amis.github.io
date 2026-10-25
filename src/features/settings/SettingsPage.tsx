@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronRight, Download, KeyRound, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
@@ -18,6 +18,9 @@ export function SettingsPage() {
   const [name, setName] = useState(me.display_name);
   const [password, setPassword] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  // Affiché aussitôt coché ou décoché ; revient en arrière seulement si l'enregistrement échoue.
+  const [discoverable, setDiscoverable] = useState(me.discoverable);
+  useEffect(() => setDiscoverable(me.discoverable), [me.discoverable]);
   const prefs = me.preferences ?? {};
 
   const savePrefs = (patch: Partial<typeof prefs>) => run(() => api.updateProfile(me.id, { preferences: { ...prefs, ...patch } }), { success: 'Préférence enregistrée' });
@@ -146,6 +149,35 @@ export function SettingsPage() {
           prix, la quantité exacte et vos notes. Il n’existe pas de cave publique : seuls vos amis acceptés voient ce que vous partagez. Supprimer un ami lui
           retire immédiatement cet accès.
         </p>
+        <Check
+          checked={discoverable}
+          onChange={async (v) => {
+            setDiscoverable(v);
+            const res = await run(() => api.setDiscoverable(me.id, v), { success: v ? 'Vous apparaissez dans la recherche' : 'Vous n’apparaissez plus dans la recherche' });
+            if (!res.ok) setDiscoverable(!v);
+          }}
+          label="Apparaître dans la recherche d’amis"
+          hint="Les autres membres pourront trouver votre nom et vous envoyer une demande d’ami. Ils ne voient rien d’autre, et vous acceptez ou refusez chaque demande."
+        />
+        {snapshot.blocks.length > 0 && (
+          <>
+            <p className="strong small" style={{ marginTop: 6 }}>
+              Personnes bloquées
+            </p>
+            <div className="list">
+              {snapshot.blocks.map((b) => (
+                <div key={b.blocked_id} className="row static">
+                  <span className="row-main">
+                    <span className="row-title">{b.display_name}</span>
+                  </span>
+                  <Button size="sm" variant="ghost" onClick={() => void run(() => api.unblockUser(b.blocked_id), { success: `${b.display_name} est débloqué` })}>
+                    Débloquer
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
       </section>
 
       <Button

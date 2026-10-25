@@ -1918,3 +1918,45 @@ table.data th {
   width: 44px;
   height: 44px;
 }
+/* Lien d'action dans un texte. */
+.link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--primary);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+/* Notifications. */
+.notification.unread {
+  background: var(--surface-2);
+}
+.notification-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--primary);
+  flex: none;
+}
+.icon-btn .dot-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+}
+.icon-btn {
+  position: relative;
+}

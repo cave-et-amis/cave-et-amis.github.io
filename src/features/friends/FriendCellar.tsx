@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { Ban, Search, UserMinus } from 'lucide-react';
 import type { SharedLot } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { COLORS, fold, vintageLabel } from '../../domain/wine';
 import type { Color } from '../../domain/types';
-import { Avatar, Button, EmptyState, InlineLoading, Notice } from '../../ui/kit';
+import { Avatar, Button, EmptyState, InlineLoading, Notice, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { SharedItem } from './SharedItem';
 
 export function FriendCellar({ friendId }: { friendId: string }) {
-  const { friends, api } = useStore();
+  const { friends, api, run } = useStore();
+  const confirm = useConfirm();
   const friend = friends.find((f) => f.id === friendId);
   const [rows, setRows] = useState<SharedLot[] | null>(null);
   const [q, setQ] = useState('');
@@ -76,6 +77,39 @@ export function FriendCellar({ friendId }: { friendId: string }) {
           ))}
         </div>
       )}
+      <section className="card soft stack-sm" aria-label={`Relation avec ${friend.display_name}`}>
+        <Button
+          variant="ghost"
+          icon={<UserMinus />}
+          aria-label={`Supprimer la connexion avec ${friend.display_name}`}
+          onClick={async () => {
+            const ok = await confirm({
+              title: `Supprimer ${friend.display_name} de vos amis ?`,
+              message: 'Vous ne verrez plus ses bouteilles partagées, et il ne verra plus les vôtres. Les souvenirs de vos événements communs sont conservés.',
+              confirmLabel: 'Supprimer la connexion',
+              danger: true,
+            });
+            if (ok && (await run(() => api.removeFriend(friend.id), { success: 'Connexion supprimée' })).ok) go('/amis');
+          }}
+        >
+          Retirer de mes amis
+        </Button>
+        <Button
+          variant="danger-ghost"
+          icon={<Ban />}
+          onClick={async () => {
+            const ok = await confirm({
+              title: `Bloquer ${friend.display_name} ?`,
+              message: `Vous ne serez plus amis. ${friend.display_name} ne pourra plus vous trouver, vous envoyer de demande ni vous inviter. Il n’en est pas averti. Vous pourrez le débloquer dans Réglages › Confidentialité.`,
+              confirmLabel: 'Bloquer',
+              danger: true,
+            });
+            if (ok && (await run(() => api.blockUser(friend.id), { success: `${friend.display_name} est bloqué` })).ok) go('/amis');
+          }}
+        >
+          Bloquer
+        </Button>
+      </section>
     </>
   );
 }

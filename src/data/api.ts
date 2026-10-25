@@ -5,7 +5,10 @@
  */
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type {
+  AppNotification,
+  Block,
   CaveEvent,
+  FriendRequest,
   Cellar,
   Dish,
   EventWine,
@@ -21,6 +24,7 @@ import type {
   SharedLot,
   SuggestableLot,
   Tasting,
+  UserResult,
   Wine,
   WishItem,
 } from '../domain/types';
@@ -43,6 +47,11 @@ export type Snapshot = {
   prices: MarketPrice[];
   /** Mes bouteilles proposées ou réservées pour des événements. */
   myEventWines: EventWine[];
+  /** Demandes d'ami en attente (reçues et envoyées). */
+  requests: FriendRequest[];
+  blocks: Block[];
+  /** 50 dernières notifications. */
+  notifications: AppNotification[];
 };
 
 export type EventDetail = { participants: Participant[]; dishes: Dish[]; wines: EventWine[]; suggestable: SuggestableLot[]; tastings: Tasting[] };
@@ -132,7 +141,7 @@ export class Api {
 
   async load(userId: string): Promise<Snapshot> {
     const sb = this.sb;
-    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines] = await Promise.all([
+    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications] = await Promise.all([
       pages<Profile>((a, b) => sb.from('profiles').select('*').order('display_name').range(a, b)),
       pages<Cellar>((a, b) => sb.from('cellars').select('*').order('position').order('created_at').range(a, b)),
       pages<Location>((a, b) => sb.from('locations').select('*').order('position').order('name').range(a, b)),
@@ -146,10 +155,18 @@ export class Api {
       pages<WishItem>((a, b) => sb.from('wishlist').select('*').order('created_at', { ascending: false }).range(a, b)),
       pages<MarketPrice>((a, b) => sb.from('market_prices').select('*').order('checked_at', { ascending: false }).range(a, b)),
       pages<EventWine>((a, b) => sb.from('event_wines').select('*').eq('owner_id', userId).in('status', ['proposed', 'confirmed']).range(a, b)),
+      sb.rpc('my_friend_requests').then((r) => must(r) as FriendRequest[]),
+      sb.rpc('my_blocks').then((r) => must(r) as Block[]),
+      sb
+        .from('notifications')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+        .then((r) => must(r) as AppNotification[]),
     ]);
     const me = profiles.find((p) => p.id === userId);
     if (!me) throw new AppError('Votre profil est introuvable. Reconnectez-vous.', 'not_found');
-    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines };
+    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications };
   }
 
   // ───────────── Caves et emplacements ─────────────
@@ -244,6 +261,33 @@ export class Api {
   async revokeInvite(id: string) {
     must(await this.sb.rpc('revoke_friend_invite', { p_id: id }));
   }
+  // ───────────── Recherche, demandes, blocage, notifications ─────────────
+
+  async searchUsers(q: string) {
+    return must(await this.sb.rpc('search_users', { p_query: q })) as UserResult[];
+  }
+  async sendFriendRequest(to: string) {
+    return must(await this.sb.rpc('send_friend_request', { p_to: to })) as { status: 'requested' | 'accepted' | 'already_friends'; id?: string };
+  }
+  async respondFriendRequest(id: string, accept: boolean) {
+    return must(await this.sb.rpc('respond_friend_request', { p_id: id, p_accept: accept })) as { status: 'accepted' | 'declined' };
+  }
+  async cancelFriendRequest(id: string) {
+    must(await this.sb.rpc('cancel_friend_request', { p_id: id }));
+  }
+  async blockUser(id: string) {
+    must(await this.sb.rpc('block_user', { p_user: id }));
+  }
+  async unblockUser(id: string) {
+    must(await this.sb.rpc('unblock_user', { p_user: id }));
+  }
+  async markNotificationsRead() {
+    must(await this.sb.rpc('mark_notifications_read'));
+  }
+  async setDiscoverable(id: string, discoverable: boolean) {
+    must(await this.sb.from('profiles').update({ discoverable }).eq('id', id));
+  }
+
   async removeFriend(id: string) {
     must(await this.sb.rpc('remove_friend', { p_friend: id }));
   }

@@ -1,6 +1,6 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, BookOpen, CalendarHeart, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
+import { ArrowLeft, Bell, BookOpen, CalendarHeart, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
 import { useStore } from '../data/store';
 import { Home } from '../features/home/Home';
 import { CellarPage } from '../features/cellar/CellarPage';
@@ -9,6 +9,7 @@ import { AddSheet } from '../features/cellar/AddSheet';
 import { WineFormSheet, type WinePrefill } from '../features/cellar/WineForm';
 import { LabelScanSheet } from '../features/cellar/LabelScan';
 import { FriendsPage } from '../features/friends/FriendsPage';
+import { NotificationsPage } from '../features/notifications/NotificationsPage';
 import { FriendCellar } from '../features/friends/FriendCellar';
 import { InvitePage } from '../features/friends/InvitePage';
 import { EventsPage } from '../features/events/EventsPage';
@@ -39,7 +40,7 @@ export function useActions() {
   return useContext(ActionsContext);
 }
 
-type Tab = { path: string; label: string; icon: ReactNode; badge?: number };
+type Tab = { path: string; label: string; /** Libellé court de la barre du bas (téléphone). */ short?: string; icon: ReactNode; badge?: number };
 
 export function Shell() {
   const store = useStore();
@@ -76,10 +77,13 @@ export function Shell() {
     (p) => p.user_id === userId && p.rsvp === 'pending' && snapshot.events.find((e) => e.id === p.event_id)?.status === 'planned',
   ).length;
 
+  const incomingRequests = snapshot.requests.filter((r) => r.direction === 'in').length;
+  const unreadNotifications = snapshot.notifications.filter((n) => !n.read_at).length;
+
   const tabs: Tab[] = [
     { path: '/', label: 'Accueil', icon: <HomeIcon /> },
     { path: '/cave', label: 'Ma cave', icon: <Wine /> },
-    { path: '/amis', label: 'Amis', icon: <Users /> },
+    { path: '/amis', label: 'Amis & Groupes', short: 'Amis', icon: <Users />, badge: incomingRequests },
     { path: '/evenements', label: 'Événements', icon: <CalendarHeart />, badge: pendingRsvp },
     { path: '/carnet', label: 'Mon carnet', icon: <BookOpen /> },
   ];
@@ -108,7 +112,7 @@ export function Shell() {
         back = '/amis';
         page = <FriendCellar friendId={seg[1]} />;
       } else {
-        title = 'Amis';
+        title = 'Amis & Groupes';
         page = <FriendsPage />;
       }
       break;
@@ -116,6 +120,10 @@ export function Shell() {
       title = 'Invitation';
       back = '/amis';
       page = <InvitePage code={seg[1] ?? ''} />;
+      break;
+    case 'notifications':
+      title = 'Notifications';
+      page = <NotificationsPage />;
       break;
     case 'evenements':
       if (seg[1]) {
@@ -210,6 +218,19 @@ export function Shell() {
               </button>
             )}
             <h1>{title}</h1>
+            <a
+              className="icon-btn"
+              href="#/notifications"
+              aria-label={unreadNotifications ? `Notifications (${unreadNotifications} nouvelle${unreadNotifications > 1 ? 's' : ''})` : 'Notifications'}
+              title="Notifications"
+            >
+              <Bell />
+              {unreadNotifications > 0 && (
+                <span className="dot-count" aria-hidden>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
+            </a>
             {seg[0] !== 'assistant' && (
               <a className="icon-btn accent" href="#/assistant" aria-label="Assistant sommelier" title="Assistant sommelier">
                 <Sparkles />
@@ -232,7 +253,7 @@ export function Shell() {
             {tabs.map((t) => (
               <a key={t.path} href={`#${t.path}`} className="tab" aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label} aria-current={activeTab === t.path ? 'page' : undefined}>
                 {t.icon}
-                <span>{t.label}</span>
+                <span>{t.short ?? t.label}</span>
                 {!!t.badge && (
                   <span className="badge" aria-hidden>
                     {t.badge}

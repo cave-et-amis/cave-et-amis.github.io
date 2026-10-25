@@ -15,8 +15,25 @@ export type Profile = {
   currency: string;
   preferences: Preferences;
   is_admin: boolean;
+  /** Apparaît dans la recherche d'amis (choix de la personne, désactivé par défaut). */
+  discoverable: boolean;
   created_at: string;
 };
+
+/** Demande d'ami en attente, reçue (« in ») ou envoyée (« out »). */
+export type FriendRequest = { id: string; direction: 'in' | 'out'; other_id: string; other_name: string; created_at: string };
+export type Block = { blocked_id: string; display_name: string; created_at: string };
+export type AppNotification = {
+  id: string;
+  kind: 'friend_request' | 'friend_accepted' | 'event_invite';
+  actor_id: string | null;
+  actor_name: string | null;
+  ref_id: string | null;
+  created_at: string;
+  read_at: string | null;
+};
+/** Résultat de la recherche d'amis, avec la relation actuelle. */
+export type UserResult = { id: string; display_name: string; relation: 'friend' | 'requested' | 'incoming' | 'none' };
 
 export type Preferences = {
   /** Affiche d'emblée les champs avancés des formulaires. */
