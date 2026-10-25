@@ -49,7 +49,8 @@ export function pricePoints(ratio: number): number {
 export const VERDICT_METHOD = [
   'Qualité (0 à 4 points) : niveau estimé par Lia à partir de sources citées (remarquable 4, très bon 3, bon 2, correct 1, décevant 0). Sans source vérifiable, la qualité n’est pas notée.',
   'Prix (0 à 4 points) : prix du rayon confirmé comparé au prix médian des offres vérifiées du même vin (même millésime, même contenance, même devise) : jusqu’à 20 % moins cher 4, jusqu’à 5 % moins cher 3, à ±5 % 2, jusqu’à 20 % plus cher 1, au-delà 0. Il faut au moins une offre vérifiée dans la devise du magasin.',
-  'Note : (qualité + prix) ramenés sur 10, arrondis au demi-point. Verdict : « Excellente affaire » si le prix rapporte 3 points et la qualité 3 (ou 4 et 2) ; sinon « Bon achat » à partir de 5 points sur 8, « Prix correct » à partir de 3, « Peu intéressant à ce prix » en dessous.',
+  'Vos goûts (0 à 2 points) : d’après vos seules données (carnet, cave, envies, favoris) — forte 2, moyenne 1, faible 0 ; non évalués s’il y a moins de trois dégustations notées et aucun vin semblable.',
+  'Note : qualité + prix (+ goûts quand ils sont évalués), ramenés sur 10 et arrondis au demi-point. Verdict, sur la qualité et le prix seulement : « Excellente affaire » si le prix rapporte 3 points et la qualité 3 (ou 4 et 2) ; sinon « Bon achat » à partir de 5 points sur 8, « Prix correct » à partir de 3, « Peu intéressant à ce prix » en dessous. Vos goûts et votre budget sont indiqués à côté, sans changer le verdict.',
   'Sans prix confirmé, sans qualité notée ou sans prix de marché vérifié : « Informations insuffisantes », sans note.',
 ];
 
@@ -59,6 +60,7 @@ export type VerdictResult = {
   score: number | null;
   quality: number | null;
   price: number | null;
+  fit: number | null;
   /** Écarts avec le marché (prix du rayon − référence), en devise et en %. */
   gap: { vsMedian: number; vsMedianPct: number; vsLow: number; vsLowPct: number } | null;
   missing: string[];
@@ -72,7 +74,10 @@ export function computeVerdict(o: {
   currency: string;
   assessment: ScanAssessment | null;
   market: ScanMarket | null;
+  /** Adéquation à vos goûts (0 à 2), null si elle n'est pas évaluée. */
+  fit?: number | null;
 }): VerdictResult {
+  const fit = o.fit ?? null;
   const missing: string[] = [];
   const tier = o.assessment?.quality?.tier ?? null;
   const quality = tier ? QUALITY_POINTS[tier] : null;
@@ -94,11 +99,12 @@ export function computeVerdict(o: {
       vsLowPct: Math.round((store / m!.low! - 1) * 100),
     };
   }
-  if (quality === null || price === null) return { verdict: 'insufficient', score: null, quality, price, gap, missing };
+  if (quality === null || price === null) return { verdict: 'insufficient', score: null, quality, price, fit, gap, missing };
   const total = quality + price;
   const verdict: Verdict =
     (price >= 3 && quality >= 3) || (price === 4 && quality >= 2) ? 'excellent' : total >= 5 ? 'good' : total >= 3 ? 'fair' : 'poor';
-  return { verdict, score: Math.round((total / 8) * 20) / 2, quality, price, gap, missing };
+  const score = fit === null ? total / 8 : (total + fit) / 10;
+  return { verdict, score: Math.round(score * 20) / 2, quality, price, fit, gap, missing };
 }
 
 /** Médiane d'une liste de prix. */

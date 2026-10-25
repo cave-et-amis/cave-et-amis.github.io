@@ -78,6 +78,12 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await expect(prices).toContainText('Prix le plus bas vérifié');
   await expect(prices).toContainText('25 €');
   await expect(prices).toContainText(/Haute/);
+  // Lot 3c : vos goûts (aucune dégustation encore) et budget, privés, calculés sur l'appareil.
+  await expect(page.getByText(/Pas encore assez de dégustations notées/)).toBeVisible();
+  await page.getByLabel(/Votre budget pour cette bouteille/).fill('20');
+  await expect(page.getByText('Ce prix dépasse votre budget de 3,50 €.')).toBeVisible();
+  await expect(page.getByText('Dépasse votre budget de 3,50 €.', { exact: true })).toBeVisible();
+  await page.getByLabel(/Votre budget pour cette bouteille/).blur();
   await page.evaluate(() => window.scrollTo(0, 0));
   await shot(page, '22b-scanner-verdict-haut');
   await page.getByText('Analyse détaillée').click();

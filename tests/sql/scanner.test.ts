@@ -27,6 +27,12 @@ describe('scanner : droits sur les analyses', () => {
     expect(await as(db, bruno, `update scans set price_confirmed = true, status = 'confirmed' where id = $1 returning status`, [s.id])).toEqual([
       { status: 'confirmed' },
     ]);
+    // Lot 3c : budget privé, modifiable par la personne seulement, montant valable ; analyse et prix écrits par le serveur seul.
+    expect(await as(db, bruno, `update scans set budget = 25 where id = $1 returning budget`, [s.id])).toEqual([{ budget: '25.00' }]);
+    await expectError(as(db, bruno, `update scans set budget = -1 where id = $1`, [s.id]), /check/);
+    expect(await as(db, claire, `update scans set budget = 1 where id = $1 returning id`, [s.id])).toEqual([]);
+    await expectError(as(db, bruno, `update scans set assessment = '{}' where id = $1`, [s.id]), /permission denied/);
+    await expectError(as(db, bruno, `update scans set market = '{}' where id = $1`, [s.id]), /permission denied/);
   });
 
   it('cache et quota : inaccessibles depuis l’application', async () => {

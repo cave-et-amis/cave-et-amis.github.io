@@ -121,6 +121,14 @@
 - Cache du serveur, séparé de l'historique : analyse d'un vin 90 jours, relevé de prix 72 heures (seulement s'il est vérifié).
   L'historique garde le relevé daté ; l'application propose de l'actualiser au-delà de 72 heures.
 
+### Vos goûts et votre budget (lot 3c)
+
+- L'adéquation à vos goûts est calculée **dans l'application** (`src/domain/taste.ts`) à partir de vos seules données, déjà
+  chargées avec vos droits : vos lots, vos dégustations, vos envies, vos favoris. Les dégustations et caves des autres
+  personnes ne sont jamais prises en compte, et rien de tout cela n'est envoyé à l'IA.
+- Le budget est enregistré **sur l'analyse** (privée, RLS), et non dans les préférences du profil, que vos contacts peuvent
+  lire. Un budget habituel est seulement gardé sur l'appareil (stockage local du navigateur).
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

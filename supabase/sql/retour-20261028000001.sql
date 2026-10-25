@@ -12,3 +12,4 @@ alter table public.scans drop column if exists assessment;
 alter table public.scans drop column if exists assessed_at;
 alter table public.scans drop column if exists market;
 alter table public.scans drop column if exists market_checked_at;
+alter table public.scans drop column if exists budget;

@@ -4,13 +4,14 @@
  * le verdict et la note sont recalculés ici selon la méthode documentée (src/domain/scan.ts).
  * Chaque information indique son origine : donnée confirmée, source identifiée, estimation de Lia ou indisponible.
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ExternalLink, RefreshCw } from 'lucide-react';
 import { useStore } from '../../data/store';
-import { dateShort, money } from '../../domain/format';
+import { dateShort, money, parseNumber } from '../../domain/format';
 import { computeVerdict, priceIsFresh, QUALITY_LABELS, VERDICT_LABELS, VERDICT_METHOD, wineKey, type Verdict } from '../../domain/scan';
+import { tasteFit } from '../../domain/taste';
 import type { Scan, ScanAssessment, ScanMarket, SourcedText } from '../../domain/types';
-import { Advanced, Button, InlineLoading, Notice, Origin } from '../../ui/kit';
+import { Advanced, Button, Field, InlineLoading, Notice, Origin, Pill } from '../../ui/kit';
 import { useAiStatus } from '../cellar/LabelScan';
 
 const TONE: Record<Verdict, string> = { excellent: 'success', good: 'success', fair: 'gold', poor: 'danger', insufficient: '' };
@@ -20,6 +21,25 @@ const RELIABILITY: Record<NonNullable<ScanMarket['reliability']>, string> = {
   faible: 'Faible : offres trouvées seulement sur d’autres marchés ; elles ne servent pas au verdict.',
 };
 const VINTAGE_RATING: Record<string, string> = { exceptionnel: 'Exceptionnel', tres_bon: 'Très bon', bon: 'Bon', moyen: 'Moyen', difficile: 'Difficile' };
+
+/** Budget habituel, gardé sur cet appareil seulement (commodité) ; celui de chaque analyse est enregistré avec elle. */
+const BUDGET_KEY = 'cave.scan.budget';
+function readBudget(): string {
+  try {
+    return localStorage.getItem(BUDGET_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+function rememberBudget(v: string) {
+  try {
+    if (v) localStorage.setItem(BUDGET_KEY, v);
+    else localStorage.removeItem(BUDGET_KEY);
+  } catch {
+    // stockage indisponible (navigation privée) : sans gravité
+  }
+}
+const FIT_TONE = { forte: 'success', moyenne: 'gold', faible: 'danger' } as const;
 
 const pct = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)} %`;
 const signed = (n: number, c: string) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${money(Math.abs(n), c)}`;
@@ -70,7 +90,7 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 }
 
 export function ScanAnalysis({ scan }: { scan: Scan }) {
-  const { api, online } = useStore();
+  const { api, online, snapshot, userId } = useStore();
   const ai = useAiStatus();
   const key = wineKey(scan.wine);
   // Une analyse faite pour un autre vin (fiche modifiée depuis) n'est pas reprise.
@@ -116,8 +136,35 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ai.loaded, ai.unavailable, online]);
 
-  const v = computeVerdict({ storePrice: scan.store_price, priceConfirmed: scan.price_confirmed, currency: scan.currency, assessment, market });
   const cur = scan.currency;
+  const [budget, setBudget] = useState(() => (scan.budget !== null ? String(scan.budget).replace('.', ',') : readBudget()));
+  const budgetValue = parseNumber(budget);
+  const budgetOk = budgetValue !== null && budgetValue > 0 && budgetValue < 100000;
+  // Vos goûts : calculés ici, à partir de vos seules données (rien n'est envoyé à l'IA).
+  const fit = useMemo(
+    () =>
+      tasteFit({
+        wine: scan.wine,
+        me: userId,
+        wines: snapshot.wines,
+        lots: snapshot.lots,
+        tastings: snapshot.tastings,
+        wishlist: snapshot.wishlist,
+        price: scan.price_confirmed ? scan.store_price : null,
+        budget: budgetOk ? budgetValue : null,
+        currency: cur,
+      }),
+    [scan, userId, snapshot, budgetOk, budgetValue, cur],
+  );
+
+  async function saveBudget() {
+    const value = budgetOk ? Math.round(budgetValue! * 100) / 100 : null;
+    if (!budget.trim() || budgetOk) rememberBudget(budget.trim());
+    if (value === scan.budget || (budget.trim() && !budgetOk)) return;
+    await api.updateScan(scan.id, { budget: value }).catch(() => undefined);
+  }
+
+  const v = computeVerdict({ storePrice: scan.store_price, priceConfirmed: scan.price_confirmed, currency: cur, assessment, market, fit: fit.points });
   const usable = market?.status === 'verified' && market.currency === cur;
   const stale = market ? !priceIsFresh(market.checked_at) : false;
   const busy = step !== null;
@@ -128,6 +175,8 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
       `${money(scan.store_price, cur)} en rayon : ${v.gap.vsMedianPct === 0 ? 'au niveau de' : `${pct(v.gap.vsMedianPct)} par rapport à`} la médiane de ${market.count} offre${market.count > 1 ? 's' : ''} vérifiée${market.count > 1 ? 's' : ''}.`,
     );
   if (assessment?.quality) lines.push(`Qualité estimée par Lia : ${QUALITY_LABELS[assessment.quality.tier].toLowerCase()}, d’après ${assessment.quality.sources} source${assessment.quality.sources > 1 ? 's' : ''}.`);
+  if (fit.level) lines.push(`Vos goûts : adéquation ${fit.level}.`);
+  if (fit.overBudget !== null) lines.push(`Dépasse votre budget de ${money(fit.overBudget, cur)}.`);
   if (v.verdict === 'insufficient' && !busy && v.missing.length) lines.push(`Il manque : ${v.missing.join(', ')}.`);
 
   const unavailable: string[] = [];
@@ -174,6 +223,33 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
             ))}
           </ul>
         </Advanced>
+      </section>
+
+      <section className="card stack-sm" aria-labelledby="scan-taste-title">
+        <div className="between">
+          <h3 id="scan-taste-title" style={{ margin: 0 }}>
+            D’après votre cave et votre carnet
+          </h3>
+          {fit.level && <Pill tone={FIT_TONE[fit.level]}>Adéquation {fit.level}</Pill>}
+        </div>
+        {fit.notes.length > 0 ? (
+          <ul className="scan-list">
+            {fit.notes.map((n) => (
+              <li key={n}>{n}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="small muted" style={{ margin: 0 }}>
+            Rien de semblable dans votre cave ni dans votre carnet pour l’instant.
+          </p>
+        )}
+        {fit.suggestion && <Notice tone="gold">{fit.suggestion}</Notice>}
+        <Field label={`Votre budget pour cette bouteille (${cur === 'EUR' ? '€' : cur}, facultatif)`} error={budget.trim() && !budgetOk ? 'Indiquez un montant, par exemple 25.' : undefined}>
+          <input className="input" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} onBlur={() => void saveBudget()} placeholder="25" />
+        </Field>
+        <p className="small faint" style={{ margin: 0 }}>
+          Calculé sur cet appareil à partir de vos seules données (dégustations, cave, envies, favoris) : rien n’est envoyé à l’IA.
+        </p>
       </section>
 
       {(market || step === 'price') && (

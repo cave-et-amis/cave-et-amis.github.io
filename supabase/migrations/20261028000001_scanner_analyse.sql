@@ -29,3 +29,8 @@ begin
 end $$;
 alter table public.ai_usage add constraint ai_usage_action_check
   check (action in ('chat', 'label', 'price', 'scan', 'scan_quality', 'scan_price', 'admin_test'));
+
+-- Lot 3c : budget de la personne pour cette bouteille (privé, comme l'analyse ; jamais dans le profil, que les contacts
+-- peuvent lire). La comparaison avec les goûts est calculée par l'application à partir de ses propres données.
+alter table public.scans add column if not exists budget numeric(10, 2) check (budget is null or (budget > 0 and budget < 100000));
+grant update (budget) on public.scans to authenticated;

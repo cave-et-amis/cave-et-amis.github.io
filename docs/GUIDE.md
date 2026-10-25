@@ -213,7 +213,15 @@ verdict est-il calculé ? ») : ce n'est pas une note de dégustateur. L'analyse
 sources identifiées, les estimations de Lia et les informations indisponibles. Un relevé de prix de plus de 72 heures peut
 être actualisé.
 
-*À venir* : la prise en compte de vos goûts (carnet, favoris, cave) et le comparateur de plusieurs bouteilles.
+**D'après votre cave et votre carnet** : l'application indique si vous possédez déjà ce vin (et dans quel millésime),
+si vous l'avez déjà dégusté et noté, s'il est dans vos envies, si vous avez mis en favori un vin du même producteur, et
+s'il ressemble à des vins que vous avez appréciés ou moins aimés (même appellation et même couleur, sinon même région).
+L'adéquation à vos goûts (forte, moyenne, faible) compte dans la note sur 10, pas dans le verdict. Indiquez votre
+**budget** pour la bouteille : au-delà, l'application le signale et vous oriente vers le style que vous notez le mieux.
+Tout est calculé sur votre appareil, à partir de vos seules données : rien n'est envoyé à l'IA. Votre budget reste privé
+(enregistré avec l'analyse, jamais dans votre profil).
+
+*À venir* : le comparateur de plusieurs bouteilles d'un même magasin, avec une question à Lia sur la sélection.
 
 ## L'assistant
 

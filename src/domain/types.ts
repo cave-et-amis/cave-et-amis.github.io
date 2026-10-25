@@ -597,6 +597,8 @@ export type Scan = {
   assessed_at: string | null;
   market: ScanMarket | null;
   market_checked_at: string | null;
+  /** Lot 3c : budget de la personne pour cette bouteille (privé). */
+  budget: number | null;
 };
 
 export type QualityTier = 'remarquable' | 'tres_bon' | 'bon' | 'correct' | 'decevant';

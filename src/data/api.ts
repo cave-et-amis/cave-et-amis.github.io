@@ -658,7 +658,7 @@ export class Api {
   async createManualScan(row: Pick<Scan, 'photos' | 'wine'> & { barcode?: string | null }) {
     return must(await this.sb.from('scans').insert(row).select('*').single()) as Scan;
   }
-  async updateScan(id: string, patch: Partial<Pick<Scan, 'status' | 'barcode' | 'wine' | 'store_price' | 'currency' | 'store_name' | 'price_confirmed'>>) {
+  async updateScan(id: string, patch: Partial<Pick<Scan, 'status' | 'barcode' | 'wine' | 'store_price' | 'currency' | 'store_name' | 'price_confirmed' | 'budget'>>) {
     return must(await this.sb.from('scans').update(patch).eq('id', id).select('*').single()) as Scan;
   }
   /** Supprime des analyses et leurs photos. */
