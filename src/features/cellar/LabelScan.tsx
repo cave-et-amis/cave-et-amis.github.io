@@ -52,6 +52,10 @@ export function useAiStatus() {
   return { ...state, unavailable: state.loaded ? (state.failure ?? aiUnavailableText(state.status, state.configured)) : null };
 }
 
+/**
+ * Deux étapes : l'étiquette, puis (facultatif) la contre-étiquette. La contre-étiquette ne sert qu'à la lecture par
+ * l'assistant : elle est supprimée ensuite, seule la photo de l'étiquette est jointe à la fiche.
+ */
 export function LabelScanSheet({ onClose }: { onClose: () => void }) {
   const { api, userId } = useStore();
   const actions = useActions();
@@ -59,38 +63,70 @@ export function LabelScanSheet({ onClose }: { onClose: () => void }) {
   const camera = useRef<HTMLInputElement>(null);
   const gallery = useRef<HTMLInputElement>(null);
   const [path, setPath] = useState<string | null>(null);
-  const [phase, setPhase] = useState<'pick' | 'upload' | 'read' | 'failed' | 'notlabel'>('pick');
+  const [back, setBack] = useState<string | null>(null);
+  const [phase, setPhase] = useState<'pick' | 'back' | 'upload' | 'read' | 'failed' | 'notlabel'>('pick');
   const [message, setMessage] = useState<string | null>(null);
   const url = usePhotoUrl(api, path);
+  const backUrl = usePhotoUrl(api, back);
   const used = useRef(false);
+
+  function dropBack() {
+    if (back) void api.removePhotos([back]).catch(() => undefined);
+    setBack(null);
+  }
 
   function manual(p: string | null) {
     used.current = true;
+    dropBack();
     onClose();
     actions.newWine({ wine: { label_photo: p }, uploaded: p ? [p] : [] });
   }
 
-  async function handle(file: File | undefined) {
-    if (!file) return;
+  function restart() {
+    if (path) void api.removePhotos([path]).catch(() => undefined);
+    dropBack();
+    setPath(null);
+    setPhase('pick');
+  }
+
+  async function upload(file: File): Promise<string | null> {
     setMessage(null);
     setPhase('upload');
-    let p: string;
     try {
-      const blob = await resizeImage(file);
-      p = await api.uploadPhoto(userId, blob);
-      setPath(p);
+      return await api.uploadPhoto(userId, await resizeImage(file));
     } catch (e) {
       setPhase('failed');
       setMessage((e as Error).message === 'image_invalid' ? 'Cette image n’a pas pu être lue. Essayez une autre photo.' : toMessage(e));
+      return null;
+    }
+  }
+
+  async function handle(file: File | undefined) {
+    if (!file) return;
+    if (phase === 'back' && path) {
+      const b = await upload(file);
+      if (!b) return;
+      setBack(b);
+      await read(path, b);
       return;
     }
+    const p = await upload(file);
+    if (!p) return;
+    setPath(p);
     if (ai.unavailable) {
       setPhase('failed');
       setMessage(`${ai.unavailable} La photo est gardée : complétez la fiche à la main.`);
       return;
     }
+    setPhase('back');
+  }
+
+  async function read(p: string, b: string | null) {
     setPhase('read');
-    const res = await api.ai('identify_label', { photo_path: p });
+    const res = await api.ai('identify_label', { photo_paths: b ? [p, b] : [p] });
+    // La contre-étiquette n'a servi qu'à la lecture.
+    if (b) void api.removePhotos([b]).catch(() => undefined);
+    setBack(null);
     if (!res.ok) {
       setPhase('failed');
       setMessage(`${res.message} La photo est gardée : vous pouvez compléter la fiche à la main.`);
@@ -114,29 +150,55 @@ export function LabelScanSheet({ onClose }: { onClose: () => void }) {
     });
   }
 
+  const pickButtons = (
+    <>
+      <Button size="lg" icon={<Camera />} onClick={() => camera.current?.click()}>
+        Prendre la photo
+      </Button>
+      <Button variant="secondary" icon={<ImageUp />} onClick={() => gallery.current?.click()}>
+        Choisir une photo existante
+      </Button>
+    </>
+  );
+
   return (
     <Sheet
       open
       onClose={() => {
-        if (!used.current && path) void api.removePhotos([path]).catch(() => undefined);
+        if (!used.current) {
+          const left = [path, back].filter((p): p is string => Boolean(p));
+          if (left.length) void api.removePhotos(left).catch(() => undefined);
+        }
         onClose();
       }}
       title="Photographier une étiquette"
     >
       <div className="stack">
-        {url && <img className="photo-preview" src={url} alt="Étiquette photographiée" />}
+        {(url || backUrl) && (
+          <div className="photo-pair">
+            {url && <img className="photo-preview" src={url} alt="Étiquette photographiée" />}
+            {backUrl && <img className="photo-preview" src={backUrl} alt="Contre-étiquette photographiée" />}
+          </div>
+        )}
         {phase === 'pick' && (
           <>
             <p className="muted">Cadrez l’étiquette bien à plat, sans reflet. L’assistant propose les informations ; vous les vérifiez avant d’enregistrer.</p>
             {ai.unavailable && <Notice tone="warn">{ai.unavailable} La photo sera jointe à la fiche, que vous remplirez à la main.</Notice>}
-            <Button size="lg" icon={<Camera />} onClick={() => camera.current?.click()}>
-              Prendre la photo
-            </Button>
-            <Button variant="secondary" icon={<ImageUp />} onClick={() => gallery.current?.click()}>
-              Choisir une photo existante
-            </Button>
+            {pickButtons}
             <Button variant="ghost" onClick={() => manual(null)}>
               Saisir le vin à la main
+            </Button>
+          </>
+        )}
+        {phase === 'back' && (
+          <>
+            <p className="muted">
+              <strong>Étape 2 sur 2 (facultatif) : la contre-étiquette.</strong> Au dos de la bouteille, elle indique souvent les cépages, la contenance ou le
+              producteur : l’assistant en tiendra compte. Elle sert seulement à la lecture et n’est pas gardée.
+            </p>
+            {pickButtons}
+            <Button variant="ghost" onClick={() => path && void read(path, null)}>
+              Passer : lire seulement l’étiquette
             </Button>
           </>
         )}
@@ -146,15 +208,15 @@ export function LabelScanSheet({ onClose }: { onClose: () => void }) {
           <>
             {message && <Notice tone="warn">{message}</Notice>}
             <Button onClick={() => manual(path)}>Continuer à la main</Button>
-            <Button variant="secondary" onClick={() => setPhase('pick')}>
+            <Button variant="secondary" onClick={restart}>
               Reprendre une photo
             </Button>
           </>
         )}
         {phase === 'notlabel' && (
           <>
-            <Notice tone="warn">Cette photo ne semble pas montrer une étiquette de vin. Reprenez-la de plus près, ou saisissez le vin à la main.</Notice>
-            <Button onClick={() => setPhase('pick')}>Reprendre une photo</Button>
+            <Notice tone="warn">Ces photos ne semblent pas montrer une étiquette de vin. Reprenez-les de plus près, ou saisissez le vin à la main.</Notice>
+            <Button onClick={restart}>Reprendre une photo</Button>
             <Button variant="secondary" onClick={() => manual(path)}>
               Saisir à la main avec cette photo
             </Button>

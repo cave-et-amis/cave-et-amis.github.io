@@ -153,6 +153,31 @@ describe('assistant : identification d’étiquette', () => {
     expect(wines).toEqual([]);
   });
 
+  it('lit l’étiquette et la contre-étiquette ensemble, deux photos au plus', async () => {
+    const env = await makeAiEnv();
+    const bruno = await env.signUp('Bruno');
+    const claire = await env.signUp('Claire');
+    const front = `${bruno.id}/face.jpg`;
+    const back = `${bruno.id}/dos.jpg`;
+    for (const p of [front, back]) await bruno.sb.storage.from('photos').upload(p, new Blob([TINY_JPEG], { type: 'image/jpeg' }), { contentType: 'image/jpeg' });
+    const other = `${claire.id}/dos.jpg`;
+    await claire.sb.storage.from('photos').upload(other, new Blob([TINY_JPEG], { type: 'image/jpeg' }), { contentType: 'image/jpeg' });
+    env.anthropic.reply({
+      kind: 'message',
+      content: [text(JSON.stringify({ is_wine_label: true, fields: { name: 'Château Talbot', grapes: ['Cabernet sauvignon'], volume_ml: 750 }, uncertain: [], advice: {}, notes: '' }))],
+    });
+    const res = await call(bruno.sb, { action: 'identify_label', photo_paths: [front, back] });
+    expect(res.ok).toBe(true);
+    expect((res.result as { fields: Record<string, unknown> }).fields).toMatchObject({ name: 'Château Talbot', grapes: ['Cabernet sauvignon'], cuvee: null });
+    const sent = JSON.stringify(env.anthropic.requests[0].body!.messages);
+    expect(sent.match(/"type":"image"/g)).toHaveLength(2);
+    expect(sent).toContain('contre-étiquette');
+    // Trois photos, ou une contre-étiquette d'une autre personne : refusé sans appel à Claude.
+    expect(await call(bruno.sb, { action: 'identify_label', photo_paths: [front, back, front] })).toMatchObject({ ok: false, code: 'invalid' });
+    expect(await call(bruno.sb, { action: 'identify_label', photo_paths: [front, other] })).toMatchObject({ ok: false, code: 'forbidden' });
+    expect(env.anthropic.requests).toHaveLength(1);
+  });
+
   it('refuse la photo d’une autre personne', async () => {
     const env = await makeAiEnv();
     const bruno = await env.signUp('Bruno');

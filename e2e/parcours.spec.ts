@@ -81,6 +81,11 @@ test('photo d’étiquette identifiée par l’assistant, vérifiée puis corrig
   await bruno.getByRole('button', { name: /Photographier une étiquette/ }).first().click();
   await expect(bruno.getByRole('dialog', { name: 'Photographier une étiquette' })).toBeVisible();
   await bruno.locator('input[type=file]').first().setInputFiles({ name: 'etiquette.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
+  // Étape 2 (facultative) : la contre-étiquette, lue avec l'étiquette.
+  await expect(bruno.getByText('Étape 2 sur 2 (facultatif) : la contre-étiquette.')).toBeVisible();
+  await expect(bruno.getByRole('button', { name: 'Passer : lire seulement l’étiquette' })).toBeVisible();
+  await shot(bruno, '04a-contre-etiquette');
+  await bruno.locator('input[type=file]').first().setInputFiles({ name: 'contre-etiquette.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
   await expect(bruno.getByRole('dialog', { name: 'Vérifier et ajouter' })).toBeVisible();
   await expect(bruno.getByLabel('Nom du vin')).toHaveValue('Château Labeille');
   await expect(bruno.getByLabel('Millésime', { exact: true })).toHaveClass(/uncertain/);

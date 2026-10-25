@@ -125,22 +125,24 @@ export async function readPhoto(user: SupabaseClient, userId: string, path: unkn
   return { data: base64(bytes), media_type: type };
 }
 
-export async function identifyLabel(o: { meter: Meter; image: { data: string; media_type: 'image/jpeg' | 'image/png' | 'image/webp' } }): Promise<LabelResult> {
+type LabelImage = { data: string; media_type: 'image/jpeg' | 'image/png' | 'image/webp' };
+
+/** Une photo (l'étiquette) ou deux (l'étiquette puis la contre-étiquette), lues ensemble pour une seule fiche. */
+export async function identifyLabel(o: { meter: Meter; images: LabelImage[] }): Promise<LabelResult> {
+  const names = ['Photo 1 : étiquette (face avant).', 'Photo 2 : contre-étiquette (dos de la bouteille).'];
+  const content: Anthropic.Messages.ContentBlockParam[] = [];
+  o.images.forEach((image, i) => {
+    if (o.images.length > 1) content.push({ type: 'text', text: names[i] });
+    content.push({ type: 'image', source: { type: 'base64', media_type: image.media_type, data: image.data } });
+  });
+  content.push({ type: 'text', text: o.images.length > 1 ? 'Identifie ce vin à partir des deux photos et remplis la fiche.' : 'Identifie le vin de cette étiquette et remplis la fiche.' });
   const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
     ...baseParams(o.meter.settings, Math.min(o.meter.settings.max_output_tokens * 2, 6000)),
     system: LABEL_SYSTEM,
-    messages: [
-      {
-        role: 'user',
-        content: [
-          { type: 'image', source: { type: 'base64', media_type: o.image.media_type, data: o.image.data } },
-          { type: 'text', text: 'Identifie le vin de cette étiquette et remplis la fiche.' },
-        ],
-      },
-    ],
+    messages: [{ role: 'user', content }],
   };
   params.output_config = { ...(params.output_config ?? {}), format: { type: 'json_schema', schema: LABEL_SCHEMA } };
-  const res = await o.meter.call(params, { images: 1 });
+  const res = await o.meter.call(params, { images: o.images.length });
   if (res.stop_reason === 'refusal') throw new AiFailure('refused');
   const text = textOf(res);
   let parsed: unknown;

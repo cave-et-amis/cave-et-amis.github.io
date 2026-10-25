@@ -99,13 +99,17 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       }
 
       case 'identify_label': {
+        // Étiquette, et éventuellement contre-étiquette (2 photos au plus, toutes dans le dossier de la personne).
+        const paths = Array.isArray(body.photo_paths) ? body.photo_paths : [body.photo_path];
+        if (paths.length < 1 || paths.length > 2) throw new AiFailure('invalid');
         const s = await settings();
-        const image = await readPhoto(user, userId, body.photo_path, s.max_image_bytes);
+        const images: Awaited<ReturnType<typeof readPhoto>>[] = [];
+        for (const p of paths) images.push(await readPhoto(user, userId, p, s.max_image_bytes));
         const result = await metered(
           userId,
           'label',
-          (m) => m.estimate({ chars: 6_000, images: 1, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
-          (meter) => identifyLabel({ meter, image }),
+          (m) => m.estimate({ chars: 6_000, images: images.length, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
+          (meter) => identifyLabel({ meter, images }),
         );
         return { result };
       }

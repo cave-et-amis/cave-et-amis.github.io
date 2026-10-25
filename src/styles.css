@@ -1743,6 +1743,15 @@ details.advanced .form {
   border-radius: 14px;
   background: var(--bg-deep);
 }
+/* Étiquette et contre-étiquette côte à côte. */
+.photo-pair {
+  display: flex;
+  gap: 8px;
+}
+.photo-pair .photo-preview {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 .notice {
   display: flex;
