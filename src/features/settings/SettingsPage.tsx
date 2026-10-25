@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Download, KeyRound, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { ChevronRight, Download, Eye, KeyRound, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
 import type { Visibility } from '../../domain/types';
@@ -22,7 +22,10 @@ export function SettingsPage() {
   // Affiché aussitôt coché ou décoché ; revient en arrière seulement si l'enregistrement échoue.
   const [discoverable, setDiscoverable] = useState(me.discoverable);
   useEffect(() => setDiscoverable(me.discoverable), [me.discoverable]);
+  const [showShared, setShowShared] = useState(me.show_shared_wines);
+  useEffect(() => setShowShared(me.show_shared_wines), [me.show_shared_wines]);
   const prefs = me.preferences ?? {};
+  const openTo = snapshot.relations.filter((r) => r.they_see_mine).length;
 
   const savePrefs = (patch: Partial<typeof prefs>) => run(() => api.updateProfile(me.id, { preferences: { ...prefs, ...patch } }), { success: 'Préférence enregistrée' });
 
@@ -77,6 +80,22 @@ export function SettingsPage() {
           </select>
         </Field>
         <Check checked={Boolean(prefs.advanced)} onChange={(advanced) => void savePrefs({ advanced })} label="Ouvrir d’emblée les champs avancés des formulaires" hint="Pour les amateurs qui renseignent tout (domaine, cépages, conseils…)." />
+      </section>
+
+      <section className="card form" aria-labelledby="h-display">
+        <h2 id="h-display" className="section">
+          Affichage
+        </h2>
+        <Check
+          checked={showShared}
+          onChange={async (v) => {
+            setShowShared(v);
+            const res = await run(() => api.setShowSharedWines(me.id, v), { success: 'Préférence enregistrée' });
+            if (!res.ok) setShowShared(!v);
+          }}
+          label="Afficher « Bouteilles partagées par mes amis »"
+          hint="Dans Amis & Groupes, la liste des bouteilles que vos amis vous montrent."
+        />
       </section>
 
       <NousSection />
@@ -149,9 +168,19 @@ export function SettingsPage() {
         </h2>
         <p className="small">
           Tout est privé par défaut. Pour chaque lot, vous choisissez : privé, partagé avec vos amis, ou proposable pour un événement — et vous pouvez masquer le
-          prix, la quantité exacte et vos notes. Il n’existe pas de cave publique : seuls vos amis acceptés voient ce que vous partagez. Supprimer un ami lui
-          retire immédiatement cet accès.
+          prix, la quantité exacte et vos notes. Il n’existe pas de cave publique : seules les personnes à qui vous ouvrez votre cave voient ce que vous y
+          partagez. Être en contact ne donne accès à aucune bouteille ; fermer votre cave à quelqu’un lui retire immédiatement cet accès.
         </p>
+        <a className="row" href="#/reglages/acces" style={{ borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}>
+          <Eye aria-hidden style={{ color: 'var(--primary)' }} />
+          <span className="row-main">
+            <span className="row-title">Qui voit ma cave</span>
+            <span className="row-sub">
+              {openTo === 0 ? 'Personne' : `${openTo} personne${openTo > 1 ? 's' : ''}`} sur {snapshot.relations.length} relation{snapshot.relations.length > 1 ? 's' : ''}
+            </span>
+          </span>
+          <ChevronRight aria-hidden />
+        </a>
         <Check
           checked={discoverable}
           onChange={async (v) => {

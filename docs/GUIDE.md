@@ -4,8 +4,8 @@
 
 - **Accueil** : résumé de la cave (bouteilles, disponibles, valeurs), vins à ouvrir prochainement, prochain événement, raccourcis.
 - **Ma cave** : inventaire, recherche, filtres (couleur, maturité, région, millésime, prix, cave, emplacement, favoris, partage), export.
-- **Amis & Groupes** : chercher, inviter, accepter, bloquer ; consulter les bouteilles que vos amis partagent ; créer des groupes
-  (famille, soirées entre amis…) et y partager des bouteilles.
+- **Amis & Groupes** : chercher, inviter, accepter, bloquer ; vos **amis** et vos **contacts** ; consulter les bouteilles que vos
+  amis partagent ; créer des groupes (famille, soirées entre amis…) et y partager des bouteilles.
 - **Événements** : organiser, répondre, choisir les vins ensemble, garder les souvenirs.
 - **Mon carnet** : dégustations, favoris, liste d'envies, vins possédés.
 
@@ -30,15 +30,66 @@ Sur la fiche d'un vin : **J'en ai bu une**, **Sortie** (bouteille bue, cadeau of
 Les bouteilles réservées pour un événement ou mises à disposition d'un groupe ne peuvent pas sortir ailleurs tant que la
 réservation existe (pour ouvrir une bouteille mise à disposition, choisissez-la dans « Bouteille prise sur »).
 
+## Contacts, amis et accès à votre cave
+
+Être **en contact** avec quelqu'un ne lui ouvre pas votre cave : vous pouvez vous inviter à des événements et à des groupes,
+c'est tout. Votre cave ne s'ouvre qu'à qui vous la **ouvrez**, et l'accès est **à sens unique** : vous pouvez ouvrir la vôtre à
+Claire sans que Claire vous ouvre la sienne. Dans l'application, un **ami** est un contact avec au moins une cave ouverte (dans
+un sens ou dans l'autre) ; un **contact** n'a aucune cave ouverte.
+
+- **Amis & Groupes › Amis** : vos amis (badges « Voit ma cave », « Je vois sa cave ») et vos contacts, avec « Ouvrir ma cave » et
+  « Demander l'accès ». La section « Bouteilles partagées par mes amis » se replie (cliquez sur son titre) ou se masque
+  (« Masquer cette section », à réafficher dans **Réglages › Affichage**).
+- **Demande depuis la recherche** : elle crée un contact. Cochez « Lui ouvrir ma cave » pour ouvrir la vôtre dès qu'elle est
+  acceptée ; la personne qui accepte peut cocher « Ouvrir aussi ma cave ».
+- **Demander l'accès** à la cave d'un contact : la personne accepte (sa cave vous est ouverte) ou refuse ; pas de nouvelle
+  demande pendant 30 jours après un refus.
+
+### Inviter par lien (Amis & Groupes › Invitations)
+
+Choisissez ce que permet le lien :
+
+| Lien | Ce qu'il fait | Utilisations | Valable |
+|---|---|---|---|
+| **Découvrir l'application** | vous met en contact, sans ouvrir aucune cave | 10 personnes | 30 jours |
+| **Ami, avec accès à ma cave** | contact + votre cave ouverte à la personne (elle peut ouvrir la sienne en retour) | 1 personne | 14 jours |
+| **Rejoindre un de mes groupes** | contact + entrée dans le groupe (administrateur ou gestionnaire) | 20 personnes, 50 membres au plus | 14 jours |
+| **Venir à un de mes événements** | contact + invitation à l'événement (organisateur) | 20 personnes | jusqu'à l'événement |
+
+Une personne sans compte voit d'abord une **page de présentation** (« Bruno vous invite à… »), puis crée son compte ; avec un
+lien de groupe ou d'événement, elle arrive directement dessus. Les **liens actifs** indiquent les utilisations restantes et la
+date limite ; « Révoquer » les désactive (les personnes déjà entrées gardent leur place).
+
+### Ce que chacun voit de vous
+
+La fiche d'une personne (Amis & Groupes › son nom) a deux onglets :
+
+- **Sa cave** : ce qu'elle vous montre, si elle vous a ouvert sa cave ; sinon « … ne vous a pas ouvert sa cave » et
+  « Demander l'accès ».
+- **Ce que … voit de moi** (visible de vous seul) : un résumé (cave ouverte ou fermée, bouteilles visibles, prix, quantités et
+  notes, groupes et événements en commun, cave gérée à plusieurs) et l'**aperçu exact** de ce que la personne voit, avec
+  l'origine de chaque bouteille (« partagé avec mes amis », « exception pour … », « groupe Famille », « événement du 12 nov. »).
+  - **Exceptions** : « Masquer pour … » une bouteille partagée, ou « Ajouter une bouteille » pour montrer à cette personne
+    seulement une bouteille privée. Les exceptions ne concernent que votre cave : un partage dans un groupe ou un vin proposé
+    pour un événement restent visibles.
+  - **Niveau de détail** : « Standard » (les réglages de chaque bouteille) ou « Restreint » (prix, quantités exactes et notes
+    toujours masqués pour cette personne).
+  - **Actions** : Fermer ma cave à … (la relation, les groupes et les événements restent), Retirer de mes amis (plus aucune
+    cave ouverte entre vous, vous restez en contact), Supprimer le contact, Bloquer.
+
+**Réglages › Confidentialité › Qui voit ma cave** : toutes vos relations, cave ouverte ou fermée, bouteilles visibles,
+exceptions et niveau de détail, et « Fermer ma cave à tout le monde » (sans toucher aux relations, groupes ni événements).
+
 ## Partager avec ses amis
 
-Chaque lot a sa visibilité : **Privé** (par défaut), **Partagé avec mes amis**, **Proposable pour un événement**. Vous pouvez
-masquer le prix, la quantité exacte et vos notes. Une bouteille visible n'est pas pour autant disponible : c'est toujours son
-propriétaire qui confirme qu'il l'apporte.
+Chaque lot a sa visibilité : **Privé** (par défaut), **Partagé avec mes amis**, **Proposable pour un événement** — visibles
+seulement des personnes à qui vous ouvrez votre cave. Vous pouvez masquer le prix, la quantité exacte et vos notes. Une
+bouteille visible n'est pas pour autant disponible : c'est toujours son propriétaire qui confirme qu'il l'apporte.
 
 ## Partager avec un groupe
 
-Dans **Amis & Groupes › Groupes**, créez un groupe et invitez-y des amis. Une bouteille peut y être :
+Dans **Amis & Groupes › Groupes**, créez un groupe et invitez-y des amis ou des contacts (ils voient les bouteilles du groupe,
+jamais le reste de votre cave). Une bouteille peut y être :
 
 - **visible** : les membres la voient (avec vos masques), rien n'est réservé ;
 - **mise à disposition** : vous choisissez combien de bouteilles vous gardez pour le groupe (fiche du vin › « Mettre à
@@ -67,7 +118,7 @@ La page d'un groupe a six onglets : **Cave**, **Soirées**, **Notes**, **Envies*
 
 ## Gérer une cave à plusieurs
 
-Un couple, une famille : **Réglages › Mes caves › « Associer une personne »**, puis choisissez la personne parmi vos amis :
+Un couple, une famille : **Réglages › Mes caves › « Associer une personne »**, puis choisissez la personne parmi vos amis et contacts :
 elle garde son propre compte. Une fois l'invitation acceptée (Amis & Groupes › Invitations), la cave apparaît chez elle,
 marquée « cave de … ».
 
@@ -80,8 +131,10 @@ marquée « cave de … ».
 
 ## Organiser un événement
 
-1. **Événements › Organiser** : type, titre, date, lieu, invités (parmi vos amis), puis menu, thème, budget.
-2. Chacun **propose ses bouteilles** (« Je l'apporte » les réserve) ou **suggère** une bouteille *proposable* d'un ami.
+1. **Événements › Organiser** : type, titre, date, lieu, invités (parmi vos amis et contacts : ils voient l'événement et ses
+   vins, pas votre cave), puis menu, thème, budget.
+2. Chacun **propose ses bouteilles** (« Je l'apporte » les réserve) ou **suggère** une bouteille *proposable* d'un ami qui lui a
+   ouvert sa cave.
 3. Le propriétaire **confirme** (« Je l'apporte » : réservation) ou **refuse**.
 4. L'organisateur ajuste l'**ordre de service** (ou applique l'ordre conseillé).
 5. Après la soirée : **Marquer l'événement comme passé**, puis chacun indique combien de ses bouteilles ont été ouvertes ;

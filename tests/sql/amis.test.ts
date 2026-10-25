@@ -156,8 +156,8 @@ describe('notifications', () => {
     await befriend(db, bruno, claire);
     await one(db, bruno, `select create_event('{"title":"Dîner","starts_at":"2030-01-01T19:00:00Z"}'::jsonb, array[$1]::uuid[])`, [claire]);
     expect(await notifs(claire)).toMatchObject([{ kind: 'event_invite', actor_name: 'Bruno' }]);
-    // Bruno a seulement été prévenu que Claire avait accepté son lien d'invitation.
-    expect((await notifs(bruno)).map((n) => n.kind)).toEqual(['friend_accepted']);
+    // Bruno a seulement été prévenu que Claire avait utilisé son lien d'invitation, puis lui avait ouvert sa cave.
+    expect((await notifs(bruno)).map((n) => n.kind).sort()).toEqual(['cellar_opened', 'invite_joined']);
     expect(await as(db, marc, `select * from notifications`)).toEqual([]);
     await one(db, claire, `select mark_notifications_read()`);
     expect((await notifs(claire))[0].read_at).not.toBeNull();

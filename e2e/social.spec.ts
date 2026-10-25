@@ -7,7 +7,7 @@
  * devient administrateur, et ce doit être Bruno.
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { goto, shot, signUp, tile, toast } from './helpers';
+import { goto, inviteCode, shot, signUp, tile, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -36,13 +36,11 @@ test.afterAll(async () => {
 test('Alice et Paul deviennent amis ; Alice crée un groupe, l’invite et y partage une bouteille', async () => {
   await signUp(alice, 'Alice');
   await expect(alice.getByRole('heading', { name: 'Bonjour Alice' })).toBeVisible();
-  await goto(alice, '/amis?onglet=invitations');
-  await alice.getByRole('button', { name: 'Créer un lien d’invitation' }).click();
-  const code = (await alice.locator('.kbd-code').innerText()).replace(/-/g, '');
-  await alice.getByRole('dialog').getByRole('button', { name: 'Fermer' }).click();
+  const code = await inviteCode(alice);
   await signUp(paul, 'Paul', `/#/ami/${code}`);
   await paul.getByRole('button', { name: 'Accepter' }).click();
-  await expect(paul.getByText('Vous êtes maintenant amis avec Alice')).toBeVisible();
+  await expect(paul.getByRole('heading', { name: 'Alice vous a ouvert sa cave' })).toBeVisible();
+  await paul.getByRole('button', { name: 'Continuer' }).click();
 
   // Une bouteille dans la cave d'Alice.
   await goto(alice, '/');
@@ -87,7 +85,7 @@ test('Paul rejoint le groupe et voit la bouteille d’Alice ; il n’a pas les d
   await expect(paul.getByRole('heading', { name: 'Les soirées entre amis' })).toBeVisible();
   await expect(paul.locator('.row').filter({ hasText: 'Morgon Côte du Py' })).toContainText('Chez Alice');
   await shot(paul, '07-groupe-cave');
-  await expect(paul.getByRole('button', { name: 'Inviter des amis' })).toHaveCount(0);
+  await expect(paul.getByRole('button', { name: 'Inviter des personnes' })).toHaveCount(0);
   await expect(paul.getByRole('button', { name: 'Modifier' })).toHaveCount(0);
   await paul.getByRole('button', { name: 'Membres' }).click();
   await expect(paul.locator('.row').filter({ hasText: 'Alice' })).toContainText('Administrateur');

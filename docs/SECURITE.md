@@ -2,22 +2,38 @@
 
 ## Qui voit quoi
 
-| Donnée | Propriétaire | Amis acceptés | Participants d'un événement | Autres comptes |
-| --- | --- | --- | --- | --- |
-| Caves, emplacements, mouvements de stock | oui | non | non | non |
-| Lot **privé** (défaut) | oui | non | non | non |
-| Lot **partagé avec mes amis** | oui | vin, millésime, conseils ; prix, quantité exacte et notes **seulement si non masqués** | — | non |
-| Lot **proposable pour un événement** | oui | idem, et peut le **suggérer** (le propriétaire confirme) | idem si ami et participant | non |
-| Vins proposés pour un événement | oui | — | photographie du vin (nom, millésime, couleur, propriétaire, quantité prévue) | non |
-| Photos | oui | si elles illustrent un lot partagé | si elles illustrent un vin de l'événement ou une note partagée | non |
-| Dégustations | oui | non | seulement si partagées avec l'événement | non |
-| Prix de marché, relevés, liste d'envies | oui | non | non | non |
-| Conversations avec l'assistant | oui | non | non | **non, y compris l'administrateur** |
+| Donnée | Propriétaire | Personne à qui j'ai **ouvert ma cave** | Simple contact | Participants d'un événement | Autres comptes |
+| --- | --- | --- | --- | --- | --- |
+| Caves, emplacements, mouvements de stock | oui | non | non | non | non |
+| Lot **privé** (défaut) | oui | non (sauf exception « montrer » pour elle) | non | non | non |
+| Lot **partagé avec mes amis** | oui | vin, millésime, conseils ; prix, quantité exacte et notes **seulement si non masqués** (et jamais au niveau « Restreint ») ; sauf exception « masquer » pour elle | non | — | non |
+| Lot **proposable pour un événement** | oui | idem, et peut le **suggérer** (le propriétaire confirme) | non | idem si la cave est ouverte au participant | non |
+| Vins proposés pour un événement | oui | — | — | photographie du vin (nom, millésime, couleur, propriétaire, quantité prévue) | non |
+| Photos | oui | si elles illustrent un lot qu'elle voit | non | si elles illustrent un vin de l'événement ou une note partagée | non |
+| Dégustations | oui | non | non | seulement si partagées avec l'événement | non |
+| Prix de marché, relevés, liste d'envies | oui | non | non | non | non |
+| Conversations avec l'assistant | oui | non | non | non | **non, y compris l'administrateur** |
 
 - Tout est appliqué **dans la base** (RLS sur toutes les tables, fonctions `security definer` contrôlées, politiques du stockage).
   Le navigateur ne peut pas contourner ces règles ; l'assistant non plus : il lit avec le jeton de la personne.
-- **Supprimer un ami** retire immédiatement l'accès, dans les deux sens. Les souvenirs d'événements gardent les vins dégustés,
-  sans donner accès au stock ni aux informations privées.
+- **Relation et accès à la cave sont séparés.** La relation (`friendships`, symétrique) permet seulement de s'inviter à un
+  groupe, un événement ou une cave gérée à plusieurs. L'accès à une cave (`cellar_access`, **à sens unique**) n'est écrit que
+  par son propriétaire, par des fonctions contrôlées (ouvrir, fermer, « fermer à tout le monde », niveau de détail,
+  exceptions) ; chacun ne lit que ses propres réglages. Une seule règle (`can_see_cellar` / `can_see_lot`) décide de ce qu'une
+  personne voit : vues des caves, suggestions pour un événement, photos, compteurs et assistant. L'aperçu « Ce que X voit de
+  moi » (`preview_my_cellar_as`) passe par la **même** fonction que la vue servie à X : aperçu et réalité ne peuvent pas
+  diverger. Les règles internes, qui prennent une personne en paramètre, ne sont pas appelables par les utilisateurs.
+- Les amitiés antérieures ont reçu l'accès dans les deux sens lors de la mise à jour : rien n'a changé pour elles.
+- Un **groupe** ne montre à ses membres que les bouteilles partagées ou mises à disposition dans ce groupe (jamais le reste de
+  la cave) ; un **événement** ne montre que ses vins proposés. Les exceptions et le niveau « Restreint » ne concernent que la
+  cave : un partage explicite dans un groupe garde ses propres masques.
+- **Fermer sa cave** à quelqu'un retire l'accès aussitôt, sans toucher à la relation, aux groupes ni aux événements ;
+  **Retirer de mes amis** ferme les deux caves ; **Supprimer le contact** retire aussi la relation. Les souvenirs d'événements
+  gardent les vins dégustés, sans donner accès au stock ni aux informations privées.
+- **Bloquer** supprime la relation, les accès dans les deux sens, les exceptions et les demandes ; plus aucun lien, demande
+  ni invitation n'est possible entre les deux personnes (dans un sens comme dans l'autre).
+- **Demandes d'accès** : une seule en attente par personne, pas de nouvelle demande pendant 30 jours après un refus,
+  20 demandes par jour au plus.
 - **Cave gérée à plusieurs** : une personne associée (invitation acceptée, avec son propre compte) voit et gère les bouteilles,
   emplacements, fiches et prix de **cette cave seulement**, jamais les autres caves du propriétaire. Le partage, les groupes,
   les événements et toute suppression restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
@@ -25,8 +41,12 @@
 - **Vie de groupe** : une soirée de groupe n'est visible que de ses participants ; les notes partagées avec un groupe, ses
   envies communes et leurs participants ne sont lisibles que par ses membres (lecture par des fonctions qui le vérifient).
   Quitter un groupe retire le partage de ses notes et ses « je participe ».
-- Il n'existe aucune « cave publique » : aucune donnée n'est lisible sans compte, à l'exception de « X vous invite » pour un
-  code d'invitation valide (code de 10 caractères, conservé haché, usage unique, 14 jours).
+- Il n'existe aucune « cave publique » : aucune donnée n'est lisible sans compte, à l'exception de la page d'un lien
+  d'invitation valide : le **prénom** de la personne qui invite, le type de lien et, pour un groupe son nom, pour un événement
+  son **titre et sa date** (jamais l'adresse, les invités ni les bouteilles). Codes de 10 caractères conservés hachés ; 20 liens
+  actifs par personne ; « découvrir » : 10 utilisations, 30 jours ; « ami » : usage unique, 14 jours ; groupe et événement :
+  20 utilisations, 14 jours ou jusqu'à l'événement, 50 membres au plus par groupe ; un même compte ne compte qu'une fois ;
+  révocables.
 
 ## Stocks et réservations
 
@@ -48,8 +68,9 @@
 
 ## Ce que l'assistant peut faire
 
-- **Lire** : votre cave, votre carnet, les vins partagés par vos amis (masques respectés), les événements auxquels vous
-  participez — toujours avec vos droits. Seules les informations utiles sont envoyées au modèle.
+- **Lire** : votre cave, votre carnet, les vins partagés dans les caves qui vous sont ouvertes (masques, exceptions et niveau
+  de détail respectés ; rien d'un simple contact), les groupes et les événements auxquels vous participez — toujours avec vos
+  droits. Seules les informations utiles sont envoyées au modèle.
 - **Proposer** : une sortie de stock, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour
   un événement, une note de dégustation, l'enregistrement d'un relevé de prix. Le serveur vérifie la proposition et rédige
   lui-même le libellé ; **rien n'est modifié** tant que vous n'avez pas appuyé sur « Confirmer ».

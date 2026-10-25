@@ -98,7 +98,7 @@ export function GroupPage({ id }: { id: string }) {
         <div className="inline">
           {canInvite && (
             <Button size="sm" icon={<UserPlus />} onClick={() => setSheet('invite')}>
-              Inviter des amis
+              Inviter des personnes
             </Button>
           )}
           {group.my_role === 'admin' && (
@@ -420,7 +420,7 @@ function GroupActivityList({ activity }: { activity: GroupActivity[] | null }) {
   );
 }
 
-/** Inviter des amis qui ne sont pas encore membres ni invités. */
+/** Inviter des amis ou des contacts qui ne sont pas encore membres ni invités (la relation suffit). */
 function InviteSheet({ group, members, onClose }: { group: MyGroup; members: GroupMember[]; onClose: () => void }) {
   const { friends, api, run } = useStore();
   const already = new Set(members.map((m) => m.user_id));
@@ -431,7 +431,7 @@ function InviteSheet({ group, members, onClose }: { group: MyGroup; members: Gro
     <Sheet
       open
       onClose={onClose}
-      title="Inviter des amis"
+      title="Inviter des personnes"
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
@@ -455,12 +455,12 @@ function InviteSheet({ group, members, onClose }: { group: MyGroup; members: Gro
       }
     >
       {candidates.length === 0 ? (
-        <EmptyState icon="🤝" title="Tous vos amis sont déjà dans le groupe">
-          Pour inviter quelqu’un d’autre, ajoutez-le d’abord comme ami (Amis & Groupes › Amis).
+        <EmptyState icon="🤝" title="Tous vos amis et contacts sont déjà dans le groupe">
+          Pour inviter quelqu’un d’autre, envoyez-lui un lien « Rejoindre le groupe » (Amis & Groupes › Invitations).
         </EmptyState>
       ) : (
         <div className="stack-sm">
-          <p className="small muted">Vos amis recevront une invitation à rejoindre « {group.name} ».</p>
+          <p className="small muted">Vos amis et contacts recevront une invitation à rejoindre « {group.name} ». Ils verront les bouteilles du groupe, pas votre cave.</p>
           {candidates.map((f) => (
             <Check
               key={f.id}

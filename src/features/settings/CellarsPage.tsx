@@ -229,8 +229,8 @@ function AssociateSheet({ cellar, onClose }: { cellar: Cellar; onClose: () => vo
       }
     >
       {candidates.length === 0 ? (
-        <EmptyState icon="🤝" title="Aucun ami à associer">
-          La personne doit avoir son propre compte et être votre amie : ajoutez-la d’abord dans Amis & Groupes.
+        <EmptyState icon="🤝" title="Personne à associer">
+          La personne doit avoir son propre compte et être en relation avec vous : ajoutez-la d’abord dans Amis & Groupes.
         </EmptyState>
       ) : (
         <div className="stack-sm">

@@ -26,6 +26,8 @@ export async function labelPhoto(page: Page) {
 
 export async function signUp(page: Page, name: string, path = '/') {
   await page.goto(path);
+  // Lien d'invitation : la vitrine d'abord, puis la création de compte.
+  if (path.includes('#/ami/')) await page.getByRole('button', { name: 'Créer mon compte' }).click();
   await page.getByRole('button', { name: 'Créer un compte' }).click();
   await page.getByLabel('Votre prénom').fill(name);
   await page.getByLabel('Adresse e-mail').fill(email(name));
@@ -39,6 +41,24 @@ export async function signIn(page: Page, name: string) {
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Se connecter' }).last().click();
   await expect(page.getByRole('heading', { name: `Bonjour ${name}` })).toBeVisible();
+}
+
+/**
+ * Crée un lien d'invitation depuis Amis & Groupes › Invitations et renvoie son code. « kind » : libellé du type de lien ;
+ * « target » : groupe ou événement visé (libellé de la liste).
+ */
+export async function inviteCode(page: Page, kind = 'Ami, avec accès à ma cave', target?: string | RegExp) {
+  await goto(page, '/amis?onglet=invitations');
+  await page.getByRole('radio', { name: kind }).check();
+  if (target) {
+    const select = page.getByRole('combobox', { name: /Groupe|Événement/ });
+    const value = await select.locator('option', { hasText: target }).getAttribute('value');
+    await select.selectOption(value!);
+  }
+  await page.getByRole('button', { name: /^Créer le lien/ }).click();
+  const code = (await page.locator('.kbd-code').innerText()).replace(/-/g, '');
+  await page.getByRole('dialog').getByRole('button', { name: 'Fermer' }).click();
+  return code;
 }
 
 export async function toast(page: Page, text: string | RegExp) {

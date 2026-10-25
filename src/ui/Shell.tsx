@@ -22,6 +22,7 @@ import { WishFormSheet, type WishPrefill } from '../features/journal/WishForm';
 import { AssistantPage } from '../features/assistant/AssistantPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { CellarsPage } from '../features/settings/CellarsPage';
+import { WhoSeesPage } from '../features/settings/WhoSeesPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { Avatar, Button, EmptyState } from './kit';
 import { go, useRoute, whenHistorySettled } from './router';
@@ -78,9 +79,11 @@ export function Shell() {
     (p) => p.user_id === userId && p.rsvp === 'pending' && snapshot.events.find((e) => e.id === p.event_id)?.status === 'planned',
   ).length;
 
-  // Demandes d'ami reçues, invitations à des groupes ou à gérer une cave : pastille sur l'onglet Amis & Groupes.
+  // Demandes reçues (contact, accès à ma cave), invitations à des groupes ou à gérer une cave : pastille sur l'onglet
+  // Amis & Groupes.
   const incomingRequests =
     snapshot.requests.filter((r) => r.direction === 'in').length +
+    snapshot.relations.filter((r) => r.request_in).length +
     snapshot.groups.filter((g) => g.my_status === 'invited').length +
     snapshot.cellarLinks.filter((l) => l.user_id === userId && l.status === 'invited').length;
   const unreadNotifications = snapshot.notifications.filter((n) => !n.read_at).length;
@@ -113,7 +116,7 @@ export function Shell() {
       break;
     case 'amis':
       if (seg[1]) {
-        title = 'Cave partagée';
+        title = store.profileName(seg[1]);
         back = '/amis';
         page = <FriendCellar friendId={seg[1]} />;
       } else {
@@ -164,6 +167,10 @@ export function Shell() {
         title = 'Caves et emplacements';
         back = '/reglages';
         page = <CellarsPage />;
+      } else if (seg[1] === 'acces') {
+        title = 'Qui voit ma cave';
+        back = '/reglages';
+        page = <WhoSeesPage />;
       } else {
         title = 'Réglages';
         page = <SettingsPage />;

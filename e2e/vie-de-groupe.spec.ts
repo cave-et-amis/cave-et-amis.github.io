@@ -4,7 +4,7 @@
  * activité. Fichier nommé pour passer après parcours.spec.ts (le premier compte créé devient administrateur).
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { goto, shot, signUp, tile, toast } from './helpers';
+import { goto, inviteCode, shot, signUp, tile, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -41,13 +41,11 @@ async function reload(p: Page) {
 test('Lucie et Hugo forment « Les épicuriens » ; Lucie met 2 bouteilles à disposition et organise une soirée du groupe', async () => {
   await signUp(lucie, 'Lucie');
   await expect(lucie.getByRole('heading', { name: 'Bonjour Lucie' })).toBeVisible();
-  await goto(lucie, '/amis?onglet=invitations');
-  await lucie.getByRole('button', { name: 'Créer un lien d’invitation' }).click();
-  const code = (await lucie.locator('.kbd-code').innerText()).replace(/-/g, '');
-  await lucie.getByRole('dialog').getByRole('button', { name: 'Fermer' }).click();
+  const code = await inviteCode(lucie);
   await signUp(hugo, 'Hugo', `/#/ami/${code}`);
   await hugo.getByRole('button', { name: 'Accepter' }).click();
-  await expect(hugo.getByText('Vous êtes maintenant amis avec Lucie')).toBeVisible();
+  await expect(hugo.getByRole('heading', { name: 'Lucie vous a ouvert sa cave' })).toBeVisible();
+  await hugo.getByRole('button', { name: 'Continuer' }).click();
 
   // Un vin de Lucie : 3 bouteilles.
   await goto(lucie, '/');

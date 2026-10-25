@@ -14,17 +14,20 @@ function defaultStart() {
 
 /**
  * Nouvel événement ou modification. Avec « group » : soirée de ce groupe, ses membres sont proposés (et cochés) comme
- * invités, même s'ils ne sont pas vos amis.
+ * invités, même s'ils ne sont pas vos amis. Sinon, les personnes en relation (amis et contacts) ; « preselect » : déjà
+ * cochées.
  */
 export function EventFormSheet({
   event,
   group,
   members,
+  preselect,
   onClose,
 }: {
   event?: CaveEvent;
   group?: MyGroup;
   members?: { user_id: string; display_name: string }[];
+  preselect?: string[];
   onClose: () => void;
 }) {
   const { api, run, friends } = useStore();
@@ -37,7 +40,7 @@ export function EventFormSheet({
   const [description, setDescription] = useState(event?.description ?? '');
   const [theme, setTheme] = useState(event?.theme ?? '');
   const [budget, setBudget] = useState(event?.budget !== null && event?.budget !== undefined ? String(event.budget) : '');
-  const [guests, setGuests] = useState<string[]>(() => (group ? people.map((p) => p.id) : []));
+  const [guests, setGuests] = useState<string[]>(() => (group ? people.map((p) => p.id) : (preselect ?? [])));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -119,8 +122,8 @@ export function EventFormSheet({
               group
                 ? `Les membres de « ${group.name} ». Vous pourrez en inviter d’autres ensuite.`
                 : friends.length
-                  ? 'Parmi vos amis. Vous pourrez en inviter d’autres ensuite.'
-                  : 'Invitez d’abord des amis (onglet Amis) pour les convier.'
+                  ? 'Parmi vos amis et contacts : ils verront l’événement et ses vins, pas votre cave. Vous pourrez en inviter d’autres ensuite.'
+                  : 'Ajoutez d’abord des personnes (onglet Amis : recherche ou lien d’invitation) pour les convier.'
             }
           >
             <div className="stack-sm">

@@ -8,7 +8,13 @@ import type {
   AppNotification,
   Block,
   CaveEvent,
+  CellarException,
   CellarLink,
+  DetailLevel,
+  InviteKind,
+  PreviewLot,
+  Relation,
+  RelationOverview,
   FriendRequest,
   GroupActivity,
   GroupLot,
@@ -47,6 +53,8 @@ export type Snapshot = {
   wines: Wine[];
   lots: Lot[];
   friendships: Friendship[];
+  /** Mes relations : qui voit la cave de qui, demandes d'accès en attente. */
+  relations: Relation[];
   invites: FriendInvite[];
   events: CaveEvent[];
   participants: Participant[];
@@ -155,14 +163,21 @@ export class Api {
 
   async load(userId: string): Promise<Snapshot> {
     const sb = this.sb;
-    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks] = await Promise.all([
+    const [profiles, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks] = await Promise.all([
       pages<Profile>((a, b) => sb.from('profiles').select('*').order('display_name').range(a, b)),
       pages<Cellar>((a, b) => sb.from('cellars').select('*').order('position').order('created_at').range(a, b)),
       pages<Location>((a, b) => sb.from('locations').select('*').order('position').order('name').range(a, b)),
       pages<Wine>((a, b) => sb.from('wines').select('*').order('name').order('id').range(a, b)),
       pages<Lot>((a, b) => sb.from('lots').select('*').order('created_at').order('id').range(a, b)),
       pages<Friendship>((a, b) => sb.from('friendships').select('*').range(a, b)),
-      pages<FriendInvite>((a, b) => sb.from('friend_invites').select('id, inviter_id, status, created_at, expires_at').order('created_at', { ascending: false }).range(a, b)),
+      sb.rpc('my_relations').then((r) => must(r) as Relation[]),
+      pages<FriendInvite>((a, b) =>
+        sb
+          .from('friend_invites')
+          .select('id, inviter_id, status, created_at, expires_at, kind, target_id, max_uses, uses')
+          .order('created_at', { ascending: false })
+          .range(a, b),
+      ),
       pages<CaveEvent>((a, b) => sb.from('events').select('*').order('starts_at').range(a, b)),
       pages<Participant>((a, b) => sb.from('event_participants').select('*').range(a, b)),
       pages<Tasting>((a, b) => sb.from('tastings').select('*').eq('user_id', userId).order('tasted_on', { ascending: false }).order('id').range(a, b)),
@@ -185,7 +200,7 @@ export class Api {
     if (!me) throw new AppError('Votre profil est introuvable. Reconnectez-vous.', 'not_found');
     // Mes caves d'abord, puis celles que je gère avec leur propriétaire.
     cellars.sort((a, b) => Number(a.owner_id !== userId) - Number(b.owner_id !== userId));
-    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks };
+    return { me, profiles, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks };
   }
 
   // ───────────── Caves et emplacements ─────────────
@@ -281,30 +296,97 @@ export class Api {
 
   // ───────────── Amis ─────────────
 
-  async createInvite() {
-    return must(await this.sb.rpc('create_friend_invite')) as { id: string; code: string; expires_at: string };
+  /** Lien d'invitation : « discovery », « friend », ou « group » / « event » avec le groupe ou l'événement visé. */
+  async createInvite(kind: InviteKind, target: string | null = null) {
+    return must(await this.sb.rpc('create_invite', { p_kind: kind, p_target: target })) as {
+      id: string;
+      code: string;
+      expires_at: string;
+      kind: InviteKind;
+      max_uses: number;
+    };
   }
+  /** Lisible sans compte : prénom de la personne qui invite, type du lien, nom du groupe ou titre et date de l'événement. */
   async inviteInfo(code: string) {
     return must(await this.sb.rpc('friend_invite_info', { p_code: code })) as {
-      status: 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired' | 'invalid';
+      status: 'pending' | 'accepted' | 'declined' | 'revoked' | 'expired' | 'used' | 'invalid';
+      kind?: InviteKind;
       inviter_name?: string;
+      target_label?: string | null;
+      target_date?: string | null;
       is_self?: boolean;
       already_friends?: boolean;
     };
   }
   async respondInvite(code: string, accept: boolean) {
-    return must(await this.sb.rpc('respond_friend_invite', { p_code: code, p_accept: accept })) as { status: string; friend_id: string; friend_name: string };
+    return must(await this.sb.rpc('respond_friend_invite', { p_code: code, p_accept: accept })) as {
+      status: string;
+      friend_id: string;
+      friend_name: string;
+      kind: InviteKind;
+      target_id: string | null;
+    };
   }
   async revokeInvite(id: string) {
     must(await this.sb.rpc('revoke_friend_invite', { p_id: id }));
+  }
+
+  // ───────────── Accès à ma cave ─────────────
+
+  async grantCellarAccess(user: string) {
+    must(await this.sb.rpc('grant_cellar_access', { p_user: user }));
+  }
+  /** Fermer ma cave à une personne : la relation, les groupes et les événements communs restent. */
+  async revokeCellarAccess(user: string) {
+    must(await this.sb.rpc('revoke_cellar_access', { p_user: user }));
+  }
+  /** « Retirer de mes amis » : plus aucune cave ouverte entre nous ; nous restons en contact. */
+  async unfriend(user: string) {
+    must(await this.sb.rpc('unfriend', { p_user: user }));
+  }
+  async closeCellarToEveryone() {
+    return must(await this.sb.rpc('close_my_cellar_to_everyone')) as number;
+  }
+  async setDetailLevel(user: string, level: DetailLevel) {
+    must(await this.sb.rpc('set_cellar_detail_level', { p_user: user, p_level: level }));
+  }
+  /** Exception pour une personne sur un de mes lots : « hide », « show », ou null pour la retirer. */
+  async setCellarException(user: string, lot: string, mode: 'hide' | 'show' | null) {
+    must(await this.sb.rpc('set_cellar_exception', { p_user: user, p_lot: lot, p_mode: mode }));
+  }
+  async cellarExceptions(user: string) {
+    return must(await this.sb.from('cellar_access_exceptions').select('*').eq('viewer_id', user)) as CellarException[];
+  }
+  /** Mes bouteilles telles que cette personne les voit vraiment (même règle que la vue qui lui est servie). */
+  async previewAs(user: string) {
+    return (must(await this.sb.rpc('preview_my_cellar_as', { p_viewer: user })) ?? []) as PreviewLot[];
+  }
+  async relationOverview(user: string) {
+    return must(await this.sb.rpc('relation_overview', { p_other: user })) as RelationOverview;
+  }
+  async requestCellarAccess(owner: string) {
+    return must(await this.sb.rpc('request_cellar_access', { p_owner: owner })) as { status: 'requested' | 'already_open'; id?: string };
+  }
+  async respondAccessRequest(id: string, accept: boolean) {
+    must(await this.sb.rpc('respond_cellar_access_request', { p_id: id, p_accept: accept }));
+  }
+  async cancelAccessRequest(id: string) {
+    must(await this.sb.rpc('cancel_cellar_access_request', { p_id: id }));
+  }
+  async setShowSharedWines(id: string, show: boolean) {
+    must(await this.sb.from('profiles').update({ show_shared_wines: show }).eq('id', id));
   }
   // ───────────── Recherche, demandes, blocage, notifications ─────────────
 
   async searchUsers(q: string) {
     return must(await this.sb.rpc('search_users', { p_query: q })) as UserResult[];
   }
-  async sendFriendRequest(to: string) {
-    return must(await this.sb.rpc('send_friend_request', { p_to: to })) as { status: 'requested' | 'accepted' | 'already_friends'; id?: string };
+  /** Demande de contact ; openCellar : j'ouvre aussi ma cave à cette personne dès qu'elle accepte. */
+  async sendFriendRequest(to: string, openCellar = false) {
+    return must(await this.sb.rpc('send_friend_request', { p_to: to, p_open_cellar: openCellar })) as {
+      status: 'requested' | 'accepted' | 'already_friends';
+      id?: string;
+    };
   }
   async respondFriendRequest(id: string, accept: boolean) {
     return must(await this.sb.rpc('respond_friend_request', { p_id: id, p_accept: accept })) as { status: 'accepted' | 'declined' };

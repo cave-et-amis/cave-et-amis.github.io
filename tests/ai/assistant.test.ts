@@ -8,6 +8,8 @@ async function cellarWith(env: AiEnv) {
   const claire = await env.signUp('Claire');
   const { data: inv } = await bruno.sb.rpc('create_friend_invite');
   await claire.sb.rpc('respond_friend_invite', { p_code: (inv as { code: string }).code, p_accept: true });
+  // Le lien ouvre la cave de Bruno à Claire ; Claire ouvre la sienne en retour.
+  await claire.sb.rpc('grant_cellar_access', { p_user: bruno.id });
   const add = async (who: typeof bruno, wine: Record<string, unknown>, lot: Record<string, unknown>) => {
     const { data: w, error } = await who.sb.from('wines').insert(wine).select().single();
     if (error) throw error;
@@ -76,6 +78,39 @@ describe('assistant : sécurité et droits', () => {
     expect(usage[0]).toMatchObject({ action: 'chat', status: 'done', api_calls: 2 });
     expect(Number(usage[0].cost_usd)).toBeGreaterThan(0);
     expect(Number(usage[0].reserved_usd)).toBe(0);
+  });
+
+  it('un simple contact ne montre aucune bouteille à Lia, ni dans sa cave ni pour un événement', async () => {
+    const env = await makeAiEnv();
+    const bruno = await env.signUp('Bruno');
+    const marc = await env.signUp('Marc');
+    const { data: inv } = await bruno.sb.rpc('create_invite', { p_kind: 'discovery', p_target: null });
+    await marc.sb.rpc('respond_friend_invite', { p_code: (inv as { code: string }).code, p_accept: true });
+    const { data: w } = await marc.sb.from('wines').insert({ name: 'Bandol de Marc', color: 'rouge' }).select().single();
+    await marc.sb.rpc('create_lot', { p: { wine_id: w.id, quantity: 3, visibility: 'event' }, p_request: crypto.randomUUID() });
+    const { data: ev } = await bruno.sb.rpc('create_event', { p: { title: 'Dîner', starts_at: '2030-03-01T19:00:00Z' }, p_guests: [marc.id] });
+    const eventId = (ev as { id: string }).id;
+    await marc.sb.rpc('respond_event', { p_event: eventId, p_rsvp: 'yes' });
+    const lastResults = (i: number) => JSON.stringify((env.anthropic.requests[i].body!.messages as { content: unknown }[]).at(-1)!.content);
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [toolUse('t1', 'search_friends_wines', { query: null, color: null, limit: null }), toolUse('t2', 'get_event', { event_id: eventId })],
+      },
+      { kind: 'message', content: [text('Marc ne vous a pas ouvert sa cave.')] },
+    );
+    expect((await call(bruno.sb, { action: 'chat', message: 'Que pourrait apporter Marc ?' })).ok).toBe(true);
+    expect(lastResults(1)).toContain('total_matching');
+    expect(lastResults(1)).not.toContain('Bandol de Marc');
+    // Une fois sa cave ouverte à Bruno, la bouteille apparaît.
+    await marc.sb.rpc('grant_cellar_access', { p_user: bruno.id });
+    env.anthropic.reply(
+      { kind: 'message', stop_reason: 'tool_use', content: [toolUse('t3', 'search_friends_wines', { query: null, color: null, limit: null })] },
+      { kind: 'message', content: [text('Marc a un **Bandol**.')] },
+    );
+    await call(bruno.sb, { action: 'chat', message: 'Et maintenant ?' });
+    expect(lastResults(3)).toContain('Bandol de Marc');
   });
 
   it('une proposition de consommation ne modifie rien sans confirmation', async () => {

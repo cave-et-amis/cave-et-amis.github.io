@@ -70,7 +70,7 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
     min_rating: nullable(int),
     limit: nullable(int),
   }),
-  tool('search_friends_wines', 'Bouteilles que les amis de la personne ont choisi de partager (avec les masques choisis par chaque ami).', {
+  tool('search_friends_wines', 'Bouteilles partagées dans les caves que des amis ont ouvertes à la personne, avec les masques choisis par chacun (un simple contact n’en montre aucune).', {
     query: nullable(str),
     color: nullable(colorEnum),
     limit: nullable(int),

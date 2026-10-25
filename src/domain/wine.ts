@@ -46,8 +46,8 @@ export const LOCATION_KINDS: { value: LocationKind; label: string }[] = [
 
 export const VISIBILITIES: { value: Visibility; label: string; hint: string }[] = [
   { value: 'private', label: 'Privé', hint: 'Visible uniquement par vous' },
-  { value: 'friends', label: 'Partagé avec mes amis', hint: 'Vos amis acceptés peuvent le consulter' },
-  { value: 'event', label: 'Proposable pour un événement', hint: 'Visible par vos amis, qui peuvent le suggérer pour un événement' },
+  { value: 'friends', label: 'Partagé avec mes amis', hint: 'Visible des personnes à qui vous ouvrez votre cave (pas des simples contacts)' },
+  { value: 'event', label: 'Proposable pour un événement', hint: 'Visible des personnes à qui vous ouvrez votre cave, qui peuvent le suggérer pour un événement' },
 ];
 
 export const ADVICE_SOURCES: Record<AdviceSource, string> = {

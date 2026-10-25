@@ -89,9 +89,9 @@ export function GroupFormSheet({ group, preselect, onClose }: { group?: MyGroup;
         </Field>
         <PhotoField label="Photo du groupe (facultatif)" path={photo} onChange={setPhoto} onUploaded={(p) => uploaded.current.push(p)} />
         {!editing && (
-          <Field label="Inviter des amis">
+          <Field label="Inviter des amis ou des contacts">
             {friends.length === 0 ? (
-              <p className="small muted">Vous pourrez inviter vos amis plus tard, depuis la page du groupe.</p>
+              <p className="small muted">Vous pourrez inviter des personnes plus tard, depuis la page du groupe ou avec un lien.</p>
             ) : (
               friends.map((f) => (
                 <Check

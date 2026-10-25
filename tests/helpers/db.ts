@@ -90,8 +90,16 @@ export async function addWine(
   return { wineId: w.id, lotId: l.r.id };
 }
 
+/** Deux amis : la relation et les deux caves ouvertes l'une à l'autre (comme les amitiés d'avant les contacts). */
 export async function befriend(db: Db, a: string, b: string) {
   const inv = await one<{ r: { code: string } }>(db, a, `select create_friend_invite() as r`);
+  await one(db, b, `select respond_friend_invite($1, true) as r`, [inv.r.code]);
+  await one(db, b, `select grant_cellar_access($1)`, [a]);
+}
+
+/** Deux contacts : la relation seule, aucune cave ouverte. */
+export async function connect(db: Db, a: string, b: string) {
+  const inv = await one<{ r: { code: string } }>(db, a, `select create_invite('discovery') as r`);
   await one(db, b, `select respond_friend_invite($1, true) as r`, [inv.r.code]);
 }
 

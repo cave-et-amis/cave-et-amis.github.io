@@ -1992,3 +1992,58 @@ table.data th {
   font-size: 1.3rem;
   line-height: 1;
 }
+/* Vitrine d'un lien d'invitation (personne sans compte). */
+.showcase-cards {
+  display: grid;
+  gap: 10px;
+}
+.showcase-card {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.showcase-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+}
+/* Section repliable : le titre ouvre et ferme. */
+details.fold > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px;
+  align-items: center;
+}
+details.fold > summary::-webkit-details-marker {
+  display: none;
+}
+details.fold > summary::after {
+  content: '▾';
+  color: var(--ink-2);
+  transition: transform 0.15s;
+}
+details.fold:not([open]) > summary::after {
+  transform: rotate(-90deg);
+}
+/* Qui voit quoi : badges d'une relation, résumé de l'aperçu. */
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.summary-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.summary-line:last-child {
+  border-bottom: 0;
+}

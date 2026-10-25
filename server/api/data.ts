@@ -121,7 +121,12 @@ export function compactWine(w: Wine, data: CellarData, year: number, detail = fa
       location: data.locations.find((x) => x.id === l.location_id)?.name,
       purchase_price: l.purchase_price === null ? undefined : `${l.purchase_price} ${l.currency}`,
       purchase_date: l.purchase_date ?? undefined,
-      sharing: l.visibility === 'private' ? 'privé' : l.visibility === 'friends' ? 'partagé avec les amis' : 'proposable pour un événement',
+      sharing:
+        l.visibility === 'private'
+          ? 'privé'
+          : l.visibility === 'friends'
+            ? 'partagé avec les amis à qui la cave est ouverte'
+            : 'proposable pour un événement (amis à qui la cave est ouverte)',
     })),
   };
 }

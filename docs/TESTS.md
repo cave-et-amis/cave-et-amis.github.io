@@ -1,14 +1,14 @@
 # Tests et limites
 
-Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **19 octobre 2026, tout vert**.
+Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **25 octobre 2026, tout vert**.
 
 | Étape | Résultat |
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 86 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic) | ✔ 86/86 |
+| Vitest : 198 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic) | ✔ 198/198 |
 | Export de production + contrôle des secrets et du code local | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 10 parcours téléphone + 1 ordinateur | ✔ 11/11 |
+| Playwright (Microsoft Edge) sur l'export de production : 22 parcours téléphone + 2 ordinateur | ✔ 24/24 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
@@ -44,6 +44,7 @@ utilisateur, droits par défaut des futures migrations.
 | Fonctionnement manuel sans IA | `tests/ai/assistant` (clé absente) ; e2e (quota atteint : Claire ajoute un vin) |
 | Erreurs : clé invalide, quota épuisé, service indisponible | `tests/ai/budget` (401 journalisé sans secret, 529 et coupure réseau, nouvelle tentative) |
 | Téléphone et ordinateur | e2e : projet « telephone » (390 × 844, tactile) et « ordinateur » (1366 × 860, aucun débordement horizontal) |
+| Inviter sans ouvrir sa cave : relation et accès séparés | `tests/sql/contacts-acces-cave` (22 tests : un contact ne voit aucun lot « amis » par aucun chemin ; événement : seulement les vins proposés ; groupe : seulement ses partages ; accès à sens unique ; fermer sans perdre relation, groupes ni événements ; migration des amitiés existantes dans les deux sens ; liens « découvrir » (10 utilisations, expiration, révocation, un compte compté une fois), « ami », groupe et événement (rôles, arrivée sur la cible, 50 membres) ; page sans compte limitée au prénom, au titre et à la date ; blocage ; aperçu jamais au-delà de ses propres lots ; demandes d'accès (unicité, 30 jours, 20 par jour) ; exceptions « masquer » et « montrer » ; niveau « Restreint » ; réglages d'un autre propriétaire illisibles et non modifiables ; **aperçu identique à ce que chacun lit réellement** ; « fermer à tout le monde ») ; `tests/ai/assistant` (Lia ne voit rien d'un simple contact, puis sa bouteille une fois la cave ouverte) ; e2e `vitrine-contacts` (vitrine → inscription → arrivée sur l'événement ; ouvrir / fermer sa cave ; section « Bouteilles partagées » masquée ; « Ce que X voit de moi » → masquer une bouteille → l'ami ne la voit plus ; demande d'accès ; « Qui voit ma cave ») |
 
 Captures d'écran des parcours : `reports/screens/`.
 

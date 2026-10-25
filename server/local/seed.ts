@@ -32,10 +32,14 @@ export async function seedDemo(db: PGlite) {
   const one = async <T = Record<string, unknown>>(user: string, sql: string, params: unknown[] = []) => (await as<T>(user, sql, params))[0];
 
   const { alex, camille, sam } = ids;
-  for (const friend of [camille, sam]) {
-    const inv = await one<{ r: { code: string } }>(alex, `select create_friend_invite() as r`);
-    await one(friend, `select respond_friend_invite($1, true)`, [inv.r.code]);
-  }
+  // Camille : amie, les deux caves ouvertes l'une à l'autre. Sam : simple contact (aucune cave ouverte), qui a demandé
+  // à voir celle d'Alex.
+  const friendLink = await one<{ r: { code: string } }>(alex, `select create_invite('friend') as r`);
+  await one(camille, `select respond_friend_invite($1, true)`, [friendLink.r.code]);
+  await one(camille, `select grant_cellar_access($1)`, [alex]);
+  const discoveryLink = await one<{ r: { code: string } }>(alex, `select create_invite('discovery') as r`);
+  await one(sam, `select respond_friend_invite($1, true)`, [discoveryLink.r.code]);
+  await one(sam, `select request_cellar_access($1)`, [alex]);
 
   const cellar = (await one<{ id: string }>(alex, `update cellars set name = 'Cave de la maison', storage = 'cave' returning id`)).id;
   const casier = (await one<{ id: string }>(alex, `insert into locations (cellar_id, name, kind) values ($1, 'Casier A', 'casier') returning id`, [cellar])).id;
@@ -82,6 +86,10 @@ export async function seedDemo(db: PGlite) {
   await lot(camille, { wine_id: crozes, cellar_id: camilleCellar, quantity: 6, purchase_price: 21, visibility: 'friends', hide_price: false, notes: 'Très bon sur une côte de bœuf.', hide_notes: false });
   const secret = await wine(camille, { name: 'Bouteille privée de Camille', color: 'rouge', vintage: 2005 });
   await lot(camille, { wine_id: secret, cellar_id: camilleCellar, quantity: 1, purchase_price: 120 });
+  // Partagée avec ses amis, mais Sam n'a ouvert sa cave à personne : Alex ne la voit pas.
+  const samCellar = (await one<{ id: string }>(sam, `select id from cellars`)).id;
+  const bandol = await wine(sam, { name: 'Bandol rouge', appellation: 'Bandol', region: 'Provence', country: 'France', color: 'rouge', grapes: '{Mourvèdre}', vintage: 2019 });
+  await lot(sam, { wine_id: bandol, cellar_id: samCellar, quantity: 4, visibility: 'friends' });
 
   const inTenDays = new Date(Date.now() + 10 * 86400_000);
   inTenDays.setUTCHours(18, 0, 0, 0);

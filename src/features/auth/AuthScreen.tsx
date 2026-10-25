@@ -1,10 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
 import { toMessage } from '../../domain/errors';
-import { Button, Field, Notice, Segmented } from '../../ui/kit';
+import { Button, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
+import { inviteHeadline } from '../friends/invite';
 
 type Mode = 'login' | 'signup' | 'forgot';
+type InviteInfo = Awaited<ReturnType<Api['inviteInfo']>>;
 
 function Brand() {
   return (
@@ -44,21 +46,91 @@ function PasswordInput({ id, value, onChange, autoComplete }: { id: string; valu
   );
 }
 
-export function AuthScreen({ api, local, inviteCode }: { api: Api; local: boolean; inviteCode: string | null }) {
-  const [mode, setMode] = useState<Mode>(inviteCode ? 'signup' : 'login');
+/** Ce qu'apporte l'application, en trois cartes, pour une personne invitée qui ne la connaît pas. */
+const SHOWCASE: { icon: ReactNode; title: string; text: string }[] = [
+  { icon: <Wine />, title: 'Votre cave, bien rangée', text: 'Chaque bouteille avec son emplacement, le bon moment pour la boire et vos notes. Tout est privé par défaut.' },
+  { icon: <Users />, title: 'Vos amis, vos groupes', text: 'Vous choisissez à qui vous ouvrez votre cave, et quelles bouteilles vous montrez.' },
+  { icon: <CalendarHeart />, title: 'Des dîners réussis', text: 'Organisez un repas, prévoyez les vins ensemble, et demandez conseil à Lia, la sommelière de l’application.' },
+];
+
+const SHOWCASE_DETAIL: Record<string, string> = {
+  discovery: 'Vous serez en contact, sans voir la cave l’un de l’autre : chacun peut ouvrir la sienne plus tard, s’il le souhaite.',
+  friend: 'Cette personne vous ouvre sa cave : vous verrez les bouteilles partagées avec ses amis. La vôtre reste privée tant que vous ne l’ouvrez pas.',
+  group: 'Votre compte créé, vous arrivez directement dans le groupe. Votre cave reste privée.',
+  event: 'Votre compte créé, vous arrivez directement sur l’événement pour répondre et voir les vins prévus. Votre cave reste privée.',
+};
+
+/** Page vitrine d'un lien d'invitation (#/ami/CODE) pour une personne non connectée, avant la connexion. */
+export function Showcase({ api, code, onChoose }: { api: Api; code: string; onChoose: (mode: 'signup' | 'login') => void }) {
+  const [info, setInfo] = useState<InviteInfo | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void api
+      .inviteInfo(code)
+      .then((r) => alive && setInfo(r))
+      .catch(() => alive && setInfo({ status: 'invalid' }));
+    return () => {
+      alive = false;
+    };
+  }, [api, code]);
+  return (
+    <main className="auth">
+      <div className="auth-card">
+        <Brand />
+        <section className="card stack center" aria-live="polite">
+          {info === null ? (
+            <InlineLoading />
+          ) : info.status === 'pending' ? (
+            <>
+              <h2 className="title-font" style={{ fontSize: '1.3rem' }}>
+                {inviteHeadline(info)}
+              </h2>
+              <p className="muted">{SHOWCASE_DETAIL[info.kind ?? 'discovery']}</p>
+            </>
+          ) : (
+            <Notice tone="warn">Ce lien d’invitation n’est plus valable. Vous pouvez tout de même créer votre compte, puis demander un nouveau lien.</Notice>
+          )}
+        </section>
+        <div className="showcase-cards">
+          {SHOWCASE.map((c) => (
+            <div key={c.title} className="card showcase-card">
+              <span className="notification-icon" aria-hidden>
+                {c.icon}
+              </span>
+              <div>
+                <h3>{c.title}</h3>
+                <p className="small muted">{c.text}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <Button size="lg" block onClick={() => onChoose('signup')}>
+          Créer mon compte
+        </Button>
+        <Button variant="secondary" block onClick={() => onChoose('login')}>
+          J’ai déjà un compte
+        </Button>
+        <p className="small faint center">Gratuit. Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>
+      </div>
+    </main>
+  );
+}
+
+export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; local: boolean; inviteCode: string | null; initialMode?: 'signup' | 'login' }) {
+  const [mode, setMode] = useState<Mode>(initialMode ?? (inviteCode ? 'signup' : 'login'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [inviter, setInviter] = useState<string | null>(null);
+  const [invitation, setInvitation] = useState<InviteInfo | null>(null);
 
   useEffect(() => {
     if (!inviteCode) return;
     void api
       .inviteInfo(inviteCode)
-      .then((r) => r.status === 'pending' && setInviter(r.inviter_name ?? null))
+      .then((r) => r.status === 'pending' && setInvitation(r))
       .catch(() => undefined);
   }, [api, inviteCode]);
 
@@ -88,10 +160,9 @@ export function AuthScreen({ api, local, inviteCode }: { api: Api; local: boolea
     <main className="auth">
       <div className="auth-card">
         <Brand />
-        {inviter && (
+        {invitation && (
           <Notice tone="gold">
-            <strong>{inviter}</strong> vous invite à rejoindre ses amis. {mode === 'login' ? 'Connectez-vous' : 'Créez votre compte'} pour répondre à
-            l’invitation.
+            <strong>{inviteHeadline(invitation)}.</strong> {mode === 'login' ? 'Connectez-vous' : 'Créez votre compte'} pour répondre à l’invitation.
           </Notice>
         )}
         <div className="card stack">

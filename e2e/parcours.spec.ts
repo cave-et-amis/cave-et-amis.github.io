@@ -4,7 +4,7 @@
  * administration et quotas, révocation d'un ami.
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { goto, labelPhoto, shot, signIn, signUp, tile, toast } from './helpers';
+import { goto, inviteCode as createInvite, labelPhoto, shot, signIn, signUp, tile, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -116,16 +116,16 @@ test('prix de marché : seules les offres issues de la recherche sont retenues, 
 let inviteCode = '';
 
 test('invitation d’un ami par lien : accepter, puis partage sélectif', async () => {
-  await goto(bruno, '/amis?onglet=invitations');
-  await bruno.getByRole('button', { name: 'Créer un lien d’invitation' }).click();
-  inviteCode = (await bruno.locator('.kbd-code').innerText()).replace(/-/g, '');
+  inviteCode = await createInvite(bruno);
   expect(inviteCode).toMatch(/^[A-Z2-9]{10}$/);
-  await bruno.getByRole('dialog').getByRole('button', { name: 'Fermer' }).click();
 
   await signUp(claire, 'Claire', `/#/ami/${inviteCode}`);
   await expect(claire.getByRole('heading', { name: /Bruno vous invite/ })).toBeVisible();
   await claire.getByRole('button', { name: 'Accepter' }).click();
-  await expect(claire.getByText('Vous êtes maintenant amis avec Bruno')).toBeVisible();
+  // Le lien « ami » ouvre la cave de Bruno à Claire ; la sienne reste fermée (case non cochée).
+  await expect(claire.getByRole('heading', { name: 'Bruno vous a ouvert sa cave' })).toBeVisible();
+  await expect(claire.getByLabel('Ouvrir aussi votre cave à Bruno ?')).not.toBeChecked();
+  await claire.getByRole('button', { name: 'Continuer' }).click();
 
   // Claire voit le lot « proposable » de Bruno, sans son prix ; jamais le vin privé.
   await goto(claire, '/amis');
@@ -308,15 +308,16 @@ test('administration : test de connexion sans afficher la clé, quota atteint, f
   await toast(bruno, 'Réglages enregistrés');
 });
 
-test('supprimer la connexion retire immédiatement l’accès à la cave partagée', async () => {
+test('supprimer le contact retire immédiatement l’accès à la cave partagée', async () => {
   await goto(bruno, '/amis');
   await bruno.locator('a.row').filter({ hasText: 'Claire' }).click();
-  await bruno.getByRole('button', { name: 'Supprimer la connexion avec Claire' }).click();
-  await bruno.getByRole('alertdialog').getByRole('button', { name: 'Supprimer la connexion' }).click();
-  await toast(bruno, 'Connexion supprimée');
+  await bruno.getByRole('button', { name: 'Ce que Claire voit de moi' }).click();
+  await bruno.getByRole('button', { name: 'Supprimer le contact' }).click();
+  await bruno.getByRole('alertdialog').getByRole('button', { name: 'Supprimer le contact' }).click();
+  await toast(bruno, 'Contact supprimé');
   await claire.reload();
   await goto(claire, '/amis');
-  await expect(claire.getByText('Pas encore d’amis connectés')).toBeVisible();
+  await expect(claire.getByText('Pas encore d’amis')).toBeVisible();
   await expect(claire.getByText('Château Test')).toHaveCount(0);
 });
 
@@ -329,7 +330,11 @@ test('Amis & Groupes : recherche, demande d’ami, notification, acceptation, bl
   await goto(bruno, '/amis');
   await bruno.getByLabel('Chercher une personne').fill('clai');
   const result = bruno.locator('.row').filter({ hasText: 'Claire' });
-  await result.getByRole('button', { name: 'Demander en ami' }).click();
+  await result.getByRole('button', { name: 'Ajouter' }).click();
+  // Une demande crée un simple contact : « Lui ouvrir ma cave » n'est pas coché.
+  const ask = bruno.getByRole('dialog', { name: 'Ajouter Claire' });
+  await expect(ask.getByLabel('Lui ouvrir ma cave')).not.toBeChecked();
+  await ask.getByRole('button', { name: 'Envoyer la demande' }).click();
   await toast(bruno, 'Demande envoyée à Claire');
   await expect(result).toContainText('Demande envoyée');
   await shot(bruno, '06-recherche-amis');
@@ -341,26 +346,29 @@ test('Amis & Groupes : recherche, demande d’ami, notification, acceptation, bl
   await expect(bell).toBeVisible();
   await expect(claire.getByRole('link', { name: 'Amis & Groupes (1 en attente)' })).toBeVisible();
   await bell.click();
-  await claire.getByText('Bruno vous demande en ami').click();
+  await claire.getByText('Bruno souhaite être en contact avec vous').click();
   await expect(claire.getByRole('heading', { name: 'Demandes reçues' })).toBeVisible();
   await claire.locator('.row').filter({ hasText: 'Bruno' }).getByRole('button', { name: 'Accepter' }).click();
-  await toast(claire, 'Bruno est maintenant votre ami');
+  await claire.getByRole('dialog', { name: 'Accepter Bruno' }).getByRole('button', { name: 'Accepter' }).click();
+  await toast(claire, 'Bruno fait partie de vos contacts');
 
   await bruno.reload();
   await goto(bruno, '/notifications');
-  // La plus récente en tête (une autre date du lien d'invitation accepté plus tôt dans le parcours).
-  await expect(bruno.getByText('Claire a accepté votre invitation : vous êtes amis').first()).toBeVisible();
+  await expect(bruno.getByText('Claire a accepté votre demande : vous êtes en contact').first()).toBeVisible();
+  // Simple contact : listé à part, sans bouteilles.
   await goto(bruno, '/amis');
-  await expect(bruno.locator('a.row').filter({ hasText: 'Claire' })).toBeVisible();
+  await expect(bruno.getByRole('heading', { name: 'Mes contacts' })).toBeVisible();
+  await expect(bruno.getByRole('link', { name: 'Claire' })).toBeVisible();
 
-  // Bloquer : l'amitié disparaît des deux côtés ; débloquer depuis les réglages.
-  await bruno.locator('a.row').filter({ hasText: 'Claire' }).click();
+  // Bloquer : la relation disparaît des deux côtés ; débloquer depuis les réglages.
+  await bruno.getByRole('link', { name: 'Claire' }).click();
+  await bruno.getByRole('button', { name: 'Ce que Claire voit de moi' }).click();
   await bruno.getByRole('button', { name: 'Bloquer' }).click();
   await bruno.getByRole('alertdialog').getByRole('button', { name: 'Bloquer' }).click();
   await toast(bruno, 'Claire est bloqué');
   await claire.reload();
   await goto(claire, '/amis');
-  await expect(claire.getByText('Pas encore d’amis connectés')).toBeVisible();
+  await expect(claire.getByText('Pas encore d’amis')).toBeVisible();
   await goto(bruno, '/reglages');
   await bruno.locator('.row').filter({ hasText: 'Claire' }).getByRole('button', { name: 'Débloquer' }).click();
   await toast(bruno, 'Claire est débloqué');

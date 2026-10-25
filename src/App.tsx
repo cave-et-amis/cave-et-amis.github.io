@@ -4,8 +4,8 @@ import type { Api, Snapshot } from './data/api';
 import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { parseMagicLink } from './domain/nous';
-import { AuthScreen, NewPasswordScreen } from './features/auth/AuthScreen';
-import { clearPendingInvite, pendingInvite, savePendingInvite } from './features/friends/invite';
+import { AuthScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
+import { clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { Shell } from './ui/Shell';
 import { Button, ConfirmProvider, ToastProvider } from './ui/kit';
 import { go, useRoute } from './ui/router';
@@ -54,6 +54,8 @@ export function ConfigProblem({ problem }: { problem: string }) {
 function Root({ api, local }: { api: Api; local: boolean }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [recovery, setRecovery] = useState(false);
+  // Lien d'invitation ouvert sans être connecté : la vitrine d'abord, puis la création de compte ou la connexion.
+  const [authMode, setAuthMode] = useState<'signup' | 'login' | null>(null);
   const route = useRoute();
   const invite = /^\/ami\/([A-Za-z0-9-]{6,24})/.exec(route)?.[1] ?? null;
 
@@ -96,7 +98,21 @@ function Root({ api, local }: { api: Api; local: boolean }) {
         }}
       />
     );
-  if (!session) return <AuthScreen api={api} local={local} inviteCode={invite ?? pendingInvite()} />;
+  if (!session) {
+    if (invite && !authMode) {
+      return (
+        <Showcase
+          api={api}
+          code={invite}
+          onChoose={(mode) => {
+            savePendingInvite(invite, true);
+            setAuthMode(mode);
+          }}
+        />
+      );
+    }
+    return <AuthScreen key={authMode ?? 'auth'} api={api} local={local} inviteCode={invite ?? pendingInvite()} initialMode={authMode ?? undefined} />;
+  }
   return <SignedIn key={session.user.id} api={api} local={local} session={session} />;
 }
 
@@ -130,11 +146,13 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
   const start = useCallback(async () => {
     try {
       await reload();
-      // Lien d'invitation ouvert avant la connexion : on y revient.
+      // Lien d'invitation ouvert avant la connexion : on y revient (venant de la vitrine, un lien de groupe ou
+      // d'événement est accepté aussitôt, et l'on arrive directement dessus).
       const code = pendingInvite();
       if (code) {
+        const auto = pendingInviteAuto();
         clearPendingInvite();
-        if (!window.location.hash.startsWith('#/ami/')) go(`/ami/${code}`, { replace: true });
+        if (auto || !window.location.hash.startsWith('#/ami/')) go(`/ami/${code}${auto ? '?auto=1' : ''}`, { replace: true });
       }
     } catch (e) {
       setError(toMessage(e));

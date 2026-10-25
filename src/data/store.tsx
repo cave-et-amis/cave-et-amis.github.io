@@ -1,7 +1,7 @@
 /** État partagé de l'application connectée : données, personne connectée, actions avec gestion des erreurs. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Api, Snapshot } from './api';
-import type { Cellar, CellarLink, Location, Lot, Profile, Wine } from '../domain/types';
+import type { Cellar, CellarLink, Location, Lot, Profile, Relation, Wine } from '../domain/types';
 import { errorCode, toMessage } from '../domain/errors';
 import { deName } from '../domain/format';
 import { useToast } from '../ui/kit';
@@ -15,8 +15,12 @@ export type StoreValue = {
   email: string;
   snapshot: Snapshot;
   me: Profile;
-  /** Amis acceptés (profils). */
+  /** Personnes en relation, amis et simples contacts (profils) : on peut les inviter à un groupe, un événement, une cave. */
   friends: Profile[];
+  /** Qui voit la cave de qui, pour une personne en relation. */
+  relation: (id: string | null | undefined) => Relation | undefined;
+  /** « Ami » : au moins une cave ouverte, dans un sens ou dans l'autre ; sinon simple contact. */
+  isFriend: (id: string | null | undefined) => boolean;
   profileName: (id: string | null | undefined) => string;
   wine: (id: string | null | undefined) => Wine | undefined;
   lotsOf: (wineId: string) => Lot[];
@@ -94,6 +98,11 @@ export function StoreProvider({
     snapshot,
     me: snapshot.me,
     friends,
+    relation: (id) => snapshot.relations.find((r) => r.user_id === id),
+    isFriend: (id) => {
+      const r = snapshot.relations.find((x) => x.user_id === id);
+      return Boolean(r && (r.they_see_mine || r.i_see_theirs));
+    },
     profileName,
     wine: (id) => snapshot.wines.find((w) => w.id === id),
     lotsOf: (wineId) => lotsByWine.get(wineId) ?? [],

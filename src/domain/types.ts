@@ -17,15 +17,30 @@ export type Profile = {
   is_admin: boolean;
   /** Apparaît dans la recherche d'amis (choix de la personne, désactivé par défaut). */
   discoverable: boolean;
+  /** Affiche la section « Bouteilles partagées par mes amis » (activé par défaut). */
+  show_shared_wines: boolean;
   created_at: string;
 };
 
-/** Demande d'ami en attente, reçue (« in ») ou envoyée (« out »). */
-export type FriendRequest = { id: string; direction: 'in' | 'out'; other_id: string; other_name: string; created_at: string };
+/**
+ * Demande en attente, reçue (« in ») ou envoyée (« out »). open_cellar : la personne qui demande ouvre aussi sa cave
+ * dès que la demande est acceptée.
+ */
+export type FriendRequest = { id: string; direction: 'in' | 'out'; other_id: string; other_name: string; created_at: string; open_cellar: boolean };
 export type Block = { blocked_id: string; display_name: string; created_at: string };
 export type AppNotification = {
   id: string;
-  kind: 'friend_request' | 'friend_accepted' | 'event_invite' | 'group_invite' | 'group_joined' | 'cellar_invite' | 'cellar_joined';
+  kind:
+    | 'friend_request'
+    | 'friend_accepted'
+    | 'event_invite'
+    | 'group_invite'
+    | 'group_joined'
+    | 'cellar_invite'
+    | 'cellar_joined'
+    | 'invite_joined'
+    | 'cellar_opened'
+    | 'cellar_access_request';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;
@@ -131,8 +146,71 @@ export type CellarLink = {
   joined_at: string | null;
 };
 
-/** Résultat de la recherche d'amis, avec la relation actuelle. */
-export type UserResult = { id: string; display_name: string; relation: 'friend' | 'requested' | 'incoming' | 'none' };
+/** Résultat de la recherche, avec la relation actuelle (« friend » : au moins une cave ouverte ; « contact » : aucune). */
+export type UserResult = { id: string; display_name: string; relation: 'friend' | 'contact' | 'requested' | 'incoming' | 'none' };
+
+/**
+ * Une personne avec qui je suis en relation, et qui voit quoi : ma cave lui est-elle ouverte (et comment), la sienne
+ * m'est-elle ouverte, demandes d'accès en attente. Les nombres viennent de la même règle que la vue servie à chacun.
+ */
+export type Relation = {
+  user_id: string;
+  display_name: string;
+  since: string;
+  they_see_mine: boolean;
+  i_see_theirs: boolean;
+  /** Niveau de détail choisi pour cette personne (null si ma cave lui est fermée). */
+  detail_level: DetailLevel | null;
+  exceptions: number;
+  /** Lots de ma cave qu'elle voit, et leurs bouteilles. */
+  visible_lots: number;
+  visible_bottles: number;
+  /** Lots de sa cave que je vois. */
+  shared_with_me: number;
+  /** Sa demande pour voir ma cave / la mienne pour voir la sienne. */
+  request_in: string | null;
+  request_out: string | null;
+};
+export type DetailLevel = 'standard' | 'restricted';
+
+/** Ce que les autres voient de mes bouteilles, et pourquoi (aperçu « Ce que X voit de moi »). */
+export type PreviewOrigin = 'friends' | 'proposable' | 'exception' | 'group' | 'event';
+export type PreviewLot = {
+  lot_id: string | null;
+  wine_id: string | null;
+  name: string;
+  producer: string | null;
+  vintage: number | null;
+  non_vintage: boolean;
+  color: Color | null;
+  region: string | null;
+  appellation: string | null;
+  volume_ml: number;
+  quantity: number | null;
+  available: number | null;
+  in_stock: boolean;
+  purchase_price: number | null;
+  currency: string | null;
+  notes: string | null;
+  hide_price: boolean;
+  hide_quantity: boolean;
+  hide_notes: boolean;
+  label_photo: string | null;
+  origin: PreviewOrigin;
+  /** Groupe ou événement à l'origine de la visibilité. */
+  origin_id: string | null;
+  origin_label: string | null;
+  origin_date: string | null;
+};
+export type CellarException = { owner_id: string; viewer_id: string; lot_id: string; mode: 'hide' | 'show'; created_at: string };
+
+/** Ce que j'ai en commun avec une personne. */
+export type RelationOverview = {
+  connected: boolean;
+  common_groups?: { id: string; name: string; emoji: string }[];
+  common_events?: { id: string; title: string; starts_at: string; status: string }[];
+  shared_cellars?: { cellar_id: string; cellar_name: string; mine: boolean; status: 'invited' | 'active' }[];
+};
 
 export type Preferences = {
   /** Affiche d'emblée les champs avancés des formulaires. */
@@ -268,7 +346,22 @@ export type SharedLot = {
 };
 
 export type Friendship = { user_a: string; user_b: string; invited_by: string | null; created_at: string };
-export type FriendInvite = { id: string; inviter_id: string; status: 'pending' | 'accepted' | 'declined' | 'revoked'; created_at: string; expires_at: string };
+/**
+ * Lien d'invitation : « discovery » (relation seule), « friend » (relation + ma cave), « group » / « event » (relation +
+ * invitation au groupe ou à l'événement target_id). Utilisable max_uses fois.
+ */
+export type InviteKind = 'discovery' | 'friend' | 'group' | 'event';
+export type FriendInvite = {
+  id: string;
+  inviter_id: string;
+  status: 'pending' | 'accepted' | 'declined' | 'revoked';
+  created_at: string;
+  expires_at: string;
+  kind: InviteKind;
+  target_id: string | null;
+  max_uses: number;
+  uses: number;
+};
 
 export type EventKind = 'diner' | 'degustation' | 'anniversaire' | 'soiree_theme';
 export type EventStatus = 'planned' | 'cancelled' | 'done';
