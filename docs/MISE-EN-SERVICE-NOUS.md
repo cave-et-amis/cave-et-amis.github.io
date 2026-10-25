@@ -6,6 +6,19 @@ peuvent être réalisées sans effet visible pour les utilisateurs. Contrat tech
 Coût : **0 €** — tout tient dans l'offre gratuite de Supabase (fonctions, pg_cron, pg_net) ; aucune nouvelle
 infrastructure. Côté Nous, une mise en ligne Netlify consomme des crédits du forfait existant (une seule suffit).
 
+## Le plus simple : le script
+
+Les étapes 0 à 5 ci-dessous sont automatisées, avec une pause de confirmation avant chacune :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\mise-en-service-nous.ps1
+```
+
+Il connecte la ligne de commande Supabase (dans votre navigateur), sauvegarde les deux bases en JSON (sans Docker),
+applique les migrations, tire au hasard le secret partagé et l'installe des deux côtés sans l'afficher, déploie les deux
+fonctions, active les tâches planifiées, publie le site Cave & Amis sur `gh-pages`, puis ouvre Netlify pour le dépôt du
+zip de Nous. Il s'arrête à la première erreur.
+
 ## Avant tout : partir de la dernière version de `main`
 
 La branche `feature/integration-cave-nous` part de `7a3b11e`. D'autres travaux (phase D « caves gérées à plusieurs »)
