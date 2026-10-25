@@ -1,6 +1,6 @@
-/** Notifications : demandes d'ami, demandes acceptées, invitations à un événement. Marquées lues à l'ouverture. */
+/** Notifications : demandes d'ami, invitations (événement, groupe, cave à gérer à plusieurs). Marquées lues à l'ouverture. */
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Bell, CalendarHeart, UserCheck, UserPlus, Users } from 'lucide-react';
+import { Bell, CalendarHeart, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
@@ -19,6 +19,10 @@ function describe(n: AppNotification): { text: string; href: string; icon: React
       return { text: `${who} vous invite à rejoindre un groupe`, href: '#/amis?onglet=groupes', icon: <Users /> };
     case 'group_joined':
       return { text: `${who} a rejoint votre groupe`, href: n.ref_id ? `#/groupes/${n.ref_id}` : '#/amis?onglet=groupes', icon: <Users /> };
+    case 'cellar_invite':
+      return { text: `${who} vous propose de gérer sa cave à plusieurs`, href: '#/amis?onglet=invitations', icon: <Wine /> };
+    case 'cellar_joined':
+      return { text: `${who} gère maintenant votre cave avec vous`, href: '#/reglages/caves', icon: <Wine /> };
   }
 }
 
@@ -38,7 +42,7 @@ export function NotificationsPage() {
   if (snapshot.notifications.length === 0) {
     return (
       <EmptyState icon="🔔" title="Aucune notification">
-        Vous serez prévenu ici des demandes d’ami et des invitations à un événement ou à un groupe.
+        Vous serez prévenu ici des demandes d’ami et des invitations à un événement, à un groupe ou à gérer une cave à plusieurs.
       </EmptyState>
     );
   }

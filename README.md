@@ -17,7 +17,9 @@ avec un **assistant sommelier (Claude)** dont la clé API, unique, reste sur le 
   indépendant du prix, de la quantité exacte et des notes. **Groupes** (famille, soirées…) avec rôles et invitations : on y rend
   des bouteilles **visibles**, ou on en **met à disposition** une quantité, réservée pour le groupe (« 6 en stock · dont 2 pour
   mes groupes · 4 libres »), jamais comptée deux fois, rendue si l'on quitte le groupe ; seul le propriétaire les ouvre, avec
-  l'historique et l'activité du groupe.
+  l'historique et l'activité du groupe. **Caves gérées à plusieurs** (un couple, une famille) : on y associe une personne de
+  ses amis, avec son propre compte ; elle ajoute, boit, corrige et range les bouteilles, chaque mouvement à son nom ; un seul
+  stock, un seul propriétaire.
 - **Événements** (dîner, dégustation, anniversaire, soirée à thème) : invités et réponses, menu, thème et budget, bouteilles
   proposées ou suggérées, **confirmation par le propriétaire = réservation** (sans sortie de stock), disponibilité tenant compte
   des autres réservations, libération à l'annulation, confirmation après coup des bouteilles bues (stock mis à jour **une seule

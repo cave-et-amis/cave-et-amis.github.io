@@ -18,6 +18,10 @@
   Le navigateur ne peut pas contourner ces règles ; l'assistant non plus : il lit avec le jeton de la personne.
 - **Supprimer un ami** retire immédiatement l'accès, dans les deux sens. Les souvenirs d'événements gardent les vins dégustés,
   sans donner accès au stock ni aux informations privées.
+- **Cave gérée à plusieurs** : une personne associée (invitation acceptée, avec son propre compte) voit et gère les bouteilles,
+  emplacements, fiches et prix de **cette cave seulement**, jamais les autres caves du propriétaire. Le partage, les groupes,
+  les événements et toute suppression restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
+  un blocage coupe l'accès immédiatement.
 - Il n'existe aucune « cave publique » : aucune donnée n'est lisible sans compte, à l'exception de « X vous invite » pour un
   code d'invitation valide (code de 10 caractères, conservé haché, usage unique, 14 jours).
 

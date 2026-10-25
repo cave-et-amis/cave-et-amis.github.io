@@ -130,6 +130,32 @@ describe('assistant : sécurité et droits', () => {
     expect(found.wines[0].bottles_reserved_for_events).toBeUndefined();
   });
 
+  it('cave gérée à plusieurs : Lia voit la cave partagée, nommée comme telle ; on n’apporte que ses propres bouteilles', async () => {
+    const env = await makeAiEnv();
+    const { bruno, claire, madiran } = await cellarWith(env);
+    const { data: cellar } = await bruno.sb.from('cellars').select('id').eq('name', 'Ma cave').single();
+    await bruno.sb.rpc('invite_to_cellar', { p_cellar: (cellar as { id: string }).id, p_users: [claire.id] });
+    const { error } = await claire.sb.rpc('respond_cellar_invite', { p_cellar: (cellar as { id: string }).id, p_accept: true });
+    expect(error).toBeNull();
+    const { data: ev } = await claire.sb.rpc('create_event', { p: { title: 'Dîner', starts_at: '2030-01-01T19:00:00Z' }, p_guests: [] });
+    env.anthropic.reply(
+      {
+        kind: 'message',
+        stop_reason: 'tool_use',
+        content: [
+          toolUse('t1', 'get_wine_details', { wine_id: madiran.wineId }),
+          toolUse('t2', 'propose_event_wine', { event_id: (ev as { id: string }).id, lot_id: madiran.lotId, quantity: 1 }),
+        ],
+      },
+      { kind: 'message', content: [text('Le **Madiran** de la cave de Bruno se boit bien.')] },
+    );
+    const res = await call(claire.sb, { action: 'chat', message: 'Que boire avec un magret ?' });
+    expect(res.ok).toBe(true);
+    const results = (env.anthropic.requests[1].body!.messages as { content: { content: string }[] }[]).at(-1)!.content.map((c) => c.content);
+    expect(JSON.parse(results[0]).lots[0].cellar).toBe('Ma cave (cave de Bruno, gérée à plusieurs)');
+    expect(results[1]).toContain('n’est pas proposable');
+  });
+
   it('message trop long, conversation d’un autre', async () => {
     const env = await makeAiEnv();
     const { bruno, claire } = await cellarWith(env);

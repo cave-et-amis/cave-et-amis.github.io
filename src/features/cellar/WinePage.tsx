@@ -6,12 +6,12 @@ import { usePhotoUrl } from '../../data/photos';
 import { PhotoCredit } from './OfficialPhoto';
 import { generalAeration, generalServingTemperature } from '../../domain/advice';
 import { buildRows, lotSplit, splitText } from '../../domain/cellar';
-import { currentYear, dateShort, money } from '../../domain/format';
+import { currentYear, dateShort, deName, money } from '../../domain/format';
 import { MATURITY_HINTS, MATURITY_LABELS, windowText } from '../../domain/maturity';
 import type { Lot, Movement } from '../../domain/types';
 import { colorLabel, label, MOVEMENT_LABELS, VISIBILITIES, volumeLabel, WINE_TYPES, vintageLabel, wineSubtitle } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
-import { Button, EmptyState, InlineLoading, Origin, StarsView, useConfirm } from '../../ui/kit';
+import { Button, EmptyState, InlineLoading, Notice, Origin, StarsView, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { AllocateSheet } from '../groups/AllocateSheet';
 import { LotSheet } from './LotSheet';
@@ -21,7 +21,7 @@ import { WineFormSheet } from './WineForm';
 
 export function WinePage({ id }: { id: string }) {
   const store = useStore();
-  const { snapshot, api, run, wine: getWine, lotsOf, location, cellar } = store;
+  const { snapshot, api, run, wine: getWine, lotsOf, location, cellar, cellarLabel, cellarPeople, profileName, userId } = store;
   const actions = useActions();
   const confirm = useConfirm();
   const wine = getWine(id);
@@ -67,6 +67,9 @@ export function WinePage({ id }: { id: string }) {
   const generalAer = generalAeration(wine, year);
   const reversed = new Set((movements ?? []).map((m) => m.reverses_id).filter(Boolean));
   const storageCaution = row.storage === 'piece';
+  // Cave gérée à plusieurs : le vin peut appartenir à la personne propriétaire d'une cave que je gère aussi.
+  const isOwner = wine.owner_id === userId;
+  const sharedCellar = lots.some((l) => l.owner_id !== userId || cellarPeople(l.cellar_id).some((p) => p.status === 'active'));
   const forEvents = row.reserved - row.forGroups;
   const inStockLots = lots.filter((l) => l.quantity > 0);
   const wineShares = snapshot.groupShares.filter((s) => inStockLots.some((l) => l.id === s.lot_id));
@@ -107,6 +110,12 @@ export function WinePage({ id }: { id: string }) {
       </section>
       {bottlePhoto && <img className="photo-preview" src={bottlePhoto} alt={`Bouteille de ${wine.name}`} />}
       {wine.bottle_photo && <PhotoCredit credit={wine.bottle_photo_credit} />}
+      {!isOwner && (
+        <Notice>
+          Cave {deName(profileName(wine.owner_id))}, gérée à plusieurs : vous ajoutez, buvez, corrigez et rangez ces bouteilles ; chaque mouvement est noté à votre
+          nom.
+        </Notice>
+      )}
 
       <section className="tiles" aria-label="Stock">
         <div className="tile">
@@ -119,9 +128,11 @@ export function WinePage({ id }: { id: string }) {
         </div>
         <div className="tile">
           <span className="value">{forEvents}</span>
-          <span className="label">réservée{forEvents > 1 ? 's' : ''} (événements)</span>
+          <span className="label">
+            réservée{forEvents > 1 ? 's' : ''} {isOwner ? '(événements)' : '(événements, groupes)'}
+          </span>
         </div>
-        {myGroups.length > 0 || row.forGroups > 0 ? (
+        {isOwner && (myGroups.length > 0 || row.forGroups > 0) ? (
           <div className="tile">
             <span className="value">{row.forGroups}</span>
             <span className="label">pour mes groupes</span>
@@ -181,7 +192,7 @@ export function WinePage({ id }: { id: string }) {
         </div>
       )}
 
-      {(myGroups.length > 0 || sharedIn.length > 0) && (
+      {isOwner && (myGroups.length > 0 || sharedIn.length > 0) && (
         <section aria-labelledby="h-share" className="card stack-sm">
           <h2 id="h-share" className="section">
             Partage avec mes groupes
@@ -288,7 +299,7 @@ export function WinePage({ id }: { id: string }) {
                 <span className={`pill ${l.visibility === 'private' ? '' : 'primary'}`}>{label(VISIBILITIES, l.visibility)}</span>
               </div>
               <span className="small muted">
-                {cellar(l.cellar_id)?.name}
+                {cellarLabel(cellar(l.cellar_id))}
                 {l.location_id ? ` › ${location(l.location_id)?.name}` : ''}
                 {(() => {
                   const sp = lotSplit(l, snapshot.groupShares);
@@ -302,12 +313,13 @@ export function WinePage({ id }: { id: string }) {
               </span>
               {l.visibility !== 'private' && (
                 <span className="small faint">
-                  Vos amis voient ce lot{[l.hide_price && 'sans le prix', l.hide_quantity && 'sans la quantité exacte', l.hide_notes && 'sans vos notes'].filter(Boolean).length ? ' ' : ''}
-                  {[l.hide_price && 'sans le prix', l.hide_quantity && 'sans la quantité exacte', l.hide_notes && 'sans vos notes'].filter(Boolean).join(', ')}.
+                  {isOwner ? 'Vos amis voient' : `Les amis ${deName(profileName(wine.owner_id))} voient`} ce lot
+                  {[l.hide_price && 'sans le prix', l.hide_quantity && 'sans la quantité exacte', l.hide_notes && 'sans les notes'].filter(Boolean).length ? ' ' : ''}
+                  {[l.hide_price && 'sans le prix', l.hide_quantity && 'sans la quantité exacte', l.hide_notes && 'sans les notes'].filter(Boolean).join(', ')}.
                 </span>
               )}
               {l.notes && <span className="small">{l.notes}</span>}
-              {myGroups.length > 0 && l.quantity > 0 && (
+              {isOwner && myGroups.length > 0 && l.quantity > 0 && (
                 <div className="stack-sm">
                   <span className="small muted">Visible dans mes groupes (les bouteilles restent à vous) :</span>
                   <div className="chips" role="group" aria-label="Groupes où ce lot est visible">
@@ -361,7 +373,7 @@ export function WinePage({ id }: { id: string }) {
                   Corriger
                 </Button>
                 <Button size="sm" variant="ghost" icon={<Pencil />} onClick={() => setSheet({ kind: 'lot', lot: l })}>
-                  Lot et partage
+                  {isOwner ? 'Lot et partage' : 'Rangement et achat'}
                 </Button>
               </div>
             </article>
@@ -401,13 +413,15 @@ export function WinePage({ id }: { id: string }) {
         ) : (
           <div className="timeline">
             {movements.slice(0, 40).map((m) => {
-              const canUndo = m.kind !== 'annulation' && !reversed.has(m.id);
+              // Bouteille d'un événement ou d'un groupe : l'annulation reste au propriétaire.
+              const canUndo = m.kind !== 'annulation' && !reversed.has(m.id) && (m.owner_id === userId || (!m.event_id && !m.group_id));
               return (
                 <div key={m.id} className="tl">
                   <span className={`delta ${m.delta > 0 ? 'plus' : 'minus'}`}>{m.delta > 0 ? `+${m.delta}` : m.delta}</span>
                   <span className="row-main">
                     <span className="strong">
                       {MOVEMENT_LABELS[m.kind]} · {dateShort(m.occurred_on)}
+                      {sharedCellar && m.done_by ? ` · par ${m.done_by === userId ? 'vous' : profileName(m.done_by)}` : ''}
                     </span>
                     {(m.note || m.event_id || m.group_id) && (
                       <span className="small muted">

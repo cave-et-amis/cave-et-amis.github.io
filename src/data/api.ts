@@ -8,6 +8,7 @@ import type {
   AppNotification,
   Block,
   CaveEvent,
+  CellarLink,
   FriendRequest,
   GroupActivity,
   GroupLot,
@@ -61,6 +62,8 @@ export type Snapshot = {
   groups: MyGroup[];
   /** Mes lots rendus visibles dans des groupes. */
   groupShares: GroupShare[];
+  /** Caves gérées à plusieurs : personnes associées à mes caves, caves où je suis associé ou invité. */
+  cellarLinks: CellarLink[];
 };
 
 export type EventDetail = { participants: Participant[]; dishes: Dish[]; wines: EventWine[]; suggestable: SuggestableLot[]; tastings: Tasting[] };
@@ -150,7 +153,7 @@ export class Api {
 
   async load(userId: string): Promise<Snapshot> {
     const sb = this.sb;
-    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares] = await Promise.all([
+    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks] = await Promise.all([
       pages<Profile>((a, b) => sb.from('profiles').select('*').order('display_name').range(a, b)),
       pages<Cellar>((a, b) => sb.from('cellars').select('*').order('position').order('created_at').range(a, b)),
       pages<Location>((a, b) => sb.from('locations').select('*').order('position').order('name').range(a, b)),
@@ -174,10 +177,13 @@ export class Api {
         .then((r) => must(r) as AppNotification[]),
       sb.rpc('my_groups').then((r) => must(r) as MyGroup[]),
       pages<GroupShare>((a, b) => sb.from('group_shares').select('*').eq('owner_id', userId).range(a, b)),
+      sb.rpc('my_cellar_links').then((r) => must(r) as CellarLink[]),
     ]);
     const me = profiles.find((p) => p.id === userId);
     if (!me) throw new AppError('Votre profil est introuvable. Reconnectez-vous.', 'not_found');
-    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares };
+    // Mes caves d'abord, puis celles que je gère avec leur propriétaire.
+    cellars.sort((a, b) => Number(a.owner_id !== userId) - Number(b.owner_id !== userId));
+    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks };
   }
 
   // ───────────── Caves et emplacements ─────────────
@@ -201,11 +207,29 @@ export class Api {
     must(await this.sb.from('locations').delete().eq('id', id));
   }
 
+  // ───────────── Caves gérées à plusieurs ─────────────
+
+  async inviteToCellar(cellar: string, users: string[]) {
+    return must(await this.sb.rpc('invite_to_cellar', { p_cellar: cellar, p_users: users })) as number;
+  }
+  async respondCellarInvite(cellar: string, accept: boolean) {
+    return must(await this.sb.rpc('respond_cellar_invite', { p_cellar: cellar, p_accept: accept })) as 'active' | 'declined';
+  }
+  /** Le propriétaire retire une personne (ou annule son invitation) ; avec mon propre identifiant : je quitte la cave. */
+  async removeCellarMember(cellar: string, user: string) {
+    must(await this.sb.rpc('remove_cellar_member', { p_cellar: cellar, p_user: user }));
+  }
+
   // ───────────── Vins, lots, mouvements ─────────────
 
-  /** Création idempotente : l'identifiant est choisi par l'appareil (un nouvel envoi ne crée pas de doublon). */
+  /**
+   * Création idempotente : l'identifiant est choisi par l'appareil ; un nouvel envoi retombe sur la même fiche (doublon
+   * d'identifiant ignoré). Simple insertion, sans relire la ligne : c'est ce qui permet à une personne associée de créer
+   * une fiche au nom du propriétaire d'une cave partagée (elle ne la voit qu'une fois les bouteilles ajoutées).
+   */
   async saveNewWine(w: Partial<Wine> & { id: string; name: string }) {
-    must(await this.sb.from('wines').upsert(w, { onConflict: 'id', ignoreDuplicates: true }));
+    const { error } = await this.sb.from('wines').insert(w);
+    if (error && error.code !== '23505') throw error;
   }
   async updateWine(id: string, patch: Partial<Wine>) {
     must(await this.sb.from('wines').update(patch).eq('id', id));

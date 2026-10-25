@@ -29,7 +29,7 @@ export function MovementSheet({
   mode?: Mode;
   onClose: () => void;
 }) {
-  const { api, run, location, snapshot } = useStore();
+  const { api, run, location, snapshot, userId, profileName } = useStore();
   const choices = lots.filter((l) => initialMode !== 'out' || l.quantity > 0);
   const [mode, setMode] = useState<Mode>(initialMode);
   const [lotId, setLotId] = useState(initialLot?.id ?? choices.find((l) => l.quantity - l.reserved > 0)?.id ?? choices[0]?.id ?? '');
@@ -173,7 +173,13 @@ export function MovementSheet({
                 <input id="mv-date" className="input" type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
               </Field>
             </div>
-            {mode === 'out' && !fromGroup && split && lot && lot.reserved > 0 && (
+            {mode === 'out' && !fromGroup && split && lot && lot.reserved > 0 && lot.owner_id !== userId && (
+              <Notice tone="warn">
+                {lot.reserved} bouteille{lot.reserved > 1 ? 's de ce lot sont réservées' : ' de ce lot est réservée'} par {profileName(lot.owner_id)} (événement
+                ou groupe) : seules {available} peuvent sortir ici.
+              </Notice>
+            )}
+            {mode === 'out' && !fromGroup && split && lot && lot.reserved > 0 && lot.owner_id === userId && (
               <Notice tone="warn">
                 {[
                   split.forEvents ? `${split.forEvents} bouteille${split.forEvents > 1 ? 's sont réservées' : ' est réservée'} pour un événement` : null,

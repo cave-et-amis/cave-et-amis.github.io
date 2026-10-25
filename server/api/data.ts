@@ -8,6 +8,7 @@ import type { Cellar, Location, Lot, MarketPrice, SharedLot, SuggestableLot, Tas
 import { MATURITY_LABELS, maturityOf, windowOf } from '../../src/domain/maturity.ts';
 import { generalAeration, generalServingTemperature } from '../../src/domain/advice.ts';
 import { ADVICE_SOURCES, colorLabel, fold, label, WINE_TYPES } from '../../src/domain/wine.ts';
+import { deName } from '../../src/domain/format.ts';
 import { AiFailure, sanitize } from './util.ts';
 
 async function all<T>(q: () => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
@@ -30,10 +31,11 @@ async function paged<T>(page: (from: number, to: number) => PromiseLike<{ data: 
 /** Bouteilles d'un de mes lots mises à disposition d'un groupe (avec le nom du groupe). */
 export type Allocation = { lot_id: string; group: string; bottles: number };
 
-export type CellarData = { wines: Wine[]; lots: Lot[]; cellars: Cellar[]; locations: Location[]; allocations?: Allocation[] };
+/** owner_name : propriétaire d'une cave gérée à plusieurs (absent pour les caves de la personne). */
+export type CellarData = { wines: Wine[]; lots: Lot[]; cellars: (Cellar & { owner_name?: string })[]; locations: Location[]; allocations?: Allocation[] };
 
-export async function loadCellar(sb: SupabaseClient): Promise<CellarData> {
-  const [wines, lots, cellars, locations, shares, groups] = await Promise.all([
+export async function loadCellar(sb: SupabaseClient, me?: string): Promise<CellarData> {
+  const [wines, lots, cellars, locations, shares, groups, links] = await Promise.all([
     paged<Wine>((a, b) => sb.from('wines').select('*').order('name').order('id').range(a, b)),
     paged<Lot>((a, b) => sb.from('lots').select('*').order('id').range(a, b)),
     paged<Cellar>((a, b) => sb.from('cellars').select('*').order('id').range(a, b)),
@@ -41,12 +43,22 @@ export async function loadCellar(sb: SupabaseClient): Promise<CellarData> {
     // Mes mises à disposition (RLS : seulement les miennes) et le nom de mes groupes.
     paged<{ lot_id: string; group_id: string; allocated: number }>((a, b) => sb.from('group_shares').select('lot_id, group_id, allocated').gt('allocated', 0).range(a, b)),
     paged<{ id: string; name: string }>((a, b) => sb.from('groups').select('id, name').range(a, b)),
+    // Caves gérées à plusieurs : nom de leur propriétaire.
+    all<{ cellar_id: string; owner_id: string; owner_name: string }>(() => sb.rpc('my_cellar_links')),
   ]);
   const allocations = shares.map((s) => ({ lot_id: s.lot_id, group: groups.find((g) => g.id === s.group_id)?.name ?? 'un groupe', bottles: s.allocated }));
-  return { wines, lots, cellars, locations, allocations };
+  const owners = Object.fromEntries(links.filter((l) => me && l.owner_id !== me).map((l) => [l.cellar_id, l.owner_name]));
+  return { wines, lots, cellars: cellars.map((c) => ({ ...c, owner_name: owners[c.id] })), locations, allocations };
 }
 
 const clip = (s: string | null | undefined, n: number) => (s ? (s.length > n ? `${s.slice(0, n)}…` : s) : undefined);
+
+/** « Cave de la maison (cave de Bruno, gérée à plusieurs) » pour une cave dont la personne n'est pas propriétaire. */
+function cellarName(data: CellarData, id: string) {
+  const c = data.cellars.find((x) => x.id === id);
+  if (!c) return undefined;
+  return c.owner_name ? `${c.name} (cave ${deName(c.owner_name)}, gérée à plusieurs)` : c.name;
+}
 
 function adviceTag(source: string | null) {
   return source ? ADVICE_SOURCES[source as keyof typeof ADVICE_SOURCES] : undefined;
@@ -105,7 +117,7 @@ export function compactWine(w: Wine, data: CellarData, year: number, detail = fa
       quantity: l.quantity,
       available: l.quantity - l.reserved,
       volume_ml: l.volume_ml,
-      cellar: data.cellars.find((c) => c.id === l.cellar_id)?.name,
+      cellar: cellarName(data, l.cellar_id),
       location: data.locations.find((x) => x.id === l.location_id)?.name,
       purchase_price: l.purchase_price === null ? undefined : `${l.purchase_price} ${l.currency}`,
       purchase_date: l.purchase_date ?? undefined,
@@ -266,6 +278,8 @@ export async function eventDetails(sb: SupabaseClient, eventId: string, data: Ce
     my_available_bottles:
       event.status === 'planned'
         ? data.wines
+            // Seulement ses propres bouteilles : on n'apporte pas celles d'une cave gérée avec son propriétaire.
+            .filter((w) => w.owner_id === me)
             .map((w) => compactWine(w, data, year))
             .filter((w) => w.bottles_available > 0)
             .slice(0, 40)

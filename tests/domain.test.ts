@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { generalAeration, generalServingTemperature, suggestServiceOrder } from '../src/domain/advice.ts';
 import { applyFilters, buildRows, cellarCsv, EMPTY_FILTERS, lotSplit, splitText } from '../src/domain/cellar.ts';
 import { AppError, toMessage } from '../src/domain/errors.ts';
-import { fromLocalInput, toLocalInput } from '../src/domain/format.ts';
+import { deName, fromLocalInput, toLocalInput } from '../src/domain/format.ts';
 import { maturity, maturityOf, windowOf } from '../src/domain/maturity.ts';
 import { valuation } from '../src/domain/valuation.ts';
 import type { Cellar, Lot, Wine } from '../src/domain/types.ts';
@@ -147,6 +147,10 @@ describe('inventaire et export', () => {
     expect(splitText(6, 2, 0)).toBe('6 en stock · dont 2 pour mes groupes · 4 libres');
     expect(splitText(6, 2, 1)).toBe('6 en stock · dont 2 pour mes groupes · 1 réservée (événements) · 3 libres');
     expect(splitText(1, 0, 0)).toBe('1 en stock · 1 libre');
+  });
+
+  it('« de Bruno », « d’Alice », « d’Hélène » : élision devant une voyelle ou un h', () => {
+    expect([deName('Bruno'), deName('Alice'), deName('Élodie'), deName('Hélène'), deName('yann')]).toEqual(['de Bruno', 'd’Alice', 'd’Élodie', 'd’Hélène', 'd’yann']);
   });
 
   it('l’export neutralise les formules de tableur', () => {

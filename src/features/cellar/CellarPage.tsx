@@ -34,7 +34,7 @@ function download(name: string, text: string) {
 }
 
 export function CellarPage() {
-  const { snapshot, location } = useStore();
+  const { snapshot, location, cellarLabel } = useStore();
   const actions = useActions();
   const query = routeQuery();
   const year = currentYear();
@@ -187,7 +187,7 @@ export function CellarPage() {
                 <option value="">Toutes les caves</option>
                 {snapshot.cellars.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {cellarLabel(c)}
                   </option>
                 ))}
               </select>

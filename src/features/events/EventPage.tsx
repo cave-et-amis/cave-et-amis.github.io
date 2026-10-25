@@ -561,8 +561,18 @@ function DishSheet({ onClose, onAdd }: { onClose: () => void; onAdd: (course: Co
 }
 
 function ProposeSheet({ eventId, onClose, onDone }: { eventId: string; onClose: () => void; onDone: () => void }) {
-  const { snapshot, api, run, location } = useStore();
-  const rows = useMemo(() => buildRows(snapshot.wines, snapshot.lots, snapshot.cellars, currentYear()).filter((r) => r.available > 0), [snapshot]);
+  const { snapshot, api, run, location, userId } = useStore();
+  // Seulement mes propres bouteilles : celles d'une cave gérée avec quelqu'un d'autre restent à la personne propriétaire.
+  const rows = useMemo(
+    () =>
+      buildRows(
+        snapshot.wines.filter((w) => w.owner_id === userId),
+        snapshot.lots.filter((l) => l.owner_id === userId),
+        snapshot.cellars,
+        currentYear(),
+      ).filter((r) => r.available > 0),
+    [snapshot, userId],
+  );
   const [lotId, setLotId] = useState<string>('');
   const [qty, setQty] = useState(1);
   const [bring, setBring] = useState(true);

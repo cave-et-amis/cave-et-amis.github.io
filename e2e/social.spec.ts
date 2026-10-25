@@ -1,7 +1,8 @@
 /**
  * Groupes, sur téléphone : création, invitation d'un ami, partage « visible » d'une bouteille, adhésion,
  * mise à disposition de bouteilles (compteurs, ouverture par la propriétaire, historique), rôles, activité,
- * départ (les bouteilles restent à leur propriétaire et redeviennent libres).
+ * départ (les bouteilles restent à leur propriétaire et redeviennent libres) ; cave gérée à plusieurs (association,
+ * mouvement au nom de la personne associée, retrait).
  * Fichier nommé pour passer APRÈS parcours.spec.ts (ordre alphabétique) : le premier compte créé de la série
  * devient administrateur, et ce doit être Bruno.
  */
@@ -178,4 +179,45 @@ test('Alice nomme Paul gestionnaire ; l’activité garde la trace ; Paul quitte
   await goto(alice, winePath);
   await expect.poll(() => tile(alice, /disponible/)).toBe(5);
   expect(await tile(alice, /pour mes groupes/)).toBe(0);
+});
+
+test('cave gérée à plusieurs : Alice associe Paul ; Paul boit une bouteille, notée à son nom ; Alice le retire', async () => {
+  // Alice : Réglages › Mes caves › « Associer une personne ».
+  await goto(alice, '/reglages/caves');
+  await alice.reload();
+  await alice.getByRole('button', { name: 'Associer une personne' }).click();
+  const sheet = alice.getByRole('dialog', { name: 'Associer à « Ma cave »' });
+  await sheet.getByLabel('Paul').check();
+  await sheet.getByRole('button', { name: 'Associer' }).click();
+  await toast(alice, '1 invitation envoyée');
+  await expect(alice.locator('.row').filter({ hasText: 'Paul' })).toContainText('Invitation envoyée');
+
+  // Paul accepte : la cave d'Alice apparaît dans son inventaire, comme la sienne.
+  await paul.reload();
+  await goto(paul, '/amis?onglet=invitations');
+  await paul.getByRole('button', { name: 'Accepter de gérer « Ma cave » d’Alice' }).click();
+  await toast(paul, 'Vous gérez maintenant « Ma cave » avec Alice');
+  await goto(paul, '/cave');
+  await paul.getByText('Morgon Côte du Py').first().click();
+  await expect(paul.getByText('Cave d’Alice, gérée à plusieurs')).toBeVisible();
+  expect(await tile(paul, /en stock/)).toBe(5);
+  await paul.getByRole('button', { name: 'J’en ai bu une' }).click();
+  await paul.getByRole('dialog', { name: 'Sortie de cave' }).getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(paul, 'Sortie enregistrée : 1 bouteille');
+  await expect.poll(() => tile(paul, /en stock/)).toBe(4);
+  await expect(paul.locator('.tl').first()).toContainText('par vous');
+  await shot(paul, '11-cave-geree-a-plusieurs');
+
+  // Alice voit le même stock et le mouvement au nom de Paul ; puis elle le retire.
+  await goto(alice, winePath);
+  await alice.reload();
+  await expect.poll(() => tile(alice, /en stock/)).toBe(4);
+  await expect(alice.locator('.tl').first()).toContainText('par Paul');
+  await goto(alice, '/reglages/caves');
+  await alice.getByRole('button', { name: 'Retirer Paul de Ma cave' }).click();
+  await alice.getByRole('alertdialog').getByRole('button', { name: 'Retirer' }).click();
+  await toast(alice, 'Paul ne gère plus « Ma cave »');
+  await paul.reload();
+  await goto(paul, '/cave');
+  await expect(paul.getByText('Morgon Côte du Py')).toHaveCount(0);
 });

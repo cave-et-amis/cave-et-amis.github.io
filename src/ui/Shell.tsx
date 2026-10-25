@@ -78,8 +78,11 @@ export function Shell() {
     (p) => p.user_id === userId && p.rsvp === 'pending' && snapshot.events.find((e) => e.id === p.event_id)?.status === 'planned',
   ).length;
 
-  // Demandes d'ami reçues et invitations à des groupes : pastille sur l'onglet Amis & Groupes.
-  const incomingRequests = snapshot.requests.filter((r) => r.direction === 'in').length + snapshot.groups.filter((g) => g.my_status === 'invited').length;
+  // Demandes d'ami reçues, invitations à des groupes ou à gérer une cave : pastille sur l'onglet Amis & Groupes.
+  const incomingRequests =
+    snapshot.requests.filter((r) => r.direction === 'in').length +
+    snapshot.groups.filter((g) => g.my_status === 'invited').length +
+    snapshot.cellarLinks.filter((l) => l.user_id === userId && l.status === 'invited').length;
   const unreadNotifications = snapshot.notifications.filter((n) => !n.read_at).length;
 
   const tabs: Tab[] = [
