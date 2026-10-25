@@ -7,9 +7,10 @@ import type Anthropic from '@anthropic-ai/sdk';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { baseParams, textOf, type Meter } from './claude.ts';
 import { LABEL_SYSTEM } from './prompts.ts';
+import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { AiFailure, sanitize } from './util.ts';
 
-const FIELDS = ['name', 'domaine', 'producer', 'cuvee', 'country', 'region', 'appellation', 'color', 'wine_type', 'grapes', 'vintage', 'non_vintage', 'volume_ml'] as const;
+const FIELDS = ['name', 'domaine', 'producer', 'cuvee', 'country', 'region', 'appellation', 'color', 'wine_type', 'grapes', 'vintage', 'non_vintage', 'volume_ml', 'barcode'] as const;
 const COLORS = ['rouge', 'blanc', 'rose', 'orange', 'effervescent', 'autre'];
 const TYPES = ['tranquille', 'effervescent', 'moelleux', 'liquoreux', 'fortifie', 'autre'];
 
@@ -41,6 +42,7 @@ export const LABEL_SCHEMA = {
         vintage: ni,
         non_vintage: { type: 'boolean' },
         volume_ml: ni,
+        barcode: ns,
       },
     },
     uncertain: { type: 'array', items: { type: 'string', enum: [...FIELDS] } },
@@ -83,6 +85,8 @@ export function cleanLabel(raw: unknown, year = new Date().getFullYear()): Label
     vintage: int(f.vintage, 1800, year),
     non_vintage: f.non_vintage === true && !int(f.vintage, 1800, year),
     volume_ml: int(f.volume_ml, 50, 30000),
+    // Chiffre de contrôle vérifié : un code mal lu est écarté plutôt que proposé.
+    barcode: normalizeBarcode(f.barcode),
   };
   const a = r.advice ?? {};
   const advice: LabelResult['advice'] = {};
@@ -100,7 +104,7 @@ export function cleanLabel(raw: unknown, year = new Date().getFullYear()): Label
   return { is_wine_label: r.is_wine_label === true, fields, uncertain, advice, notes: str(r.notes, 300) };
 }
 
-function mediaType(bytes: Uint8Array): 'image/jpeg' | 'image/png' | 'image/webp' | null {
+export function mediaType(bytes: Uint8Array): 'image/jpeg' | 'image/png' | 'image/webp' | null {
   if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
   if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 && bytes[8] === 0x57 && bytes[9] === 0x45) return 'image/webp';

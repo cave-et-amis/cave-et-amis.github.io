@@ -3,6 +3,7 @@ import { ArrowDownToLine, BookOpen, CalendarHeart, Heart, Minus, Pencil, Plus, S
 import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
 import { usePhotoUrl } from '../../data/photos';
+import { PhotoCredit } from './OfficialPhoto';
 import { generalAeration, generalServingTemperature } from '../../domain/advice';
 import { buildRows } from '../../domain/cellar';
 import { currentYear, dateShort, money } from '../../domain/format';
@@ -91,6 +92,7 @@ export function WinePage({ id }: { id: string }) {
         </div>
       </section>
       {bottlePhoto && <img className="photo-preview" src={bottlePhoto} alt={`Bouteille de ${wine.name}`} />}
+      {wine.bottle_photo && <PhotoCredit credit={wine.bottle_photo_credit} />}
 
       <section className="tiles" aria-label="Stock">
         <div className="tile">

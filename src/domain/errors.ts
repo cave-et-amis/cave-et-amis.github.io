@@ -69,6 +69,7 @@ export const AI_MESSAGES: Record<string, string> = {
   message_too_long: 'Votre message est trop long. Raccourcissez-le, puis réessayez.',
   image_too_large: 'La photo est trop lourde. Reprenez-la ou choisissez-en une autre.',
   image_invalid: 'Cette photo n’a pas pu être lue. Essayez une photo au format JPEG ou PNG.',
+  photo_service_unavailable: 'Open Food Facts ne répond pas pour le moment. Réessayez plus tard, ou gardez votre propre photo.',
   refused: 'L’assistant n’a pas pu répondre à cette demande. Reformulez-la.',
   bad_request: 'La demande n’a pas pu être traitée par l’assistant.',
   not_authenticated: 'Votre session a expiré. Reconnectez-vous.',

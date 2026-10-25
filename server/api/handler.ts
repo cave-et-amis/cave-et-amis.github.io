@@ -10,6 +10,7 @@ import { AI_MESSAGES } from '../../src/domain/errors.ts';
 import { runChat, type ChatInput } from './chat.ts';
 import { makeClient, mapAnthropicError, Meter, type Action, type AiSettings, baseParams, textOf } from './claude.ts';
 import { identifyLabel, readPhoto } from './label.ts';
+import { importPhoto, searchPhotos } from './photos.ts';
 import { lookupPrice } from './price.ts';
 import { AiFailure, corsHeaders, isUuid, json, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
@@ -19,6 +20,8 @@ export type ApiDeps = {
   fetch?: typeof fetch;
   /** Transport du client Anthropic (tests). */
   anthropicFetch?: typeof fetch;
+  /** Transport vers Open Food Facts (tests). */
+  webFetch?: typeof fetch;
   now?: () => Date;
 };
 
@@ -33,6 +36,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       global: { ...(deps.fetch ? { fetch: deps.fetch } : {}), headers: { Authorization: `Bearer ${token}` } },
     });
   const now = deps.now ?? (() => new Date());
+  const webFetch = deps.webFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));
 
   async function settings(): Promise<AiSettings> {
     const { data, error } = await svc.rpc('ai_config');
@@ -129,6 +133,13 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         );
         return { result };
       }
+
+      // Photo officielle (Open Food Facts) : sans IA, sans coût.
+      case 'photo_search':
+        return { candidates: await searchPhotos(webFetch, body) };
+
+      case 'photo_import':
+        return importPhoto(webFetch, user, userId, body.code);
 
       case 'admin_test':
         return adminTest(user, userId);

@@ -7,10 +7,12 @@ import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
 import { currentYear, parseNumber, todayIso } from '../../domain/format';
 import { fold, LOCATION_KINDS, VOLUMES, WINE_TYPES, wineTitle } from '../../domain/wine';
-import type { AdviceSource, Color, Visibility, Wine, WineType } from '../../domain/types';
+import { normalizeBarcode } from '../../domain/barcode';
+import type { AdviceSource, BottlePhotoSource, Color, Visibility, Wine, WineType } from '../../domain/types';
 import { Advanced, Button, Check, Field, Notice, Origin, Sheet, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { ColorChips, PhotoField, Stepper, Uncertain, VisibilityField } from './fields';
+import { OfficialPhoto, PhotoCredit } from './OfficialPhoto';
 
 export type WinePrefill = {
   wine?: Partial<Wine>;
@@ -36,8 +38,11 @@ type Form = {
   grapes: string;
   vintage: string;
   non_vintage: boolean;
+  barcode: string;
   label_photo: string | null;
   bottle_photo: string | null;
+  bottle_photo_source: BottlePhotoSource | null;
+  bottle_photo_credit: string | null;
   drink_from: string;
   drink_until: string;
   serve_temp_min: string;
@@ -63,8 +68,11 @@ function initialForm(w: Partial<Wine> | undefined): Form {
     grapes: (w?.grapes ?? []).join(', '),
     vintage: s(w?.vintage),
     non_vintage: Boolean(w?.non_vintage),
+    barcode: s(w?.barcode),
     label_photo: w?.label_photo ?? null,
     bottle_photo: w?.bottle_photo ?? null,
+    bottle_photo_source: w?.bottle_photo_source ?? null,
+    bottle_photo_credit: w?.bottle_photo_credit ?? null,
     drink_from: s(w?.drink_from),
     drink_until: s(w?.drink_until),
     serve_temp_min: s(w?.serve_temp_min),
@@ -145,6 +153,7 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
     const tmax = parseNumber(f.serve_temp_max);
     if ((tmin !== null && (tmin < 0 || tmin > 25)) || (tmax !== null && (tmax < 0 || tmax > 25))) return 'La température de service doit être comprise entre 0 et 25 °C.';
     if (tmin !== null && tmax !== null && tmin > tmax) return 'Température : le minimum doit être inférieur au maximum.';
+    if (f.barcode.trim() && !normalizeBarcode(f.barcode)) return 'Le code-barres n’est pas valable : vérifiez les chiffres (8 ou 13 en général).';
     if (!editing && quantity < 1) return 'Indiquez au moins une bouteille.';
     if (!editing && price && parseNumber(price) === null) return 'Le prix doit être un nombre.';
     return null;
@@ -177,8 +186,11 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
         .slice(0, 12),
       vintage: f.non_vintage ? null : vintageNum,
       non_vintage: f.non_vintage,
+      barcode: normalizeBarcode(f.barcode),
       label_photo: f.label_photo,
       bottle_photo: f.bottle_photo,
+      bottle_photo_source: f.bottle_photo ? (f.bottle_photo_source ?? 'own') : null,
+      bottle_photo_credit: f.bottle_photo ? f.bottle_photo_credit : null,
       drink_from: from,
       drink_until: until,
       window_source: from || until ? src(['drink_from', 'drink_until'], wine?.window_source) : null,
@@ -217,8 +229,14 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
         if (!reuse) {
           target = wineId.current;
           await api.saveNewWine({ id: target, ...winePayload() } as Wine);
-        } else if (f.label_photo && !existing!.label_photo) {
-          await api.updateWine(existing!.id, { label_photo: f.label_photo });
+        } else {
+          // Fiche existante : on complète seulement ce qui lui manque (photos, code-barres).
+          const p = winePayload();
+          const patch: Partial<Wine> = {};
+          if (p.label_photo && !existing!.label_photo) patch.label_photo = p.label_photo;
+          if (p.bottle_photo && !existing!.bottle_photo) Object.assign(patch, { bottle_photo: p.bottle_photo, bottle_photo_source: p.bottle_photo_source, bottle_photo_credit: p.bottle_photo_credit });
+          if (p.barcode && !existing!.barcode) patch.barcode = p.barcode;
+          if (Object.keys(patch).length) await api.updateWine(existing!.id, patch);
         }
         let loc: string | null = locationId || null;
         if (locationId === '__new' && newLocation.trim()) {
@@ -430,7 +448,32 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
               <input id="w-grapes" className={`input ${isUncertain('grapes') ? 'uncertain' : ''}`} value={f.grapes} onChange={(e) => set({ grapes: e.target.value })} />
             </Field>
           </div>
-          <PhotoField label="Photo de la bouteille" path={f.bottle_photo} onChange={(p) => set({ bottle_photo: p })} onUploaded={(p) => uploaded.current.push(p)} />
+          <Field label="Code-barres (facultatif)" htmlFor="w-barcode" hint="Les chiffres sous les barres, sur la contre-étiquette : ils permettent de retrouver la photo officielle.">
+            <Uncertain show={isUncertain('barcode')}>
+              <input
+                id="w-barcode"
+                className={`input ${isUncertain('barcode') ? 'uncertain' : ''}`}
+                inputMode="numeric"
+                value={f.barcode}
+                onChange={(e) => set({ barcode: e.target.value.replace(/[^\d]/g, '').slice(0, 14) })}
+              />
+            </Uncertain>
+          </Field>
+          <PhotoField
+            label="Photo de la bouteille"
+            path={f.bottle_photo}
+            onChange={(p) => set({ bottle_photo: p, bottle_photo_source: p ? 'own' : null, bottle_photo_credit: null })}
+            onUploaded={(p) => uploaded.current.push(p)}
+          />
+          {f.bottle_photo && <PhotoCredit credit={f.bottle_photo_credit} />}
+          <OfficialPhoto
+            query={{ barcode: f.barcode, name: f.name, vintage: f.non_vintage ? null : vintageNum, appellation: f.appellation, producer: f.domaine || f.producer }}
+            auto={!editing && Boolean(prefill?.wine?.barcode) && !f.bottle_photo}
+            onChoose={(c) => {
+              uploaded.current.push(c.path);
+              set({ bottle_photo: c.path, bottle_photo_source: 'off', bottle_photo_credit: c.credit, ...(c.exact && !f.barcode ? { barcode: c.code } : {}) });
+            }}
+          />
           {!editing && (
             <>
               <Field label="Origine de ces bouteilles">

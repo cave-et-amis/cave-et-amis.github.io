@@ -3,6 +3,7 @@
 export type Color = 'rouge' | 'blanc' | 'rose' | 'orange' | 'effervescent' | 'autre';
 export type WineType = 'tranquille' | 'effervescent' | 'moelleux' | 'liquoreux' | 'fortifie' | 'autre';
 export type AdviceSource = 'source' | 'general' | 'ai' | 'personal';
+export type BottlePhotoSource = 'own' | 'off' | 'studio' | 'web';
 export type Visibility = 'private' | 'friends' | 'event';
 export type Storage = 'cave' | 'armoire' | 'piece' | 'autre' | 'unknown';
 export type LocationKind = 'armoire' | 'casier' | 'etagere' | 'carton' | 'autre';
@@ -58,6 +59,12 @@ export type Wine = {
   pairings_source: AdviceSource | null;
   notes: string | null;
   favorite: boolean;
+  /** Code-barres EAN / GTIN (8 à 14 chiffres). */
+  barcode: string | null;
+  /** Origine de la photo de la bouteille : la sienne, Open Food Facts, améliorée en studio, trouvée en ligne. */
+  bottle_photo_source: BottlePhotoSource | null;
+  /** Mention à afficher avec la photo (auteur, licence, lien). */
+  bottle_photo_credit: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -1743,6 +1743,34 @@ details.advanced .form {
   border-radius: 14px;
   background: var(--bg-deep);
 }
+/* Photos officielles proposées (Open Food Facts). */
+.photo-candidates {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+.photo-candidates li {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+.photo-candidates img {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #fff;
+}
+.photo-credit {
+  margin: 4px 0 0;
+}
 /* Étiquette et contre-étiquette côte à côte. */
 .photo-pair {
   display: flex;

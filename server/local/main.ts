@@ -11,7 +11,7 @@
  */
 import { PGlite } from '@electric-sql/pglite';
 import { createServer } from 'node:http';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createApiHandler } from '../api/handler.ts';
 import { createFakeSupabase } from './fakeSupabase.ts';
@@ -43,14 +43,26 @@ function schemaVersion() {
   return String(h);
 }
 
+// Version du schéma notée à côté de la base : vérifiée AVANT d'ouvrir la base, car sous Windows une base déjà
+// ouverte par ce processus ne peut plus être renommée (EPERM).
+const versionFile = `${dataDir}.version`;
+
 async function open() {
   if (flag('reset') && existsSync(dataDir)) rmSync(dataDir, { recursive: true, force: true });
+  if (existsSync(dataDir) && existsSync(versionFile) && readFileSync(versionFile, 'utf8').trim() !== schemaVersion()) {
+    const backup = `${dataDir}-ancienne-${Date.now()}`;
+    renameSync(dataDir, backup);
+    console.log(`Schéma modifié : ancienne base locale déplacée dans ${backup}`);
+  }
   mkdirSync(dataDir, { recursive: true });
   let db = await PGlite.create(dataDir);
   const installed = (await db.query<{ ok: boolean }>(`select to_regclass('auth.local_meta') is not null as ok`)).rows[0]?.ok;
   if (installed) {
     const version = (await db.query<{ version: string }>(`select version from auth.local_meta`)).rows[0]?.version;
-    if (version === schemaVersion()) return { db, fresh: false };
+    if (version === schemaVersion()) {
+      writeFileSync(versionFile, schemaVersion());
+      return { db, fresh: false };
+    }
     // Schéma modifié : l'ancienne base locale est mise de côté, une nouvelle est créée.
     await db.close();
     const backup = `${dataDir}-ancienne-${Date.now()}`;
@@ -63,6 +75,7 @@ async function open() {
   for (const sql of migrations) await db.exec(sql);
   await db.exec(`create table auth.local_meta (version text not null)`);
   await db.query(`insert into auth.local_meta values ($1)`, [schemaVersion()]);
+  writeFileSync(versionFile, schemaVersion());
   return { db, fresh: true };
 }
 
