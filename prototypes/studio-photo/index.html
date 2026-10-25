@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Studio photo (prototype)</title>
+    <style>
+      :root {
+        --bg: #1a1214;
+        --card: #261b1e;
+        --text: #f3ece6;
+        --muted: #b9aaa3;
+        --accent: #e08ea0;
+        --line: #3a2a2f;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.5 system-ui, sans-serif;
+      }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      h1 {
+        font-size: 22px;
+        margin: 0 0 4px;
+      }
+      p {
+        color: var(--muted);
+        margin: 4px 0 12px;
+      }
+      .pick {
+        display: inline-block;
+        padding: 12px 18px;
+        border-radius: 12px;
+        background: var(--accent);
+        color: #2a1016;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      #status {
+        margin: 12px 0;
+        min-height: 1.5em;
+      }
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 12px;
+        margin: 16px 0;
+      }
+      .pair {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .pair figure {
+        margin: 0;
+      }
+      .pair img,
+      .pair canvas {
+        width: 100%;
+        height: auto;
+        max-height: 520px;
+        object-fit: contain;
+        border-radius: 10px;
+        background: #000;
+        display: block;
+      }
+      figcaption {
+        color: var(--muted);
+        font-size: 13px;
+        margin-top: 4px;
+      }
+      .styles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      button,
+      a.dl {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 8px 14px;
+        font: inherit;
+        cursor: pointer;
+        text-decoration: none;
+      }
+      button[aria-pressed='true'] {
+        background: var(--accent);
+        color: #2a1016;
+        border-color: var(--accent);
+      }
+      .error {
+        color: #ffb4a8;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Studio photo — prototype</h1>
+      <p>
+        Choisissez une ou plusieurs photos de bouteilles. Tout se passe dans ce navigateur : rien n'est envoyé en ligne. Au premier essai, le modèle de
+        détourage (ISNet compressé) se télécharge une fois (≈ 44 Mo), puis reste en cache. La bouteille garde ses pixels d'origine : l'étiquette
+        n'est jamais redessinée.
+      </p>
+      <label class="pick">Choisir des photos<input id="files" type="file" accept="image/*" multiple hidden /></label>
+      <div id="status" role="status"></div>
+      <div id="list"></div>
+    </main>
+    <script type="module" src="./studio.js"></script>
+  </body>
+</html>
