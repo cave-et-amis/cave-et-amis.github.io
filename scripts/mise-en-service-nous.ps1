@@ -48,6 +48,10 @@ Step '1. Vérification de la connexion à Supabase'
 npx -y supabase@2 projects list *> $null
 if ($LASTEXITCODE -ne 0) { throw 'Connexion Supabase absente : lancez d''abord, dans un terminal :  npx.cmd -y supabase@2 login' }
 Write-Host 'Connexion Supabase : OK'
+# Le code déployé contient la phase E : sa migration 20261025000008_vie_de_groupe doit déjà être en base (sinon arrêt).
+npx -y supabase@2 db query --linked --project-ref $CaveRef "select case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'events' and column_name = 'group_id') then 1 else 1 / 0 end as phase_e" *> $null
+if ($LASTEXITCODE -ne 0) { throw 'La migration 20261025000008_vie_de_groupe (phase E) n''est pas encore appliquée sur Cave & Amis : attendre qu''elle le soit.' }
+Write-Host 'Phase E (vie de groupe) présente en base : OK'
 
 Step "2. Sauvegarde des deux bases dans $Backup"
 New-Item -ItemType Directory -Force $Backup | Out-Null
