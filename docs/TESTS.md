@@ -6,9 +6,9 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 222 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code) | ✔ 222/222 |
+| Vitest : 269 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push) | ✔ 269/269 |
 | Export de production + contrôle des secrets et du code local | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 29 parcours téléphone + 3 ordinateur | ✔ 32/32 |
+| Playwright (Microsoft Edge) sur l'export de production : 34 parcours téléphone + 3 ordinateur | ✔ 37/37 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
@@ -54,6 +54,8 @@ utilisateur, droits par défaut des futures migrations.
 | Scanner : vos goûts et budget (lot 3c) | `tests/taste` (même vin malgré casse, accents et « château » ; autre cuvée ou producteur distingués ; bouteilles possédées, les miennes seulement, millésime compris ; adéquation forte, faible, non évaluée ; dégustations des autres ignorées ; déjà dégusté, envie, budget dépassé et style le mieux noté ; goûts dans la note, pas dans le verdict) ; `tests/sql/scanner` (budget privé et valable ; analyse et prix non modifiables par l'application) ; e2e `scanner` (goûts non évalués, budget dépassé) |
 | Scanner : comparer plusieurs bouteilles (lot 3d) | `tests/ai/scan-compare` (visites privées, analyse rattachée seulement à sa propre visite, identification dans une visite, visite d'une autre refusée sans appel ; Lia reçoit les bouteilles et verdicts calculés, conversation rattachée à la visite, rien de la visite d'une autre ; fréquence par minute sans l'analyse automatique) ; e2e `scanner` (deuxième bouteille, classement, budget et occasion, question préparée envoyée à Lia) |
 | Scanner : finitions (lot 3e) | e2e `scanner` (photo retrouvée après rechargement de la page, brouillon effacé après l'envoi, photo d'étiquette gardée dans la cave, question à Lia préparée sur une bouteille) ; export contrôlé (`check-dist` : seul le lecteur zxing est admis en plus du studio) |
+
+| Notifications push (iPhone, Android, ordinateur) | `tests/push` (chiffrement identique **octet pour octet** à l'exemple de la RFC 8291, étapes intermédiaires comprises ; message lisible par l'appareil destinataire seul ; jeton VAPID ES256 vérifié, valable moins de 24 h ; seuls les services de notifications connus sont contactés ; texte de chaque type de notification) ; `tests/sql/push` (mise en file seulement pour une personne qui a un appareil ; nouvelles tentatives, abandon après 5 essais ; déjà lue : pas d'envoi ; appareil passé à un autre compte ; 10 appareils au plus ; abonnement expiré retiré ; chacun ne voit et ne retire que ses appareils ; tables et fonctions du serveur inaccessibles ; compte supprimé ; retour arrière sans rien effacer, mise à jour rejouable) ; `tests/ai/push` (clés du serveur créées une fois, jamais renvoyées ; abonnement vérifié ; essai chiffré, signé et déchiffré par l'appareil ; une demande de contact arrive sur deux appareils avec le bon texte et le bon écran ; 410 : appareil retiré ; 500 : nouvel essai ; tâche planifiée : jeton exigé) ; e2e `push-notifications` (activation, essai reçu par un faux service de notifications qui déchiffre et vérifie la signature ; vraie notification quand une personne utilise mon lien ; désactivation ; iPhone sans installation : l'explication) |
 
 Captures d'écran des parcours : `reports/screens/`.
 

@@ -842,13 +842,22 @@ var HELP_TOPICS = [
 	{
 		id: "notifications",
 		title: "Les notifications",
-		question: "À quoi servent les notifications ?",
-		pages: ["notifications", "accueil"],
-		keywords: "notification notifications cloche alerte prevenu demande",
-		steps: ["La cloche en haut de l’écran : demandes, invitations, personnes arrivées grâce à vos liens, caves qui vous sont ouvertes.", "Elles se lisent dans l’application (pas de message envoyé sur le téléphone)."],
+		question: "Comment recevoir les notifications sur mon téléphone ?",
+		pages: [
+			"notifications",
+			"accueil",
+			"reglages"
+		],
+		keywords: "notification notifications cloche alerte prevenu demande push telephone iphone android recevoir activer essai appareil",
+		steps: [
+			"La cloche en haut de l’écran : demandes, invitations, personnes arrivées grâce à vos liens, caves qui vous sont ouvertes.",
+			"Pour les recevoir aussi sur l’appareil, même application fermée : Réglages › « Notifications sur cet appareil » › « Activer », puis acceptez la demande du téléphone.",
+			"Sur iPhone et iPad (iOS 16.4 ou plus récent) : ajoutez d’abord l’application à l’écran d’accueil (Partager › « Sur l’écran d’accueil ») et ouvrez-la depuis son icône.",
+			"« Envoyer une notification d’essai » vérifie que tout fonctionne ; « Désactiver » ou « Retirer » les arrête pour un appareil."
+		],
 		link: {
-			label: "Ouvrir les notifications",
-			path: "/notifications"
+			label: "Ouvrir les réglages",
+			path: "/reglages"
 		}
 	},
 	{
@@ -2943,13 +2952,13 @@ async function importPhoto(fetchImpl, user, userId, rawCode) {
 		code
 	};
 }
-var enc = new TextEncoder();
+var enc$1 = new TextEncoder();
 async function hmacHex(secret, message) {
-	const key = await crypto.subtle.importKey("raw", enc.encode(secret), {
+	const key = await crypto.subtle.importKey("raw", enc$1.encode(secret), {
 		name: "HMAC",
 		hash: "SHA-256"
 	}, false, ["sign"]);
-	const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(message)));
+	const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc$1.encode(message)));
 	return Array.from(sig, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 /** Comparaison à temps constant (même longueur attendue : 64 caractères hexadécimaux). */
@@ -3229,6 +3238,381 @@ var NOUS_ACTIONS = /* @__PURE__ */ new Set([
 	"nous_flush",
 	"nous_jump"
 ]);
+//#endregion
+//#region src/domain/notifications.ts
+function notificationText(n) {
+	const who = n.actor_name || "Quelqu’un";
+	const person = n.actor_id ? `#/amis/${n.actor_id}` : "#/amis";
+	switch (n.kind) {
+		case "friend_request": return {
+			text: `${who} souhaite être en contact avec vous`,
+			href: "#/amis?onglet=invitations"
+		};
+		case "friend_accepted": return {
+			text: `${who} a accepté votre demande : vous êtes en contact`,
+			href: person
+		};
+		case "event_invite": return {
+			text: `${who} vous invite à un événement`,
+			href: n.ref_id ? `#/evenements/${n.ref_id}` : "#/evenements"
+		};
+		case "group_invite": return {
+			text: `${who} vous invite à rejoindre un groupe`,
+			href: "#/amis?onglet=groupes"
+		};
+		case "group_joined": return {
+			text: `${who} a rejoint votre groupe`,
+			href: n.ref_id ? `#/groupes/${n.ref_id}` : "#/amis?onglet=groupes"
+		};
+		case "cellar_invite": return {
+			text: `${who} vous propose de gérer sa cave à plusieurs`,
+			href: "#/amis?onglet=invitations"
+		};
+		case "cellar_joined": return {
+			text: `${who} gère maintenant votre cave avec vous`,
+			href: "#/reglages/caves"
+		};
+		case "invite_joined": return {
+			text: `${who} a rejoint Cave & Amis grâce à votre invitation`,
+			href: person
+		};
+		case "cellar_opened": return {
+			text: `${who} vous a ouvert sa cave`,
+			href: person
+		};
+		case "cellar_access_request": return {
+			text: `${who} demande à voir votre cave`,
+			href: "#/amis?onglet=invitations"
+		};
+		default: return {
+			text: "Vous avez une nouvelle notification",
+			href: "#/notifications"
+		};
+	}
+}
+//#endregion
+//#region server/api/push.ts
+var enc = new TextEncoder();
+function b64u(bytes) {
+	let s = "";
+	for (const b of bytes) s += String.fromCharCode(b);
+	return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function fromB64u(text) {
+	const b = atob(text.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - text.length % 4) % 4));
+	return Uint8Array.from(b, (c) => c.charCodeAt(0));
+}
+function concat(...parts) {
+	const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+	let at = 0;
+	for (const p of parts) {
+		out.set(p, at);
+		at += p.length;
+	}
+	return out;
+}
+async function hmac(key, data) {
+	const k = await crypto.subtle.importKey("raw", key, {
+		name: "HMAC",
+		hash: "SHA-256"
+	}, false, ["sign"]);
+	return new Uint8Array(await crypto.subtle.sign("HMAC", k, data));
+}
+/** HKDF (RFC 5869), extraction puis expansion d'un seul bloc : toutes les longueurs utilisées ici sont ≤ 32 octets. */
+var extract = (salt, ikm) => hmac(salt, ikm);
+var expand = async (prk, info, length) => (await hmac(prk, concat(info, Uint8Array.of(1)))).slice(0, length);
+/**
+* Chiffre un message pour un appareil (RFC 8291) : clé éphémère du serveur, secret partagé ECDH avec la clé publique de
+* l'appareil, mélangé à son secret d'authentification ; contenu AES-128-GCM en un seul bloc. `salt` et `sender` ne sont
+* fournis que par les tests (valeurs de la RFC) : sinon, tirés au hasard pour chaque message.
+*/
+async function encryptPush(plaintext, uaPublic, authSecret, o = {}) {
+	const salt = o.salt ?? crypto.getRandomValues(/* @__PURE__ */ new Uint8Array(16));
+	let sender = o.sender;
+	if (!sender) {
+		const pair = await crypto.subtle.generateKey({
+			name: "ECDH",
+			namedCurve: "P-256"
+		}, true, ["deriveBits"]);
+		sender = {
+			privateKey: pair.privateKey,
+			publicRaw: new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey))
+		};
+	}
+	const ua = await crypto.subtle.importKey("raw", uaPublic, {
+		name: "ECDH",
+		namedCurve: "P-256"
+	}, false, []);
+	const ecdh = new Uint8Array(await crypto.subtle.deriveBits({
+		name: "ECDH",
+		public: ua
+	}, sender.privateKey, 256));
+	const prkKey = await extract(authSecret, ecdh);
+	const ikm = await expand(prkKey, concat(enc.encode("WebPush: info\0"), uaPublic, sender.publicRaw), 32);
+	const prk = await extract(salt, ikm);
+	const cek = await expand(prk, enc.encode("Content-Encoding: aes128gcm\0"), 16);
+	const nonce = await expand(prk, enc.encode("Content-Encoding: nonce\0"), 12);
+	o.steps?.({
+		ecdh,
+		prkKey,
+		ikm,
+		prk,
+		cek,
+		nonce
+	});
+	const key = await crypto.subtle.importKey("raw", cek, "AES-GCM", false, ["encrypt"]);
+	const cipher = new Uint8Array(await crypto.subtle.encrypt({
+		name: "AES-GCM",
+		iv: nonce
+	}, key, concat(plaintext, Uint8Array.of(2))));
+	const header = new Uint8Array(21 + sender.publicRaw.length);
+	header.set(salt, 0);
+	new DataView(header.buffer).setUint32(16, 4096);
+	header[20] = sender.publicRaw.length;
+	header.set(sender.publicRaw, 21);
+	return concat(header, cipher);
+}
+/** Nouvelle paire de clés VAPID (P-256) : la clé publique est donnée aux navigateurs, la privée reste au serveur. */
+async function generateVapidKeys() {
+	const pair = await crypto.subtle.generateKey({
+		name: "ECDSA",
+		namedCurve: "P-256"
+	}, true, ["sign", "verify"]);
+	const raw = new Uint8Array(await crypto.subtle.exportKey("raw", pair.publicKey));
+	const jwk = await crypto.subtle.exportKey("jwk", pair.privateKey);
+	return {
+		publicKey: b64u(raw),
+		privateJwk: {
+			kty: jwk.kty,
+			crv: jwk.crv,
+			x: jwk.x,
+			y: jwk.y,
+			d: jwk.d
+		}
+	};
+}
+/** En-tête Authorization VAPID : jeton ES256 valable 12 heures pour le service de notifications de l'abonnement. */
+async function vapidAuthorization(endpoint, keys, subject, now = /* @__PURE__ */ new Date()) {
+	const part = (o) => b64u(enc.encode(JSON.stringify(o)));
+	const unsigned = `${part({
+		typ: "JWT",
+		alg: "ES256"
+	})}.${part({
+		aud: new URL(endpoint).origin,
+		exp: Math.floor(now.getTime() / 1e3) + 43200,
+		sub: subject
+	})}`;
+	const { kty, crv, x, y, d } = keys.privateJwk;
+	const key = await crypto.subtle.importKey("jwk", {
+		kty,
+		crv,
+		x,
+		y,
+		d
+	}, {
+		name: "ECDSA",
+		namedCurve: "P-256"
+	}, false, ["sign"]);
+	return `vapid t=${unsigned}.${b64u(new Uint8Array(await crypto.subtle.sign({
+		name: "ECDSA",
+		hash: "SHA-256"
+	}, key, enc.encode(unsigned))))}, k=${keys.publicKey}`;
+}
+/** Services de notifications des navigateurs : Google (Chrome, Android, Edge sur Android, Samsung), Mozilla, Apple, Microsoft. */
+var PUSH_HOSTS = [
+	/^fcm\.googleapis\.com$/,
+	/^android\.googleapis\.com$/,
+	/^updates\.push\.services\.mozilla\.com$/,
+	/^push\.services\.mozilla\.com$/,
+	/^web\.push\.apple\.com$/,
+	/^[a-z0-9-]+\.notify\.windows\.com$/
+];
+/** Adresse d'abonnement acceptable : HTTPS vers un service connu (ou le faux service des tests, si configuré). */
+function pushEndpointAllowed(endpoint, testOrigin) {
+	let url;
+	try {
+		url = new URL(endpoint);
+	} catch {
+		return false;
+	}
+	if (testOrigin && url.origin === testOrigin) return true;
+	return url.protocol === "https:" && !url.port && !url.username && !url.password && PUSH_HOSTS.some((h) => h.test(url.hostname));
+}
+function createPush(o) {
+	const { svc } = o;
+	let cached = null;
+	/** Clés VAPID du serveur : créées au premier besoin, gardées en base (lisibles par la clé secrète du serveur seule). */
+	async function keys() {
+		if (cached) return cached;
+		const read = async () => {
+			const { data, error } = await svc.from("push_config").select("vapid_public, vapid_private").eq("id", 1).maybeSingle();
+			if (error) throw new AiFailure("internal", sanitize(error.message));
+			return data;
+		};
+		let row = await read();
+		if (!row) {
+			const k = await generateVapidKeys();
+			await svc.from("push_config").insert({
+				id: 1,
+				vapid_public: k.publicKey,
+				vapid_private: k.privateJwk
+			});
+			row = await read();
+		}
+		if (!row) throw new AiFailure("internal", "Clés de notification introuvables");
+		cached = {
+			publicKey: row.vapid_public,
+			privateJwk: row.vapid_private
+		};
+		return cached;
+	}
+	async function send(target, message) {
+		if (!pushEndpointAllowed(target.endpoint, o.testOrigin)) return {
+			ok: false,
+			gone: true,
+			status: 0
+		};
+		const k = await keys();
+		const body = await encryptPush(enc.encode(JSON.stringify(message)), fromB64u(target.p256dh), fromB64u(target.auth));
+		try {
+			const res = await o.fetch(target.endpoint, {
+				method: "POST",
+				headers: {
+					TTL: "86400",
+					Urgency: "normal",
+					"Content-Type": "application/octet-stream",
+					"Content-Encoding": "aes128gcm",
+					Authorization: await vapidAuthorization(target.endpoint, k, o.subject, o.now())
+				},
+				body,
+				signal: AbortSignal.timeout(1e4)
+			});
+			await res.arrayBuffer().catch(() => void 0);
+			return {
+				ok: res.status >= 200 && res.status < 300,
+				gone: res.status === 404 || res.status === 410,
+				status: res.status
+			};
+		} catch {
+			return {
+				ok: false,
+				gone: false,
+				status: 0
+			};
+		}
+	}
+	async function targetsOf(userIds) {
+		if (!userIds.length) return [];
+		const { data, error } = await svc.from("push_subscriptions").select("id, user_id, endpoint, p256dh, auth").in("user_id", userIds);
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+		return data ?? [];
+	}
+	/** Envoie un message à des appareils ; chaque résultat est noté (un abonnement expiré est retiré). */
+	async function deliver(targets, message) {
+		const results = await Promise.all(targets.map((t) => send(t, message)));
+		await Promise.all(targets.map((t, i) => svc.rpc("push_subscription_result", {
+			p_id: t.id,
+			p_ok: results[i].ok,
+			p_gone: results[i].gone
+		})));
+		return {
+			sent: results.filter((r) => r.ok).length,
+			gone: results.filter((r) => r.gone).length,
+			failed: results.filter((r) => !r.ok && !r.gone).length,
+			statuses: results.map((r) => r.status)
+		};
+	}
+	/** Enregistre l'appareil de la personne, après vérification de l'adresse et des clés. */
+	async function subscribe(userId, body) {
+		const endpoint = typeof body.endpoint === "string" ? body.endpoint.trim() : "";
+		const p256dh = typeof body.p256dh === "string" ? body.p256dh.trim() : "";
+		const auth = typeof body.auth === "string" ? body.auth.trim() : "";
+		const label = typeof body.label === "string" ? body.label.slice(0, 60) : null;
+		const keyOk = () => {
+			try {
+				const key = fromB64u(p256dh);
+				return /^[A-Za-z0-9_-]{80,100}$/.test(p256dh) && /^[A-Za-z0-9_-]{16,32}$/.test(auth) && key.length === 65 && key[0] === 4 && fromB64u(auth).length === 16;
+			} catch {
+				return false;
+			}
+		};
+		if (endpoint.length < 20 || endpoint.length > 1e3 || !pushEndpointAllowed(endpoint, o.testOrigin) || !keyOk()) throw new AiFailure("invalid", "Abonnement aux notifications non valable");
+		const { data, error } = await svc.rpc("push_subscription_save", {
+			p_user: userId,
+			p_endpoint: endpoint,
+			p_p256dh: p256dh,
+			p_auth: auth,
+			p_label: label
+		});
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+		return { id: data };
+	}
+	/** Notification d'essai, tout de suite, vers tous les appareils de la personne. */
+	async function test(userId) {
+		const targets = await targetsOf([userId]);
+		if (!targets.length) return {
+			devices: 0,
+			sent: 0,
+			gone: 0,
+			failed: 0
+		};
+		const r = await deliver(targets, {
+			title: "Cave & Amis",
+			body: "Notification d’essai : elles arrivent bien sur cet appareil.",
+			url: "#/reglages",
+			tag: "essai"
+		});
+		return {
+			devices: targets.length,
+			sent: r.sent,
+			gone: r.gone,
+			failed: r.failed
+		};
+	}
+	/** Traite la file : chaque notification part vers les appareils de sa destinataire. */
+	async function flush(limit = 100) {
+		const { data, error } = await svc.rpc("push_outbox_claim", { p_limit: limit });
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+		const rows = data ?? [];
+		const targets = await targetsOf([...new Set(rows.map((r) => r.user_id))]);
+		let sent = 0;
+		let failed = 0;
+		for (const r of rows) {
+			const mine = targets.filter((t) => t.user_id === r.user_id);
+			const { text, href } = notificationText(r);
+			const res = mine.length ? await deliver(mine, {
+				title: "Cave & Amis",
+				body: text,
+				url: href,
+				tag: r.notification_id
+			}) : {
+				sent: 0,
+				gone: 0,
+				failed: 0,
+				statuses: []
+			};
+			const done = res.sent > 0 || res.failed === 0;
+			await svc.rpc("push_outbox_done", {
+				p_id: r.id,
+				p_ok: done,
+				p_error: done ? res.sent ? null : "aucun appareil" : sanitize(`échec ${res.statuses.join(", ")}`)
+			});
+			if (done) sent += res.sent > 0 ? 1 : 0;
+			else failed++;
+		}
+		return {
+			claimed: rows.length,
+			sent,
+			failed
+		};
+	}
+	return {
+		keys,
+		subscribe,
+		test,
+		flush
+	};
+}
 //#endregion
 //#region server/api/scan.ts
 var PHOTO_ROLES = [
@@ -4040,6 +4424,13 @@ function createApiHandler(env, deps = {}) {
 	const now = deps.now ?? (() => /* @__PURE__ */ new Date());
 	const webFetch = deps.webFetch ?? ((input, init) => fetch(input, init));
 	const nous = createNous(env, svc, deps.nousFetch ?? ((input, init) => fetch(input, init)), now);
+	const push = createPush({
+		svc,
+		fetch: deps.pushFetch ?? ((input, init) => fetch(input, init)),
+		subject: env.caveAppUrl ?? "https://cave-et-amis.github.io",
+		testOrigin: env.pushTestOrigin,
+		now
+	});
 	async function settings() {
 		const { data, error } = await svc.rpc("ai_config");
 		if (error || !data) throw new AiFailure("internal", sanitize(error?.message ?? "Réglages introuvables"));
@@ -4107,6 +4498,9 @@ function createApiHandler(env, deps = {}) {
 	async function handle(action, body, user, userId) {
 		if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
 		switch (action) {
+			case "push_key": return { public_key: (await push.keys()).publicKey };
+			case "push_subscribe": return push.subscribe(userId, body);
+			case "push_test": return push.test(userId);
 			case "status": {
 				const { data, error } = await user.rpc("my_ai_status");
 				if (error) throw new AiFailure("internal", sanitize(error.message));
@@ -4407,14 +4801,22 @@ function createApiHandler(env, deps = {}) {
 		}
 		const cron = req.headers.get("x-cron-token");
 		if (cron !== null) {
-			if (body.action !== "nous_flush" || !await nous.cronTokenOk(cron)) return json({
+			if (!await nous.cronTokenOk(cron)) return json({
 				ok: false,
 				code: "forbidden"
 			}, 403, cors);
-			return json({
+			if (body.action === "nous_flush") return json({
 				ok: true,
 				...await nous.flush(100)
 			}, 200, cors);
+			if (body.action === "push_flush") return json({
+				ok: true,
+				...await push.flush(100)
+			}, 200, cors);
+			return json({
+				ok: false,
+				code: "forbidden"
+			}, 403, cors);
 		}
 		if (!env.ecosystemSecret) return json({
 			ok: false,

@@ -94,9 +94,38 @@ functions['cave-api'] = createApiHandler(
     serviceKey,
     anthropicKey: process.env.ANTHROPIC_API_KEY?.trim() || undefined,
     anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL?.trim() || undefined,
+    // Tests d'interface : faux service de notifications (jamais en ligne).
+    pushTestOrigin: process.env.PUSH_TEST_ORIGIN?.trim() || undefined,
   },
   { fetch: fake.fetch },
 );
+
+// Notifications push : en ligne, la base appelle cave-api dès qu'une notification est mise en file (pg_net, voir
+// supabase/sql/push-envoi.sql) ; ici, une vérification chaque seconde fait de même.
+let pushing = false;
+setInterval(async () => {
+  if (pushing) return;
+  pushing = true;
+  try {
+    const due = await db.query<{ token: string }>(
+      `select (select cron_token from nous_config where id = 1) as token
+       where exists (select 1 from push_outbox where sent_at is null and next_attempt_at <= now() and attempts < 5)`,
+    );
+    if (due.rows.length) {
+      await functions['cave-api'](
+        new Request(`http://127.0.0.1:${PORT}/functions/v1/cave-api`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-cron-token': due.rows[0].token },
+          body: JSON.stringify({ action: 'push_flush' }),
+        }),
+      );
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    pushing = false;
+  }
+}, 1000).unref();
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',

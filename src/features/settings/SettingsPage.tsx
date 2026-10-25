@@ -8,6 +8,7 @@ import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../..
 import { go } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
 import { useTour } from '../tour/Tour';
+import { PushSettings } from '../push/PushSettings';
 import { NousSection } from './NousSection';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP', 'CAD'];
@@ -182,6 +183,8 @@ export function SettingsPage() {
         )}
         <p className="small faint">Vos conversations avec l’assistant sont privées : ni vos amis ni l’administrateur ne peuvent les lire.</p>
       </section>
+
+      <PushSettings />
 
       <section className="card stack-sm" aria-labelledby="h-install">
         <div className="inline">

@@ -45,6 +45,8 @@ avec un **assistant sommelier (Claude)** dont la clé API, unique, reste sur le 
   avec Cave & Amis », réponses tirées de l'aide intégrée (jamais de fonction inventée), avec un bouton vers le bon écran.
 - **Prise en main** : bienvenue à la première connexion, **visite guidée** qui éclaire les vrais boutons (reprise après
   interruption, à revoir dans les Réglages), astuces de première visite, aide « ? » de chaque page, présentation sans compte.
+- **Notifications push** sur iPhone, Android et ordinateur (standard Web Push : clés VAPID, contenu chiffré pour chaque
+  appareil, aucun service payant) : demandes, invitations, caves ouvertes, même application fermée.
 - **Administration** : test de la clé (jamais affichée), modèle, activation, quotas par personne, limites de fréquence et de
   taille, budget mensuel avec alertes, consommation globale et par personne, erreurs techniques.
 

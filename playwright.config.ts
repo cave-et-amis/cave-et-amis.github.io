@@ -8,6 +8,7 @@ import { defineConfig } from '@playwright/test';
 process.env.E2E_RUN ??= Date.now().toString(36);
 const API_PORT = 54399;
 const MOCK_PORT = 54398;
+const PUSH_PORT = 54397;
 const WEB_PORT = 4319;
 
 export default defineConfig({
@@ -42,11 +43,19 @@ export default defineConfig({
       stdout: 'pipe',
     },
     {
+      // Faux service de notifications push (Apple, Google…) : déchiffre ce qu'il reçoit, pour les vérifications.
+      command: `node --disable-warning=ExperimentalWarning e2e/mock-push.ts ${PUSH_PORT}`,
+      url: `http://127.0.0.1:${PUSH_PORT}/health`,
+      reuseExistingServer: false,
+      timeout: 30_000,
+      stdout: 'pipe',
+    },
+    {
       command: `node --disable-warning=ExperimentalWarning server/local/main.ts --reset --data .local/e2e --port ${API_PORT}`,
       url: `http://127.0.0.1:${API_PORT}/rest/v1/`,
       reuseExistingServer: false,
       timeout: 60_000,
-      env: { ANTHROPIC_API_KEY: 'sk-ant-e2e-test-key', ANTHROPIC_BASE_URL: `http://127.0.0.1:${MOCK_PORT}` },
+      env: { ANTHROPIC_API_KEY: 'sk-ant-e2e-test-key', ANTHROPIC_BASE_URL: `http://127.0.0.1:${MOCK_PORT}`, PUSH_TEST_ORIGIN: `http://127.0.0.1:${PUSH_PORT}` },
     },
     {
       command: `npx vite build --outDir reports/e2e-dist --emptyOutDir && node e2e/write-config.mjs reports/e2e-dist ${API_PORT} && npx vite preview --outDir reports/e2e-dist --port ${WEB_PORT} --strictPort --host 127.0.0.1`,

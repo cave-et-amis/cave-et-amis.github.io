@@ -91,3 +91,6 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Base : si un **nouveau** fichier apparaît dans `supabase/migrations/`, exécutez-le seul dans le SQL Editor
   (jamais l'ancien une seconde fois), **avant** de redéployer la fonction et l'interface. Quand une mise à jour a un script
   de retour arrière (`supabase/sql/retour-<numéro>.sql`), ses instructions sont en tête du fichier.
+- Notifications push (une seule fois) : après la migration `20261030000001_notifications_push.sql` et le déploiement de
+  cave-api, exécutez `supabase/sql/push-envoi.sql` dans le SQL Editor (envoi dès qu'une notification est créée, et
+  nouvelles tentatives chaque minute). Aucune clé à créer : celles du serveur se créent seules au premier usage.

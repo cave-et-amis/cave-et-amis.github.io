@@ -148,6 +148,24 @@
   pas de lecteur intégré ; aucune image n'est envoyée ailleurs.
 - « Ajouter à ma cave » copie la photo d'étiquette dans le dossier privé de la personne ; annuler le formulaire la supprime.
 
+## Notifications push
+
+- **Standard Web Push**, celui de la bibliothèque PHP minishlink/web-push, écrit dans la fonction serveur (TypeScript,
+  WebCrypto, sans dépendance ni service payant). Le serveur s'identifie par ses **clés VAPID** (RFC 8292) : créées par
+  cave-api au premier besoin, gardées dans une table lisible par la clé secrète du serveur seule ; la clé privée ne sort
+  jamais du serveur et n'est jamais affichée.
+- **Contenu chiffré pour chaque appareil** (RFC 8291) : Apple, Google, Mozilla ou Microsoft transmettent le message sans
+  pouvoir le lire. Il ne contient que le texte de la notification (« Claire souhaite être en contact avec vous ») et
+  l'écran à ouvrir : ni bouteille, ni prix, ni note.
+- **Abonnements** enregistrés par cave-api après vérification : seulement les services de notifications connus (Apple,
+  Google, Mozilla, Microsoft ; https, sans port ni identifiant), et des clés valables. Le serveur n'appelle donc jamais une
+  adresse quelconque. 10 appareils au plus par personne ; chacun ne voit et ne retire que les siens ; un appareil passé à
+  un autre compte change de propriétaire ; la déconnexion le retire ; un abonnement expiré est supprimé.
+- **Envoi** : chaque notification de l'application est mise en file pour les appareils de sa destinataire (aucune entre
+  deux personnes qui se sont bloquées, comme pour la cloche). cave-api la traite, appelée par la base dès la mise en file
+  (pg_net) puis chaque minute pour les nouvelles tentatives (pg_cron), avec le jeton des tâches planifiées. Une
+  notification déjà lue dans l'application, ou vieille d'un jour, n'est plus envoyée ; 5 essais au plus.
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

@@ -21,6 +21,8 @@ export type ApiEnv = {
   /** Intégration Nous : adresse du site Nous et de ce site (liens envoyés). */
   nousAppUrl?: string;
   caveAppUrl?: string;
+  /** Notifications push : origine du faux service de notifications (tests et serveur local seulement, jamais en ligne). */
+  pushTestOrigin?: string;
 };
 
 /** Lit la configuration dans les variables d'environnement (Supabase Edge Functions ou serveur local). */

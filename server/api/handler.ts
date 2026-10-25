@@ -13,6 +13,7 @@ import { makeClient, mapAnthropicError, Meter, type Action, type AiSettings, bas
 import { identifyLabel, readPhoto } from './label.ts';
 import { importPhoto, offProduct, searchPhotos } from './photos.ts';
 import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
+import { createPush } from './push.ts';
 
 import { lookupPrice } from './price.ts';
 import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpired, type ScanResult } from './scan.ts';
@@ -32,6 +33,8 @@ export type ApiDeps = {
   webFetch?: typeof fetch;
   /** Transport vers la fonction « cave-sync » de Nous (tests). */
   nousFetch?: typeof fetch;
+  /** Transport vers les services de notifications push (tests). */
+  pushFetch?: typeof fetch;
   now?: () => Date;
 };
 
@@ -48,6 +51,13 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
   const now = deps.now ?? (() => new Date());
   const webFetch = deps.webFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init));
   const nous = createNous(env, svc, deps.nousFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)), now);
+  const push = createPush({
+    svc,
+    fetch: deps.pushFetch ?? ((input: RequestInfo | URL, init?: RequestInit) => fetch(input, init)),
+    subject: env.caveAppUrl ?? 'https://cave-et-amis.github.io',
+    testOrigin: env.pushTestOrigin,
+    now,
+  });
 
   async function settings(): Promise<AiSettings> {
     const { data, error } = await svc.rpc('ai_config');
@@ -105,6 +115,13 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
   async function handle(action: string, body: Record<string, unknown>, user: SupabaseClient, userId: string): Promise<Record<string, unknown>> {
     if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
     switch (action) {
+      // Notifications push : clé publique du serveur, abonnement de cet appareil, notification d'essai.
+      case 'push_key':
+        return { public_key: (await push.keys()).publicKey };
+      case 'push_subscribe':
+        return push.subscribe(userId, body);
+      case 'push_test':
+        return push.test(userId);
       case 'status': {
         const { data, error } = await user.rpc('my_ai_status');
         if (error) throw new AiFailure('internal', sanitize(error.message));
@@ -344,8 +361,10 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
     const cron = req.headers.get('x-cron-token');
     if (cron !== null) {
-      if (body.action !== 'nous_flush' || !(await nous.cronTokenOk(cron))) return json({ ok: false, code: 'forbidden' }, 403, cors);
-      return json({ ok: true, ...(await nous.flush(100)) }, 200, cors);
+      if (!(await nous.cronTokenOk(cron))) return json({ ok: false, code: 'forbidden' }, 403, cors);
+      if (body.action === 'nous_flush') return json({ ok: true, ...(await nous.flush(100)) }, 200, cors);
+      if (body.action === 'push_flush') return json({ ok: true, ...(await push.flush(100)) }, 200, cors);
+      return json({ ok: false, code: 'forbidden' }, 403, cors);
     }
     if (!env.ecosystemSecret) return json({ ok: false, code: 'integration_disabled' }, 503, cors);
     if (!(await ecoVerify(env.ecosystemSecret, text, req.headers.get('x-eco-timestamp'), req.headers.get('x-eco-signature'), now().getTime()))) {

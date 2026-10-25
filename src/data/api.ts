@@ -49,6 +49,7 @@ import type {
   WishItem,
 } from '../domain/types';
 import { AppError } from '../domain/errors';
+import { thisDeviceEndpoint, type DeviceSubscription } from './pushDevice';
 import { AI_MESSAGES } from '../domain/errors';
 
 export type Snapshot = {
@@ -97,6 +98,9 @@ export type AiStatus = {
   max_image_bytes: number;
   is_admin: boolean;
 };
+
+/** Un de mes appareils qui reçoivent les notifications push. */
+export type PushDevice = { id: string; label: string | null; endpoint: string; created_at: string; last_success_at: string | null };
 
 export type AiReply = { ok: true; [k: string]: unknown } | { ok: false; code: string; message: string };
 
@@ -147,6 +151,9 @@ export class Api {
   }
 
   async signOut() {
+    // Un appareil partagé ne reçoit plus les notifications de la personne qui se déconnecte.
+    const endpoint = await thisDeviceEndpoint();
+    if (endpoint) await this.sb.rpc('remove_push_endpoint', { p_endpoint: endpoint }).then(() => undefined, () => undefined);
     await this.sb.auth.signOut({ scope: 'local' });
   }
 
@@ -698,6 +705,41 @@ export class Api {
   }
 
   // ───────────── Assistant (fonction serveur) ─────────────
+
+  // ───────────── Notifications push ─────────────
+
+  /** Action de la fonction serveur hors assistant : l'échec devient une erreur. */
+  private async fn(action: string, body: Record<string, unknown> = {}) {
+    const r = await this.ai(action, body);
+    if (!r.ok) throw new AppError(r.message, r.code);
+    return r;
+  }
+
+  /** Clé publique du serveur (VAPID), donnée au navigateur pour l'abonnement. */
+  async pushKey(): Promise<string> {
+    return String((await this.fn('push_key')).public_key);
+  }
+
+  async pushSubscribe(device: DeviceSubscription, label: string) {
+    await this.fn('push_subscribe', { ...device, label });
+  }
+
+  /** Notification d'essai vers tous mes appareils. */
+  async pushTest() {
+    return (await this.fn('push_test')) as unknown as { devices: number; sent: number; gone: number; failed: number };
+  }
+
+  async myPushDevices(): Promise<PushDevice[]> {
+    return must(await this.sb.rpc('my_push_devices')) as PushDevice[];
+  }
+
+  async removePushDevice(id: string) {
+    must(await this.sb.rpc('remove_push_device', { p_id: id }));
+  }
+
+  async removePushEndpoint(endpoint: string) {
+    must(await this.sb.rpc('remove_push_endpoint', { p_endpoint: endpoint }));
+  }
 
   async ai(action: string, body: Record<string, unknown> = {}): Promise<AiReply> {
     const { data, error } = await this.sb.functions.invoke('cave-api', { body: { action, ...body } });

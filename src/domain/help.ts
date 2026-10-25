@@ -362,14 +362,16 @@ export const HELP_TOPICS: HelpTopic[] = [
   {
     id: 'notifications',
     title: 'Les notifications',
-    question: 'À quoi servent les notifications ?',
-    pages: ['notifications', 'accueil'],
-    keywords: 'notification notifications cloche alerte prevenu demande',
+    question: 'Comment recevoir les notifications sur mon téléphone ?',
+    pages: ['notifications', 'accueil', 'reglages'],
+    keywords: 'notification notifications cloche alerte prevenu demande push telephone iphone android recevoir activer essai appareil',
     steps: [
       'La cloche en haut de l’écran : demandes, invitations, personnes arrivées grâce à vos liens, caves qui vous sont ouvertes.',
-      'Elles se lisent dans l’application (pas de message envoyé sur le téléphone).',
+      'Pour les recevoir aussi sur l’appareil, même application fermée : Réglages › « Notifications sur cet appareil » › « Activer », puis acceptez la demande du téléphone.',
+      'Sur iPhone et iPad (iOS 16.4 ou plus récent) : ajoutez d’abord l’application à l’écran d’accueil (Partager › « Sur l’écran d’accueil ») et ouvrez-la depuis son icône.',
+      '« Envoyer une notification d’essai » vérifie que tout fonctionne ; « Désactiver » ou « Retirer » les arrête pour un appareil.',
     ],
-    link: { label: 'Ouvrir les notifications', path: '/notifications' },
+    link: { label: 'Ouvrir les réglages', path: '/reglages' },
   },
   {
     id: 'administration',

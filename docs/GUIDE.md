@@ -254,3 +254,19 @@ ce qui n'existe pas ou ce qui vous est interdit, et ne voit jamais les données 
 ## Installer sur le téléphone
 
 iPhone : Partager › « Sur l'écran d'accueil ». Android : menu ⋮ › « Installer l'application ».
+
+## Notifications sur le téléphone
+
+La cloche, en haut de l'écran, rassemble les demandes de contact et d'accès à votre cave, les invitations (événement,
+groupe, cave à plusieurs), les personnes arrivées grâce à vos liens et les caves qui vous sont ouvertes.
+
+- **Les recevoir sur l'appareil**, même application fermée : **Réglages › Notifications sur cet appareil › « Activer »**,
+  puis acceptez la demande du téléphone. Toucher une notification ouvre le bon écran. « Envoyer une notification
+  d'essai » vérifie que tout fonctionne.
+- **iPhone et iPad** (iOS 16.4 ou plus récent) : ajoutez d'abord Cave & Amis à l'écran d'accueil (Partager › « Sur
+  l'écran d'accueil »), ouvrez-la depuis son icône, puis activez dans les Réglages. **Android** : Chrome, Edge, Firefox
+  ou Samsung Internet. Un ordinateur peut aussi les recevoir.
+- Chaque appareil s'active séparément ; **Vos appareils** les liste, « Retirer » en arrête un, « Désactiver sur cet
+  appareil » arrête celui-ci. Se déconnecter arrête aussi les notifications sur cet appareil (appareil partagé).
+- Bloquées par erreur ? Autorisez-les dans les réglages du navigateur (sur iPhone : Réglages › Notifications ›
+  Cave & Amis), puis revenez dans l'application.

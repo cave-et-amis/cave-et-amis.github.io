@@ -1,0 +1,38 @@
+/**
+ * Texte et lien d'une notification : les mêmes dans l'application (page Notifications) et sur l'appareil
+ * (notification push envoyée par le serveur, qui importe ce fichier).
+ */
+import type { AppNotification } from './types.ts';
+
+export type NotificationKind = AppNotification['kind'];
+
+type Source = { kind: string; actor_id?: string | null; actor_name: string | null; ref_id: string | null };
+
+export function notificationText(n: Source): { text: string; href: string } {
+  const who = n.actor_name || 'Quelqu’un';
+  const person = n.actor_id ? `#/amis/${n.actor_id}` : '#/amis';
+  switch (n.kind) {
+    case 'friend_request':
+      return { text: `${who} souhaite être en contact avec vous`, href: '#/amis?onglet=invitations' };
+    case 'friend_accepted':
+      return { text: `${who} a accepté votre demande : vous êtes en contact`, href: person };
+    case 'event_invite':
+      return { text: `${who} vous invite à un événement`, href: n.ref_id ? `#/evenements/${n.ref_id}` : '#/evenements' };
+    case 'group_invite':
+      return { text: `${who} vous invite à rejoindre un groupe`, href: '#/amis?onglet=groupes' };
+    case 'group_joined':
+      return { text: `${who} a rejoint votre groupe`, href: n.ref_id ? `#/groupes/${n.ref_id}` : '#/amis?onglet=groupes' };
+    case 'cellar_invite':
+      return { text: `${who} vous propose de gérer sa cave à plusieurs`, href: '#/amis?onglet=invitations' };
+    case 'cellar_joined':
+      return { text: `${who} gère maintenant votre cave avec vous`, href: '#/reglages/caves' };
+    case 'invite_joined':
+      return { text: `${who} a rejoint Cave & Amis grâce à votre invitation`, href: person };
+    case 'cellar_opened':
+      return { text: `${who} vous a ouvert sa cave`, href: person };
+    case 'cellar_access_request':
+      return { text: `${who} demande à voir votre cave`, href: '#/amis?onglet=invitations' };
+    default:
+      return { text: 'Vous avez une nouvelle notification', href: '#/notifications' };
+  }
+}

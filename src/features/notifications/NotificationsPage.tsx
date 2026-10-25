@@ -7,34 +7,26 @@ import { Bell, CalendarHeart, CalendarPlus, Eye, KeyRound, Sparkles, UserCheck, 
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
+import { notificationText, type NotificationKind } from '../../domain/notifications';
 import { Button, EmptyState } from '../../ui/kit';
 import { go } from '../../ui/router';
+import { PushOffer } from '../push/PushSettings';
+
+const ICONS: Record<NotificationKind, ReactNode> = {
+  friend_request: <UserPlus />,
+  friend_accepted: <UserCheck />,
+  event_invite: <CalendarHeart />,
+  group_invite: <Users />,
+  group_joined: <Users />,
+  cellar_invite: <Wine />,
+  cellar_joined: <Wine />,
+  invite_joined: <Sparkles />,
+  cellar_opened: <KeyRound />,
+  cellar_access_request: <Eye />,
+};
 
 function describe(n: AppNotification): { text: string; href: string; icon: ReactNode } {
-  const who = n.actor_name ?? 'Quelqu’un';
-  const person = n.actor_id ? `#/amis/${n.actor_id}` : '#/amis';
-  switch (n.kind) {
-    case 'friend_request':
-      return { text: `${who} souhaite être en contact avec vous`, href: '#/amis?onglet=invitations', icon: <UserPlus /> };
-    case 'friend_accepted':
-      return { text: `${who} a accepté votre demande : vous êtes en contact`, href: person, icon: <UserCheck /> };
-    case 'event_invite':
-      return { text: `${who} vous invite à un événement`, href: n.ref_id ? `#/evenements/${n.ref_id}` : '#/evenements', icon: <CalendarHeart /> };
-    case 'group_invite':
-      return { text: `${who} vous invite à rejoindre un groupe`, href: '#/amis?onglet=groupes', icon: <Users /> };
-    case 'group_joined':
-      return { text: `${who} a rejoint votre groupe`, href: n.ref_id ? `#/groupes/${n.ref_id}` : '#/amis?onglet=groupes', icon: <Users /> };
-    case 'cellar_invite':
-      return { text: `${who} vous propose de gérer sa cave à plusieurs`, href: '#/amis?onglet=invitations', icon: <Wine /> };
-    case 'cellar_joined':
-      return { text: `${who} gère maintenant votre cave avec vous`, href: '#/reglages/caves', icon: <Wine /> };
-    case 'invite_joined':
-      return { text: `${who} a rejoint Cave & Amis grâce à votre invitation`, href: person, icon: <Sparkles /> };
-    case 'cellar_opened':
-      return { text: `${who} vous a ouvert sa cave`, href: person, icon: <KeyRound /> };
-    case 'cellar_access_request':
-      return { text: `${who} demande à voir votre cave`, href: '#/amis?onglet=invitations', icon: <Eye /> };
-  }
+  return { ...notificationText(n), icon: ICONS[n.kind] };
 }
 
 export function NotificationsPage() {
@@ -52,13 +44,18 @@ export function NotificationsPage() {
 
   if (snapshot.notifications.length === 0) {
     return (
-      <EmptyState icon="🔔" title="Aucune notification">
-        Vous serez prévenu ici des demandes, des invitations à un événement, à un groupe ou à gérer une cave à plusieurs, et des caves qui vous sont ouvertes.
-      </EmptyState>
+      <>
+        <PushOffer />
+        <EmptyState icon="🔔" title="Aucune notification">
+          Vous serez prévenu ici des demandes, des invitations à un événement, à un groupe ou à gérer une cave à plusieurs, et des caves qui vous sont ouvertes.
+        </EmptyState>
+      </>
     );
   }
   return (
-    <div className="list">
+    <>
+      <PushOffer />
+      <div className="list">
       {snapshot.notifications.map((n) => {
         const d = describe(n);
         // Lien d'invitation utilisé : raccourcis vers la suite (inviter, ouvrir ma cave).
@@ -114,5 +111,6 @@ export function NotificationsPage() {
         );
       })}
     </div>
+    </>
   );
 }

@@ -78,3 +78,43 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(req.mode === 'navigate' ? './index.html' : req).then((hit) => hit || Response.error())),
   );
 });
+
+// Notifications push : le serveur envoie un message chiffré pour cet appareil ; le navigateur le déchiffre et le remet
+// ici. Chaque message s'affiche (obligatoire sur iPhone) ; le toucher ouvre l'écran concerné.
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+  const url = typeof data.url === 'string' && data.url.startsWith('#/') ? data.url : '#/notifications';
+  event.waitUntil(
+    self.registration.showNotification(typeof data.title === 'string' ? data.title : 'Cave & Amis', {
+      body: typeof data.body === 'string' ? data.body : '',
+      icon: './icon-192.png',
+      badge: './icon-192.png',
+      tag: typeof data.tag === 'string' ? data.tag : undefined,
+      lang: 'fr',
+      data: { url },
+    }),
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '#/notifications';
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const open = windows.find((c) => c.url.startsWith(self.registration.scope));
+      if (open) {
+        // Application déjà ouverte : elle va d'elle-même sur l'écran (voir main.tsx).
+        open.postMessage({ type: 'cave-open', url });
+        await open.focus();
+        return;
+      }
+      await self.clients.openWindow(new URL(url, self.registration.scope).href);
+    })(),
+  );
+});

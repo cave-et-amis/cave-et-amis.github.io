@@ -36,6 +36,14 @@ try {
   root.render(<ConfigProblem problem="L’application n’a pas pu démarrer. Rechargez la page ; si le problème continue, videz le cache du navigateur." />);
 }
 
+// Notification push touchée alors que l'application était ouverte : le service worker demande d'aller sur le bon écran.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+    const data = event.data as { type?: string; url?: string } | null;
+    if (data?.type === 'cave-open' && typeof data.url === 'string' && /^#\/[\w\-/?=&%.]*$/.test(data.url)) window.location.hash = data.url.slice(1);
+  });
+}
+
 // Installation sur l'écran d'accueil et ouverture rapide de l'interface (version en ligne uniquement).
 if (import.meta.env.PROD && 'serviceWorker' in navigator && window.location.protocol === 'https:') {
   window.addEventListener('load', () => {

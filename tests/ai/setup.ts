@@ -4,7 +4,7 @@ import { createAnthropicMock, TEST_ANTHROPIC_KEY } from '../helpers/anthropicMoc
 import { makeEnv, TEST_PUBLIC_KEY, TEST_SERVICE_KEY, TEST_URL } from '../helpers/env.ts';
 
 /** Environnement complet : base, faux Supabase, fonction serveur réelle, faux Anthropic (tests uniquement). */
-export async function makeAiEnv(o: { withKey?: boolean; webFetch?: typeof fetch } = {}) {
+export async function makeAiEnv(o: { withKey?: boolean; webFetch?: typeof fetch; pushFetch?: typeof fetch } = {}) {
   const functions: Record<string, (req: Request) => Promise<Response>> = {};
   const env = await makeEnv(functions);
   const anthropic = createAnthropicMock();
@@ -16,7 +16,7 @@ export async function makeAiEnv(o: { withKey?: boolean; webFetch?: typeof fetch 
       anthropicKey: o.withKey === false ? undefined : TEST_ANTHROPIC_KEY,
       anthropicBaseUrl: 'http://anthropic.test',
     },
-    { fetch: env.fake.fetch, anthropicFetch: anthropic.fetch, webFetch: o.webFetch },
+    { fetch: env.fake.fetch, anthropicFetch: anthropic.fetch, webFetch: o.webFetch, pushFetch: o.pushFetch },
   );
   functions['cave-api'] = handler;
   return { ...env, anthropic, handler };
