@@ -30,6 +30,9 @@ export function WinePage({ id }: { id: string }) {
   const photo = usePhotoUrl(api, wine?.label_photo ?? wine?.bottle_photo);
   const bottlePhoto = usePhotoUrl(api, wine?.label_photo && wine?.bottle_photo ? wine.bottle_photo : null);
   const [sheet, setSheet] = useState<{ kind: 'edit' } | { kind: 'lot'; lot?: Lot } | { kind: 'move'; lot?: Lot; mode: 'out' | 'in' | 'fix' } | null>(null);
+  // Groupes dont je suis membre, et mes lots qui y sont visibles.
+  const myGroups = snapshot.groups.filter((g) => g.my_status === 'active');
+  const groupShares = new Set(snapshot.groupShares.map((s) => `${s.lot_id}:${s.group_id}`));
   const [movements, setMovements] = useState<Movement[] | null>(null);
   const lotKey = lots.map((l) => `${l.id}:${l.quantity}:${l.reserved}`).join(',');
 
@@ -257,6 +260,29 @@ export function WinePage({ id }: { id: string }) {
                 </span>
               )}
               {l.notes && <span className="small">{l.notes}</span>}
+              {myGroups.length > 0 && l.quantity > 0 && (
+                <div className="stack-sm">
+                  <span className="small muted">Visible dans mes groupes (rien n’est réservé, les bouteilles restent à vous) :</span>
+                  <div className="chips" role="group" aria-label="Groupes où ce lot est visible">
+                    {myGroups.map((g) => {
+                      const on = groupShares.has(`${l.id}:${g.id}`);
+                      return (
+                        <button
+                          key={g.id}
+                          type="button"
+                          className="chip"
+                          aria-pressed={on}
+                          onClick={() =>
+                            void run(() => api.shareLotWithGroup(l.id, g.id, !on), { success: on ? `Retiré de « ${g.name} »` : `Visible dans « ${g.name} »` })
+                          }
+                        >
+                          {g.emoji} {g.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <div className="inline">
                 <Button size="sm" variant="secondary" icon={<Minus />} disabled={l.quantity - l.reserved < 1} onClick={() => setSheet({ kind: 'move', lot: l, mode: 'out' })}>
                   Sortie

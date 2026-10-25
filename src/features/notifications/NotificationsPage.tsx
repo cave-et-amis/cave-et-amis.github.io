@@ -1,6 +1,6 @@
 /** Notifications : demandes d'ami, demandes acceptées, invitations à un événement. Marquées lues à l'ouverture. */
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Bell, CalendarHeart, UserCheck, UserPlus } from 'lucide-react';
+import { Bell, CalendarHeart, UserCheck, UserPlus, Users } from 'lucide-react';
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
@@ -15,6 +15,10 @@ function describe(n: AppNotification): { text: string; href: string; icon: React
       return { text: `${who} a accepté votre invitation : vous êtes amis`, href: n.actor_id ? `#/amis/${n.actor_id}` : '#/amis', icon: <UserCheck /> };
     case 'event_invite':
       return { text: `${who} vous invite à un événement`, href: n.ref_id ? `#/evenements/${n.ref_id}` : '#/evenements', icon: <CalendarHeart /> };
+    case 'group_invite':
+      return { text: `${who} vous invite à rejoindre un groupe`, href: '#/amis?onglet=groupes', icon: <Users /> };
+    case 'group_joined':
+      return { text: `${who} a rejoint votre groupe`, href: n.ref_id ? `#/groupes/${n.ref_id}` : '#/amis?onglet=groupes', icon: <Users /> };
   }
 }
 
@@ -34,7 +38,7 @@ export function NotificationsPage() {
   if (snapshot.notifications.length === 0) {
     return (
       <EmptyState icon="🔔" title="Aucune notification">
-        Vous serez prévenu ici des demandes d’ami et des invitations à un événement.
+        Vous serez prévenu ici des demandes d’ami et des invitations à un événement ou à un groupe.
       </EmptyState>
     );
   }

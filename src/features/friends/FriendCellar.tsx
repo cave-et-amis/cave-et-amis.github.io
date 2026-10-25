@@ -1,16 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Ban, Search, UserMinus } from 'lucide-react';
+import { Ban, Plus, Search, UserMinus, Users } from 'lucide-react';
 import type { SharedLot } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { COLORS, fold, vintageLabel } from '../../domain/wine';
 import type { Color } from '../../domain/types';
-import { Avatar, Button, EmptyState, InlineLoading, Notice, useConfirm } from '../../ui/kit';
+import { Avatar, Button, EmptyState, InlineLoading, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { SharedItem } from './SharedItem';
+import { GroupAvatar } from '../groups/common';
+import { GroupFormSheet } from '../groups/GroupFormSheet';
 
 export function FriendCellar({ friendId }: { friendId: string }) {
   const { friends, api, run } = useStore();
   const confirm = useConfirm();
+  const [inviting, setInviting] = useState<'list' | 'new' | null>(null);
   const friend = friends.find((f) => f.id === friendId);
   const [rows, setRows] = useState<SharedLot[] | null>(null);
   const [q, setQ] = useState('');
@@ -52,6 +55,9 @@ export function FriendCellar({ friendId }: { friendId: string }) {
           <p className="small muted">Les bouteilles que {friend.display_name} a choisi de partager avec vous.</p>
         </div>
       </div>
+      <Button variant="secondary" icon={<Users />} onClick={() => setInviting('list')}>
+        Inviter dans un groupe
+      </Button>
       <Notice tone="info">Une bouteille visible n’est pas forcément disponible : pour un dîner, suggérez-la depuis l’événement, son propriétaire confirmera.</Notice>
       <div className="search">
         <Search aria-hidden />
@@ -110,6 +116,53 @@ export function FriendCellar({ friendId }: { friendId: string }) {
           Bloquer
         </Button>
       </section>
+      {inviting === 'list' && <InviteToGroupSheet friendId={friend.id} friendName={friend.display_name} onNewGroup={() => setInviting('new')} onClose={() => setInviting(null)} />}
+      {inviting === 'new' && <GroupFormSheet preselect={[friend.id]} onClose={() => setInviting(null)} />}
     </>
+  );
+}
+
+/** « Inviter dans ma cave » : les groupes où je peux inviter, ou un nouveau groupe avec cet ami. */
+function InviteToGroupSheet({ friendId, friendName, onNewGroup, onClose }: { friendId: string; friendName: string; onNewGroup: () => void; onClose: () => void }) {
+  const { snapshot, api, run } = useStore();
+  const toast = useToast();
+  const groups = snapshot.groups.filter((g) => g.my_status === 'active' && (g.my_role === 'admin' || g.my_role === 'manager'));
+  const [busy, setBusy] = useState<string | null>(null);
+  return (
+    <Sheet open onClose={onClose} title={`Inviter ${friendName}`}>
+      <div className="stack-sm">
+        <p className="small muted">{friendName} pourra voir la cave du groupe et les bouteilles que ses membres y rendent visibles. Il accepte ou refuse l’invitation.</p>
+        {groups.length > 0 && (
+          <div className="list">
+            {groups.map((g) => (
+              <div key={g.id} className="row static">
+                <GroupAvatar group={g} />
+                <span className="row-main">
+                  <span className="row-title">{g.name}</span>
+                  <span className="row-sub">
+                    {g.members} membre{g.members > 1 ? 's' : ''}
+                  </span>
+                </span>
+                <Button
+                  size="sm"
+                  loading={busy === g.id}
+                  onClick={async () => {
+                    setBusy(g.id);
+                    const res = await run(() => api.inviteToGroup(g.id, [friendId]));
+                    setBusy(null);
+                    if (res.ok) toast(res.value > 0 ? `Invitation envoyée à ${friendName}` : `${friendName} est déjà membre ou invité`, { tone: res.value > 0 ? undefined : 'info' });
+                  }}
+                >
+                  Inviter
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        <Button variant={groups.length ? 'ghost' : 'primary'} icon={<Plus />} onClick={onNewGroup}>
+          Créer un groupe avec {friendName}
+        </Button>
+      </div>
+    </Sheet>
   );
 }

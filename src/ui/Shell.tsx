@@ -10,6 +10,7 @@ import { WineFormSheet, type WinePrefill } from '../features/cellar/WineForm';
 import { LabelScanSheet } from '../features/cellar/LabelScan';
 import { FriendsPage } from '../features/friends/FriendsPage';
 import { NotificationsPage } from '../features/notifications/NotificationsPage';
+import { GroupPage } from '../features/groups/GroupPage';
 import { FriendCellar } from '../features/friends/FriendCellar';
 import { InvitePage } from '../features/friends/InvitePage';
 import { EventsPage } from '../features/events/EventsPage';
@@ -77,7 +78,8 @@ export function Shell() {
     (p) => p.user_id === userId && p.rsvp === 'pending' && snapshot.events.find((e) => e.id === p.event_id)?.status === 'planned',
   ).length;
 
-  const incomingRequests = snapshot.requests.filter((r) => r.direction === 'in').length;
+  // Demandes d'ami reçues et invitations à des groupes : pastille sur l'onglet Amis & Groupes.
+  const incomingRequests = snapshot.requests.filter((r) => r.direction === 'in').length + snapshot.groups.filter((g) => g.my_status === 'invited').length;
   const unreadNotifications = snapshot.notifications.filter((n) => !n.read_at).length;
 
   const tabs: Tab[] = [
@@ -124,6 +126,11 @@ export function Shell() {
     case 'notifications':
       title = 'Notifications';
       page = <NotificationsPage />;
+      break;
+    case 'groupes':
+      title = 'Groupe';
+      back = '/amis?onglet=groupes';
+      page = seg[1] ? <GroupPage id={seg[1]} /> : <FriendsPage />;
       break;
     case 'evenements':
       if (seg[1]) {
@@ -172,7 +179,7 @@ export function Shell() {
       );
   }
 
-  const activeTab = '/' + (seg[0] === 'ami' ? 'amis' : (seg[0] ?? ''));
+  const activeTab = '/' + (seg[0] === 'ami' || seg[0] === 'groupes' ? 'amis' : (seg[0] ?? ''));
 
   return (
     <ActionsContext.Provider value={actions}>

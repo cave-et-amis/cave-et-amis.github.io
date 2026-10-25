@@ -1,7 +1,4 @@
-/**
- * Amis & Groupes : recherche de personnes visibles, liste des amis, invitations reçues et envoyées.
- * Les groupes arrivent à l'étape suivante (onglet présent, contenu annoncé).
- */
+/** Amis & Groupes : recherche de personnes visibles, liste des amis, invitations reçues et envoyées, groupes. */
 import { useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon, Copy, Search, Share2, UserPlus, Users, X } from 'lucide-react';
 import type { SharedLot, UserResult } from '../../domain/types';
@@ -13,6 +10,7 @@ import { Avatar, Button, copyText, EmptyState, InlineLoading, Notice, Segmented,
 import { go, routeQuery, useRoute } from '../../ui/router';
 import { inviteLink, prettyCode } from './invite';
 import { SharedItem } from './SharedItem';
+import { GroupsTab } from '../groups/GroupsTab';
 
 type Tab = 'amis' | 'invitations' | 'groupes';
 
@@ -25,6 +23,7 @@ export function FriendsPage() {
     if (requested === 'invitations' || requested === 'groupes' || requested === 'amis') setTab(requested);
   }, [requested]);
   const incoming = snapshot.requests.filter((r) => r.direction === 'in').length;
+  const groupInvites = snapshot.groups.filter((g) => g.my_status === 'invited').length;
 
   return (
     <>
@@ -35,17 +34,12 @@ export function FriendsPage() {
         options={[
           { value: 'amis', label: 'Amis' },
           { value: 'invitations', label: incoming ? `Invitations (${incoming})` : 'Invitations' },
-          { value: 'groupes', label: 'Groupes' },
+          { value: 'groupes', label: groupInvites ? `Groupes (${groupInvites})` : 'Groupes' },
         ]}
       />
       {tab === 'amis' && <FriendsTab />}
       {tab === 'invitations' && <InvitationsTab />}
-      {tab === 'groupes' && (
-        <EmptyState icon="🍷" title="Les groupes arrivent bientôt">
-          Vous pourrez créer des groupes (famille, soirées entre amis…), y inviter vos amis et mettre des bouteilles à leur disposition. En attendant, vos
-          bouteilles se partagent avec tous vos amis depuis leur fiche.
-        </EmptyState>
-      )}
+      {tab === 'groupes' && <GroupsTab />}
     </>
   );
 }

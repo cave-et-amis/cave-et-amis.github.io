@@ -9,6 +9,10 @@ import type {
   Block,
   CaveEvent,
   FriendRequest,
+  GroupActivity,
+  GroupLot,
+  GroupMember,
+  GroupShare,
   Cellar,
   Dish,
   EventWine,
@@ -18,6 +22,7 @@ import type {
   Lot,
   MarketPrice,
   Movement,
+  MyGroup,
   Participant,
   PriceCheck,
   Profile,
@@ -52,6 +57,10 @@ export type Snapshot = {
   blocks: Block[];
   /** 50 dernières notifications. */
   notifications: AppNotification[];
+  /** Mes groupes (membre ou invité). */
+  groups: MyGroup[];
+  /** Mes lots rendus visibles dans des groupes. */
+  groupShares: GroupShare[];
 };
 
 export type EventDetail = { participants: Participant[]; dishes: Dish[]; wines: EventWine[]; suggestable: SuggestableLot[]; tastings: Tasting[] };
@@ -141,7 +150,7 @@ export class Api {
 
   async load(userId: string): Promise<Snapshot> {
     const sb = this.sb;
-    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications] = await Promise.all([
+    const [profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares] = await Promise.all([
       pages<Profile>((a, b) => sb.from('profiles').select('*').order('display_name').range(a, b)),
       pages<Cellar>((a, b) => sb.from('cellars').select('*').order('position').order('created_at').range(a, b)),
       pages<Location>((a, b) => sb.from('locations').select('*').order('position').order('name').range(a, b)),
@@ -163,10 +172,12 @@ export class Api {
         .order('created_at', { ascending: false })
         .limit(50)
         .then((r) => must(r) as AppNotification[]),
+      sb.rpc('my_groups').then((r) => must(r) as MyGroup[]),
+      pages<GroupShare>((a, b) => sb.from('group_shares').select('*').eq('owner_id', userId).range(a, b)),
     ]);
     const me = profiles.find((p) => p.id === userId);
     if (!me) throw new AppError('Votre profil est introuvable. Reconnectez-vous.', 'not_found');
-    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications };
+    return { me, profiles, cellars, locations, wines, lots, friendships, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares };
   }
 
   // ───────────── Caves et emplacements ─────────────
@@ -286,6 +297,50 @@ export class Api {
   }
   async setDiscoverable(id: string, discoverable: boolean) {
     must(await this.sb.from('profiles').update({ discoverable }).eq('id', id));
+  }
+
+  // ───────────── Groupes ─────────────
+
+  async createGroup(g: { name: string; emoji: string; description: string | null; photo: string | null; invite: string[] }) {
+    return must(
+      await this.sb.rpc('create_group', { p_name: g.name, p_emoji: g.emoji, p_description: g.description, p_photo: g.photo, p_invite: g.invite }),
+    ) as { id: string };
+  }
+  async updateGroup(id: string, patch: Partial<Pick<MyGroup, 'name' | 'emoji' | 'description' | 'photo'>>) {
+    must(await this.sb.rpc('update_group', { p_group: id, p: patch }));
+  }
+  async deleteGroup(id: string) {
+    must(await this.sb.rpc('delete_group', { p_group: id }));
+  }
+  async inviteToGroup(id: string, users: string[]) {
+    return must(await this.sb.rpc('invite_to_group', { p_group: id, p_users: users })) as number;
+  }
+  async respondGroupInvite(id: string, accept: boolean) {
+    return must(await this.sb.rpc('respond_group_invite', { p_group: id, p_accept: accept })) as 'active' | 'declined';
+  }
+  async cancelGroupInvite(id: string, user: string) {
+    must(await this.sb.rpc('cancel_group_invite', { p_group: id, p_user: user }));
+  }
+  async setMemberRole(id: string, user: string, role: string) {
+    must(await this.sb.rpc('set_member_role', { p_group: id, p_user: user, p_role: role }));
+  }
+  async removeMember(id: string, user: string) {
+    must(await this.sb.rpc('remove_member', { p_group: id, p_user: user }));
+  }
+  async leaveGroup(id: string) {
+    must(await this.sb.rpc('leave_group', { p_group: id }));
+  }
+  async shareLotWithGroup(lot: string, group: string, share: boolean) {
+    must(await this.sb.rpc('share_lot_with_group', { p_lot: lot, p_group: group, p_share: share }));
+  }
+  async groupMembers(id: string) {
+    return must(await this.sb.rpc('group_members_list', { p_group: id })) as GroupMember[];
+  }
+  async groupLots(id: string) {
+    return must(await this.sb.rpc('group_lots', { p_group: id })) as GroupLot[];
+  }
+  async groupActivity(id: string) {
+    return must(await this.sb.from('group_activity').select('*').eq('group_id', id).order('created_at', { ascending: false }).limit(100)) as GroupActivity[];
   }
 
   async removeFriend(id: string) {

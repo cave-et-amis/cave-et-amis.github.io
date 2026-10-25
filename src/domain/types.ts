@@ -25,13 +25,45 @@ export type FriendRequest = { id: string; direction: 'in' | 'out'; other_id: str
 export type Block = { blocked_id: string; display_name: string; created_at: string };
 export type AppNotification = {
   id: string;
-  kind: 'friend_request' | 'friend_accepted' | 'event_invite';
+  kind: 'friend_request' | 'friend_accepted' | 'event_invite' | 'group_invite' | 'group_joined';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;
   created_at: string;
   read_at: string | null;
 };
+export type GroupRole = 'admin' | 'manager' | 'member';
+/** Un de mes groupes (membre actif ou invité). */
+export type MyGroup = {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string | null;
+  photo: string | null;
+  my_role: GroupRole;
+  my_status: 'invited' | 'active';
+  members: number;
+  /** Bouteilles visibles dans la cave du groupe (lots en stock). */
+  bottles: number;
+  invited_by_name: string | null;
+  created_at: string;
+};
+export type GroupMember = { user_id: string; display_name: string; role: GroupRole; status: 'invited' | 'active'; joined_at: string | null; invited_at: string };
+/** Un de mes lots rendu visible dans un groupe. */
+export type GroupShare = { lot_id: string; group_id: string; owner_id: string; created_at: string };
+export type GroupActivity = {
+  id: string;
+  group_id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  kind: 'created' | 'updated' | 'invited' | 'joined' | 'left' | 'removed' | 'role' | 'shared' | 'unshared';
+  target_name: string | null;
+  detail: string | null;
+  created_at: string;
+};
+/** Bouteille de la cave d'un groupe (mêmes masques que pour les amis, sauf pour les miennes). */
+export type GroupLot = SharedLot & { mine: boolean };
+
 /** Résultat de la recherche d'amis, avec la relation actuelle. */
 export type UserResult = { id: string; display_name: string; relation: 'friend' | 'requested' | 'incoming' | 'none' };
 
