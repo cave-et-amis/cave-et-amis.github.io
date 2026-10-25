@@ -31,7 +31,7 @@ $DumpSql = @'
 create or replace function pg_temp.sauvegarde() returns jsonb language plpgsql as $f$ declare r record; res jsonb := '{}'; j jsonb; begin for r in select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE' order by 1 loop execute format('select coalesce(jsonb_agg(x), ''[]'') from public.%I x', r.table_name) into j; res := res || jsonb_build_object(r.table_name, j); end loop; return res; end $f$; select pg_temp.sauvegarde() as sauvegarde;
 '@
 function Backup($ref, $file) {
-  npx -y supabase@2 db query --project-ref $ref --output-format json $DumpSql | Out-File -Encoding utf8 $file
+  npx -y supabase@2 db query --linked --project-ref $ref --output-format json $DumpSql | Out-File -Encoding utf8 $file
   if ($LASTEXITCODE -ne 0) { throw "Échec de la sauvegarde du projet $ref" }
   if ((Get-Item $file).Length -lt 1000) { throw "Sauvegarde suspecte (trop petite) : $file" }
 }
@@ -43,8 +43,11 @@ if (git -C $Cocon status --porcelain) { throw 'Le dépôt Cocon a des modificati
 if (-not (Test-Path (Join-Path $Cave 'dist\index.html'))) { throw 'Site Cave non construit : npm run build' }
 if (-not (Test-Path (Join-Path $Cocon 'livraison\nous-site-en-ligne.zip'))) { throw 'Site Nous non construit : npm run package:site (dans Cocon)' }
 
-Step '1. Connexion à Supabase (une fenêtre de navigateur s''ouvre : autorisez la ligne de commande)'
-Sb login
+Step '1. Vérification de la connexion à Supabase'
+# La connexion se fait au préalable, dans un terminal interactif :  npx.cmd -y supabase@2 login
+npx -y supabase@2 projects list *> $null
+if ($LASTEXITCODE -ne 0) { throw 'Connexion Supabase absente : lancez d''abord, dans un terminal :  npx.cmd -y supabase@2 login' }
+Write-Host 'Connexion Supabase : OK'
 
 Step "2. Sauvegarde des deux bases dans $Backup"
 New-Item -ItemType Directory -Force $Backup | Out-Null
@@ -54,8 +57,8 @@ Get-ChildItem $Backup | Format-Table Name, Length
 Write-Host 'Le schéma est celui des migrations des dépôts (inchangé jusqu''ici).'
 
 Step '3. Migrations (ajouts seulement, aucune donnée existante modifiée)'
-Sb db query --project-ref $CaveRef -f (Join-Path $Cave 'supabase\migrations\20261025000007_integration_nous.sql')
-Sb db query --project-ref $NousRef -f (Join-Path $Cocon 'supabase\migrations\20261025000001_integration_cave.sql')
+Sb db query --linked --project-ref $CaveRef -f (Join-Path $Cave 'supabase\migrations\20261025000007_integration_nous.sql')
+Sb db query --linked --project-ref $NousRef -f (Join-Path $Cocon 'supabase\migrations\20261025000001_integration_cave.sql')
 
 Step '4. Secret partagé et adresses (secrets des fonctions des deux projets)'
 $bytes = New-Object byte[] 32
@@ -88,8 +91,8 @@ Sb functions deploy cave-api --project-ref $CaveRef --no-verify-jwt --use-api --
 Sb functions deploy cave-sync --project-ref $NousRef --no-verify-jwt --use-api --workdir $Cocon
 
 Step '6. Activation : tâches planifiées (envoi chaque minute)'
-Sb db query --project-ref $CaveRef -f (Join-Path $Cave 'supabase\sql\integration-nous-cron.sql')
-Sb db query --project-ref $NousRef -f (Join-Path $Cocon 'supabase\sql\integration-cave-cron.sql')
+Sb db query --linked --project-ref $CaveRef -f (Join-Path $Cave 'supabase\sql\integration-nous-cron.sql')
+Sb db query --linked --project-ref $NousRef -f (Join-Path $Cocon 'supabase\sql\integration-cave-cron.sql')
 
 Step '7. Site Cave & Amis : publication sur gh-pages et envoi de main'
 $sha = (git -C $Cave rev-parse --short HEAD)
