@@ -66,7 +66,7 @@ export function normUrl(raw: string): string | null {
 }
 
 /** Adresses réellement renvoyées par la recherche (résultats et citations) dans une réponse. */
-export function collectSearchUrls(content: Anthropic.Messages.ContentBlock[], into: Map<string, string>) {
+export function collectSearchUrls(content: Anthropic.Messages.ContentBlock[], into: Map<string, string>, ages?: Map<string, string | null>) {
   const errors: string[] = [];
   for (const block of content) {
     if (block.type === 'web_search_tool_result') {
@@ -74,6 +74,7 @@ export function collectSearchUrls(content: Anthropic.Messages.ContentBlock[], in
         for (const r of block.content) {
           const n = normUrl(r.url);
           if (n) into.set(n, r.title);
+          if (n && ages) ages.set(n, r.page_age ?? null);
         }
       } else if (block.content && 'error_code' in block.content) errors.push(String(block.content.error_code));
     } else if (block.type === 'text') {
@@ -144,6 +145,68 @@ function describeWine(w: Wine, volumeMl: number) {
     .join('\n');
 }
 
+export type Research<T> = {
+  report: T | null;
+  /** Adresses réellement renvoyées par la recherche (normalisées) → titre. */
+  allowed: Map<string, string>;
+  /** Ancienneté des pages indiquée par la recherche, quand elle est connue. */
+  ages: Map<string, string | null>;
+  errors: string[];
+  /** Raison d'un arrêt sans rapport (recherche désactivée côté Anthropic, limite atteinte, refus). */
+  reason: string | null;
+};
+
+/**
+ * Recherche web côté Anthropic puis rapport final par un outil (appelé une fois) : poursuit après « pause_turn »,
+ * dans la limite des recherches réglées, et relève les adresses réellement renvoyées (seules retenues ensuite).
+ */
+export async function researchWithTool<T>(
+  meter: Meter,
+  o: { system: string; prompt: string; tool: Anthropic.Messages.Tool; maxTokens?: number; blockedDomains?: string[] },
+): Promise<Research<T>> {
+  const settings = meter.settings;
+  const allowed = new Map<string, string>();
+  const ages = new Map<string, string | null>();
+  const errors: string[] = [];
+  let reason: string | null = null;
+  let report: T | null = null;
+  const startSearches = meter.searches;
+  const messages: Anthropic.Messages.MessageParam[] = [{ role: 'user', content: o.prompt }];
+  try {
+    for (let turn = 0; turn < 3 && !report; turn++) {
+      const remaining = settings.max_web_searches - (meter.searches - startSearches);
+      if (remaining <= 0 && turn > 0) break;
+      const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
+        ...baseParams(settings, o.maxTokens ?? Math.min(settings.max_output_tokens, 4000)),
+        system: o.system,
+        tools: [webSearchTool(settings.model, Math.max(remaining, 1), o.blockedDomains), o.tool],
+        messages,
+      };
+      const msg = await meter.call(params, { webSearches: Math.max(remaining, 1) });
+      errors.push(...collectSearchUrls(msg.content, allowed, ages));
+      const call = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use' && b.name === o.tool.name);
+      if (call) {
+        report = call.input as T;
+        break;
+      }
+      if (msg.stop_reason === 'pause_turn') {
+        messages.push({ role: 'assistant', content: msg.content });
+        continue;
+      }
+      if (msg.stop_reason === 'refusal') reason = 'La recherche n’a pas pu être menée pour ce vin.';
+      break;
+    }
+  } catch (e) {
+    const f = e as AiFailure;
+    if (f instanceof AiFailure && f.code === 'web_search_unavailable') {
+      reason = 'La recherche web n’est pas activée pour la clé API utilisée (réglage de l’organisation dans la console Anthropic).';
+    } else if (f instanceof AiFailure && (f.code === 'call_limit' || f.code === 'budget_exhausted' || f.code === 'quota_monthly')) {
+      reason = 'La limite d’utilisation de l’assistant a été atteinte avant la fin de la recherche.';
+    } else throw e;
+  }
+  return { report, allowed, ages, errors, reason };
+}
+
 export async function lookupPrice(
   o: { svc: SupabaseClient; meter: Meter; userId: string; currency: string },
   wine: Wine,
@@ -160,47 +223,17 @@ export async function lookupPrice(
   } else if (!wine.vintage && !wine.non_vintage) {
     reason = 'Millésime inconnu : indiquez-le sur la fiche (ou « sans millésime ») pour rechercher le prix exact.';
   } else {
-    const allowed = new Map<string, string>();
-    const searchErrors: string[] = [];
-    const startSearches = meter.searches;
-    const messages: Anthropic.Messages.MessageParam[] = [
-      { role: 'user', content: `${describeWine(wine, volumeMl)}\n\nTrouve des offres de vente actuelles pour ce vin exact, puis appelle report_offers.` },
-    ];
-    let report: { offers: RawOffer[]; comment: string } | null = null;
-    try {
-      for (let turn = 0; turn < 3 && !report; turn++) {
-        const remaining = settings.max_web_searches - (meter.searches - startSearches);
-        if (remaining <= 0 && turn > 0) break;
-        const params: Anthropic.Messages.MessageCreateParamsNonStreaming = {
-          ...baseParams(settings, Math.min(settings.max_output_tokens, 4000)),
-          system: PRICE_SYSTEM,
-          tools: [webSearchTool(settings.model, Math.max(remaining, 1)), REPORT_TOOL],
-          messages,
-        };
-        const msg = await meter.call(params, { webSearches: Math.max(remaining, 1) });
-        searchErrors.push(...collectSearchUrls(msg.content, allowed));
-        const call = msg.content.find((b): b is Anthropic.Messages.ToolUseBlock => b.type === 'tool_use' && b.name === 'report_offers');
-        if (call) {
-          report = call.input as { offers: RawOffer[]; comment: string };
-          break;
-        }
-        if (msg.stop_reason === 'pause_turn') {
-          messages.push({ role: 'assistant', content: msg.content });
-          continue;
-        }
-        if (msg.stop_reason === 'refusal') reason = 'La recherche n’a pas pu être menée pour ce vin.';
-        break;
-      }
-    } catch (e) {
-      const f = e as AiFailure;
-      if (f instanceof AiFailure && f.code === 'web_search_unavailable') {
-        reason = 'La recherche web n’est pas activée pour la clé API utilisée (réglage de l’organisation dans la console Anthropic).';
-      } else if (f instanceof AiFailure && (f.code === 'call_limit' || f.code === 'budget_exhausted' || f.code === 'quota_monthly')) {
-        reason = 'La limite d’utilisation de l’assistant a été atteinte avant la fin de la recherche.';
-      } else throw e;
-    }
+    const research = await researchWithTool<{ offers: RawOffer[]; comment: string }>(meter, {
+      system: PRICE_SYSTEM,
+      prompt: `${describeWine(wine, volumeMl)}
+
+Trouve des offres de vente actuelles pour ce vin exact, puis appelle report_offers.`,
+      tool: REPORT_TOOL,
+    });
+    const report = research.report;
+    reason = research.reason;
     if (report) {
-      offers = validateOffers(report.offers, allowed, wine, volumeMl);
+      offers = validateOffers(report.offers, research.allowed, wine, volumeMl);
       if (offers.length) status = 'verified';
       else
         reason =
@@ -208,8 +241,8 @@ export async function lookupPrice(
             ? 'Des prix ont été proposés mais aucun n’a pu être vérifié (lien absent des résultats, millésime ou contenance différents).'
             : `Aucune offre fiable trouvée. ${sanitize(report.comment, 200)}`.trim();
     } else if (!reason) {
-      reason = searchErrors.length
-        ? `La recherche web n’a pas abouti (${searchErrors.join(', ')}).`
+      reason = research.errors.length
+        ? `La recherche web n’a pas abouti (${research.errors.join(', ')}).`
         : 'La recherche n’a renvoyé aucune offre exploitable.';
     }
   }

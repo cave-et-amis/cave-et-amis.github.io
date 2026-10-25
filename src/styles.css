@@ -2286,3 +2286,57 @@ details.help-topic:not([open]) > summary::after {
   width: 22px;
   border-radius: 5px;
 }
+
+/* Scanner, lot 3b : verdict, prix comparés, analyse détaillée. */
+.scan-verdict {
+  border-left: 6px solid var(--border-strong);
+}
+.scan-verdict.success {
+  border-left-color: var(--success);
+  background: var(--success-soft);
+}
+.scan-verdict.gold {
+  border-left-color: var(--gold);
+  background: var(--gold-soft);
+}
+.scan-verdict.danger {
+  border-left-color: var(--danger);
+  background: var(--danger-soft);
+}
+.scan-verdict h2 {
+  font-family: var(--font-title);
+  font-size: 1.45rem;
+}
+.scan-prices {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 6px 12px;
+  margin: 0;
+}
+.scan-prices dt {
+  color: var(--ink-2);
+}
+.scan-prices dd {
+  margin: 0;
+  font-weight: 600;
+}
+.scan-offers,
+.scan-list,
+.scan-method {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+.scan-group h3 {
+  font-size: 1rem;
+  margin: 4px 0 6px;
+}
+@media (max-width: 420px) {
+  .scan-prices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .scan-prices dd {
+    margin-bottom: 6px;
+  }
+}

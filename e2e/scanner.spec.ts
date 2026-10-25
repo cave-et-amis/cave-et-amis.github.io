@@ -69,7 +69,24 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await page.getByRole('button', { name: 'Confirmer le vin et le prix' }).click();
 
   await expect(page.getByRole('heading', { name: /Château Labeille 2016/ })).toBeVisible();
-  await expect(page.getByText('23,50 €')).toBeVisible();
+
+  // Lot 3b : analyse du vin puis prix du marché, verdict calculé (prix 13 % sous la médiane, qualité « très bon »).
+  await expect(page.getByRole('heading', { name: 'Excellente affaire' })).toBeVisible();
+  await expect(page.getByText('Estimation Lia : 7,5/10')).toBeVisible();
+  await expect(page.getByText(/−13 % par rapport à la médiane de 3 offres vérifiées/)).toBeVisible();
+  const prices = page.locator('.scan-prices');
+  await expect(prices).toContainText('Prix le plus bas vérifié');
+  await expect(prices).toContainText('25 €');
+  await expect(prices).toContainText(/Haute/);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await shot(page, '22b-scanner-verdict-haut');
+  await page.getByText('Analyse détaillée').click();
+  await expect(page.getByText(/Guide exemple : 2 étoiles/)).toBeVisible();
+  // La note inventée (lien absent de la recherche) n'apparaît pas.
+  await expect(page.getByText('Note inventée')).toHaveCount(0);
+  await expect(page.getByText(/Aucune note de consommateurs/)).toBeVisible();
+  await shot(page, '23-scanner-verdict');
+  await expect(page.getByText('23,50 €').first()).toBeVisible();
   await expect(page.getByText(/Le Petit Labeille · Château Labeille/)).toBeVisible();
   await shot(page, '22-scanner-resume');
 

@@ -147,6 +147,54 @@ function scan(body) {
   ]);
 }
 
+// Scanner, lot 3b : analyse sourcée (une source inventée, écartée par le serveur) et trois offres vérifiées.
+const searchResults = (urls) => [
+  { type: 'server_tool_use', id: 'srvtoolu_s', name: 'web_search', input: { query: 'Labeille 2016' }, caller: { type: 'direct' } },
+  {
+    type: 'web_search_tool_result',
+    tool_use_id: 'srvtoolu_s',
+    caller: { type: 'direct' },
+    content: urls.map((url) => ({ type: 'web_search_result', url, title: `Page ${new URL(url).hostname}`, encrypted_content: 'x', page_age: '2 octobre 2026' })),
+  },
+];
+
+function assessment(body) {
+  return message(
+    body,
+    [
+      ...searchResults(['https://guide.example/labeille-2016', 'https://chateau-labeille.example/']),
+      toolUse('report_assessment', {
+        producer: { text: 'Second vin d’un cru réputé de Pauillac.', source_urls: ['https://chateau-labeille.example/'] },
+        appellation: { text: 'Rouges de garde dominés par le cabernet sauvignon.', source_urls: [] },
+        vintage: { text: '2016 est un grand millésime à Bordeaux.', rating: 'exceptionnel', source_urls: ['https://guide.example/labeille-2016'] },
+        critics: [
+          { publication: 'Guide exemple', reviewer: '', score: '2 étoiles', summary: 'Fruit mûr et tanins fins', url: 'https://guide.example/labeille-2016' },
+          { publication: 'Note inventée', reviewer: '', score: '99/100', summary: '', url: 'https://inventee.example/' },
+        ],
+        consumers: [],
+        aromatic_profile: 'Cassis, cèdre, notes grillées.',
+        drink_window: { from: 2024, until: 2034, source_url: '' },
+        pairings: 'Agneau, entrecôte.',
+        quality: 'tres_bon',
+        quality_reason: 'Cru réputé et grand millésime.',
+      }),
+    ],
+    'tool_use',
+    2,
+  );
+}
+
+function scanOffers(body) {
+  const urls = ['https://caviste-a.example/labeille-2016', 'https://caviste-b.example/labeille-2016', 'https://caviste-c.example/labeille-2016'];
+  const offer = (url, price, extra = {}) => ({ url, title: 'Offre', seller: new URL(url).hostname, country: 'FR', price, currency: 'EUR', vat: 'ttc', shipping: null, min_quantity: null, vintage: 2016, volume_ml: 750, ...extra });
+  return message(
+    body,
+    [...searchResults(urls), toolUse('report_scan_offers', { comment: 'Trois offres', offers: [offer(urls[0], 25, { shipping: 8.9 }), offer(urls[1], 27), offer(urls[2], 30, { min_quantity: 6 })] })],
+    'tool_use',
+    1,
+  );
+}
+
 function price(body) {
   return message(
     body,
@@ -195,6 +243,8 @@ createServer(async (req, res) => {
     const body = JSON.parse(raw);
     if (body.output_config?.format?.schema?.properties?.price_tag) return send(200, scan(body));
     if (body.output_config?.format) return send(200, label(body));
+    if ((body.tools ?? []).some((t) => t.name === 'report_assessment')) return send(200, assessment(body));
+    if ((body.tools ?? []).some((t) => t.name === 'report_scan_offers')) return send(200, scanOffers(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_offers')) return send(200, price(body));
     if ((body.tools ?? []).some((t) => t.name === 'search_my_cellar')) return send(200, chat(body));
     return send(200, message(body, [text('OK')]));

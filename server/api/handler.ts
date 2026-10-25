@@ -17,6 +17,9 @@ import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
 import { lookupPrice } from './price.ts';
 import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpired, type ScanResult } from './scan.ts';
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
+import { wineKey } from '../../src/domain/scan.ts';
+import type { ScanAssessment, ScanMarket, ScanWine } from '../../src/domain/types.ts';
+import { ASSESS_CACHE_DAYS, assessWine, emptyAssessment, emptyMarket, PRICE_CACHE_HOURS, searchMarket } from './scanAssess.ts';
 import { AiFailure, corsHeaders, isUuid, json, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
 
@@ -199,6 +202,55 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           .single();
         if (error) throw new AiFailure('internal', sanitize(error.message));
         return { scan };
+      }
+
+      case 'scan_quality':
+      case 'scan_price': {
+        // Lot 3b : analyse du vin, puis offres du marché, pour une analyse vérifiée par la personne (lue avec ses droits).
+        if (!isUuid(body.scan_id)) throw new AiFailure('invalid');
+        const { data: row } = await user.from('scans').select('id, status, wine, currency').eq('id', body.scan_id).maybeSingle();
+        if (!row) throw new AiFailure('not_found');
+        const scan = row as { id: string; status: string; wine: ScanWine; currency: string };
+        if (scan.status !== 'confirmed' || !scan.wine?.name) throw new AiFailure('scan_unconfirmed');
+        const s = await settings();
+        const t = now();
+        const key = wineKey(scan.wine);
+        const searchOff = !s.web_search_enabled || s.max_web_searches <= 0;
+        const estimate = (m: Meter) => m.estimate({ chars: 8_000, webSearches: s.max_web_searches, maxTokens: Math.min(s.max_output_tokens * 2, 6000) });
+        // Cache du serveur : l'analyse d'un vin vaut 90 jours, un relevé de prix 72 heures (même vin, même devise).
+        const cacheKey = action === 'scan_quality' ? `assess:v1:${key}` : `price:v1:${key}:${scan.currency}`;
+        const { data: cached } = await svc.from('scan_cache').select('value').eq('key', cacheKey).gt('expires_at', t.toISOString()).maybeSingle();
+        const hit = (cached as { value: ScanAssessment | ScanMarket } | null)?.value ?? null;
+        const remember = async (value: ScanAssessment | ScanMarket, ms: number) => {
+          await svc
+            .from('scan_cache')
+            .upsert({ key: cacheKey, kind: action === 'scan_quality' ? 'assess' : 'price', value, expires_at: new Date(t.getTime() + ms).toISOString() }, { onConflict: 'key' });
+        };
+        if (action === 'scan_quality') {
+          let assessment = hit as ScanAssessment | null;
+          if (!assessment) {
+            if (searchOff) assessment = emptyAssessment(key, 'La recherche web est désactivée par l’administrateur : le vin ne peut pas être analysé avec des sources.', t);
+            else {
+              assessment = await metered(userId, 'scan_quality', estimate, (meter) => assessWine(meter, scan.wine, key, t), s.scan_model);
+              if (!assessment.reason) await remember(assessment, ASSESS_CACHE_DAYS * 86_400_000);
+            }
+          }
+          const { error } = await svc.from('scans').update({ assessment, assessed_at: t.toISOString() }).eq('id', scan.id).eq('user_id', userId);
+          if (error) throw new AiFailure('internal', sanitize(error.message));
+          return { assessment, from_cache: Boolean(hit) };
+        }
+        let market = hit as ScanMarket | null;
+        if (!market) {
+          if (searchOff) market = emptyMarket(key, 'La recherche web est désactivée par l’administrateur : le prix de marché ne peut pas être vérifié.', t);
+          else if (!scan.wine.vintage && !scan.wine.non_vintage) market = emptyMarket(key, 'Millésime inconnu : indiquez-le (ou « sans millésime ») pour comparer le prix exact.', t);
+          else {
+            market = await metered(userId, 'scan_price', estimate, (meter) => searchMarket(meter, scan.wine, scan.currency, key, t), s.scan_model);
+            if (market.status === 'verified') await remember(market, PRICE_CACHE_HOURS * 3_600_000);
+          }
+        }
+        const { error } = await svc.from('scans').update({ market, market_checked_at: market.checked_at }).eq('id', scan.id).eq('user_id', userId);
+        if (error) throw new AiFailure('internal', sanitize(error.message));
+        return { market, from_cache: Boolean(hit) };
       }
 
       // Photo officielle (Open Food Facts) : sans IA, sans coût.

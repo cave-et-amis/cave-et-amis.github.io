@@ -592,4 +592,66 @@ export type Scan = {
   created_at: string;
   updated_at: string;
   expires_at: string;
+  /** Lot 3b : analyse du vin et offres du marché (null tant qu'elles n'ont pas été faites). */
+  assessment: ScanAssessment | null;
+  assessed_at: string | null;
+  market: ScanMarket | null;
+  market_checked_at: string | null;
+};
+
+export type QualityTier = 'remarquable' | 'tres_bon' | 'bon' | 'correct' | 'decevant';
+
+/** Un élément de l'analyse : texte, origine (source citée ou estimation de Lia) et liens des sources. */
+export type SourcedText = { text: string | null; origin: 'source' | 'estimation' | null; sources: string[] };
+
+/** Analyse du vin par Lia (écrite par le serveur). */
+export type ScanAssessment = {
+  /** Vin analysé (wineKey) : une analyse ne sert qu'à ce vin précis. */
+  key: string;
+  producer: SourcedText;
+  appellation: SourcedText;
+  vintage: SourcedText & { rating: 'exceptionnel' | 'tres_bon' | 'bon' | 'moyen' | 'difficile' | null };
+  /** Avis de dégustateurs ou de guides, uniquement avec le lien de la page qui les publie. */
+  critics: { publication: string; reviewer: string | null; score: string | null; summary: string | null; url: string }[];
+  /** Notes de consommateurs, uniquement si le site et le nombre d'avis sont visibles sur la page. */
+  consumers: { site: string; average: number; scale: number; count: number; url: string }[];
+  aromatic_profile: string | null;
+  drink_window: { from: number; until: number; origin: 'source' | 'estimation'; source: string | null } | null;
+  pairings: string | null;
+  /** Niveau estimé par Lia à partir des sources ; null s'il n'y a pas assez de sources vérifiables. */
+  quality: { tier: QualityTier; reason: string | null; sources: number } | null;
+  quality_note: string | null;
+  sources: { url: string; title: string; page_age: string | null }[];
+  /** Pourquoi l'analyse n'a pas pu être menée (recherche désactivée, limite atteinte…). */
+  reason: string | null;
+  assessed_at: string;
+};
+
+export type ScanMarketOffer = {
+  seller: string;
+  url: string;
+  title: string;
+  /** Prix TTC d'une bouteille. */
+  price: number;
+  currency: string;
+  shipping: number | null;
+  min_quantity: number | null;
+  country: string | null;
+  page_age: string | null;
+};
+
+/** Offres comparables vérifiées, à une date donnée (écrit par le serveur). */
+export type ScanMarket = {
+  key: string;
+  status: 'verified' | 'unverified';
+  currency: string | null;
+  low: number | null;
+  high: number | null;
+  median: number | null;
+  /** Offres dans la devise retenue. */
+  count: number;
+  reliability: 'haute' | 'moyenne' | 'faible' | null;
+  offers: ScanMarketOffer[];
+  reason: string | null;
+  checked_at: string;
 };

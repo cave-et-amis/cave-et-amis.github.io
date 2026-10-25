@@ -17,6 +17,7 @@ import { Button, Check, EmptyState, Field, InlineLoading, Notice, Pill, useConfi
 import { go } from '../../ui/router';
 import { ColorChips } from '../cellar/fields';
 import { ROLES } from './ScannerPage';
+import { ScanAnalysis } from './ScanAnalysis';
 
 export const ISSUE_TEXT: Record<string, string> = {
   blurry: 'La photo est floue : si un champ vous semble faux, reprenez-la en tenant le téléphone immobile.',
@@ -366,7 +367,7 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
 
   return (
     <div className="stack">
-      <ScanPhotos scan={scan} />
+      <ScanAnalysis key={scan.updated_at} scan={scan} />
       <div className="card stack-sm">
         <div className="between">
           <h2 style={{ margin: 0 }}>{title}</h2>
@@ -383,10 +384,6 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
           Analyse du {dateShort(scan.created_at)} · conservée jusqu’au {dateShort(scan.expires_at)}
         </p>
       </div>
-      <Notice tone="gold">
-        Bientôt ici : l’avis de Lia sur ce vin et la comparaison de ce prix avec des offres vérifiées du marché. Vous pouvez déjà le garder en envie ou
-        l’ajouter à votre cave.
-      </Notice>
       <div className="stack-sm">
         <Button
           icon={<Heart />}
@@ -429,6 +426,7 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
           Supprimer cette analyse
         </Button>
       </div>
+      <ScanPhotos scan={scan} />
     </div>
   );
 }

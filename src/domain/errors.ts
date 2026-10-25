@@ -85,6 +85,7 @@ export const AI_MESSAGES: Record<string, string> = {
   image_invalid: 'Cette photo n’a pas pu être lue. Essayez une photo au format JPEG ou PNG.',
   photo_service_unavailable: 'Open Food Facts ne répond pas pour le moment. Réessayez plus tard, ou gardez votre propre photo.',
   scan_quota: 'Vous avez atteint votre nombre d’analyses de bouteilles pour aujourd’hui. Vous pouvez saisir le vin à la main ; le reste de l’application fonctionne normalement.',
+  scan_unconfirmed: 'Vérifiez et confirmez d’abord la bouteille : Lia n’analyse que le vin que vous avez confirmé.',
   refused: 'L’assistant n’a pas pu répondre à cette demande. Reformulez-la.',
   bad_request: 'La demande n’a pas pu être traitée par l’assistant.',
   not_authenticated: 'Votre session a expiré. Reconnectez-vous.',

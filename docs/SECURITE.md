@@ -108,6 +108,19 @@
   (`scan_daily_limit`, 10 par défaut) en plus des quotas et budgets de l'assistant ; photos réduites sur le téléphone
   (1 600 px) et taille maximale contrôlée par le serveur. Open Food Facts (code-barres) est gratuit et sans clé.
 
+### Analyse et prix du marché (lot 3b)
+
+- Deux recherches web distinctes, lancées après la confirmation de la bouteille : l'analyse du vin (`scan_quality`) et les
+  offres du marché (`scan_price`). Chacune réserve son enveloppe comme les autres demandes ; le nombre d'analyses par jour
+  reste compté sur les identifications (des bouteilles, pas des étapes).
+- **Rien n'est inventé** : un lien n'est retenu que s'il figure parmi les pages réellement renvoyées par la recherche ; un avis
+  ou une note sans lien vérifiable est écarté ; une note de consommateurs exige l'échelle et le nombre d'avis ; le niveau de
+  qualité estimé par Lia n'est retenu que s'il s'appuie sur au moins une source ; une offre n'est retenue que pour le même
+  millésime et la même contenance, et jamais hors taxes. **Vivino est exclu** de la recherche (`blocked_domains`).
+- Le verdict et la note sur 10 sont **calculés par l'application** (`src/domain/scan.ts`), jamais rédigés par l'IA.
+- Cache du serveur, séparé de l'historique : analyse d'un vin 90 jours, relevé de prix 72 heures (seulement s'il est vérifié).
+  L'historique garde le relevé daté ; l'application propose de l'actualiser au-delà de 72 heures.
+
 ## Maîtrise des coûts
 
 - **Avant chaque appel** à Claude, la fonction réserve dans la base une **enveloppe maximale** : jetons envoyés estimés

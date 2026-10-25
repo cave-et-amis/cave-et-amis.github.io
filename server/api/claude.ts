@@ -30,7 +30,7 @@ export type AiSettings = {
   scan_retention_days?: number;
 };
 
-export type Action = 'chat' | 'label' | 'price' | 'scan' | 'admin_test';
+export type Action = 'chat' | 'label' | 'price' | 'scan' | 'scan_quality' | 'scan_price' | 'admin_test';
 
 /** Modèles acceptant le paramètre « effort » (documentation Anthropic, octobre 2026). */
 export function supportsEffort(model: string) {
@@ -38,12 +38,14 @@ export function supportsEffort(model: string) {
 }
 
 /** Recherche web avec filtrage dynamique (web_search_20260209) : Opus 4.6+ et Sonnet 4.6+ ; sinon version de base. */
-export function webSearchTool(model: string, maxUses: number) {
+export function webSearchTool(model: string, maxUses: number, blockedDomains?: string[]) {
   const dynamic = /^claude-(opus-(5|4-[6-9])|sonnet-(5|4-6))/.test(model);
   const userLocation = { type: 'approximate' as const, country: 'FR', timezone: 'Europe/Paris' };
+  // Sites exclus (conditions d'utilisation qui n'autorisent pas la reprise de leurs données).
+  const blocked = blockedDomains?.length ? { blocked_domains: blockedDomains } : {};
   return dynamic
-    ? { type: 'web_search_20260209' as const, name: 'web_search' as const, max_uses: maxUses, user_location: userLocation }
-    : { type: 'web_search_20250305' as const, name: 'web_search' as const, max_uses: maxUses, user_location: userLocation };
+    ? { type: 'web_search_20260209' as const, name: 'web_search' as const, max_uses: maxUses, user_location: userLocation, ...blocked }
+    : { type: 'web_search_20250305' as const, name: 'web_search' as const, max_uses: maxUses, user_location: userLocation, ...blocked };
 }
 
 export function makeClient(env: ApiEnv, fetchImpl?: typeof fetch) {

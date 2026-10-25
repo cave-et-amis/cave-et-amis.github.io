@@ -203,8 +203,17 @@ emplacement) pré-rempli, à confirmer ; « Ajouter à mes envies » de même. *
 automatiquement après 30 jours (réglable) ; vous pouvez supprimer une analyse ou tout l'historique à tout moment.
 Si l'assistant est indisponible ou si votre nombre d'analyses du jour est atteint, la fiche se remplit à la main.
 
-*À venir* : l'avis de Lia sur le vin, la comparaison du prix avec des offres vérifiées du marché, le verdict d'achat et le
-comparateur de plusieurs bouteilles.
+Une fois la bouteille confirmée, Lia **analyse le vin** (réputation du producteur et de la cuvée, appellation, millésime,
+avis de dégustateurs et notes de consommateurs avec leur source, profil, garde, accords) puis **compare le prix** du rayon
+à des offres vérifiées du même vin (même millésime, même contenance, prix TTC d'une bouteille). Le **verdict** s'affiche en
+tête : *Excellente affaire*, *Bon achat*, *Prix correct*, *Peu intéressant à ce prix* ou *Informations insuffisantes*, avec
+l'écart en euros et en pourcentage, les sources datées et la fiabilité de la comparaison. Sans offre fiable : « Prix de
+marché non vérifié ». La note sur 10 est une **estimation calculée** par l'application (méthode affichée sous « Comment le
+verdict est-il calculé ? ») : ce n'est pas une note de dégustateur. L'analyse détaillée sépare vos données, les avis de
+sources identifiées, les estimations de Lia et les informations indisponibles. Un relevé de prix de plus de 72 heures peut
+être actualisé.
+
+*À venir* : la prise en compte de vos goûts (carnet, favoris, cave) et le comparateur de plusieurs bouteilles.
 
 ## L'assistant
 
