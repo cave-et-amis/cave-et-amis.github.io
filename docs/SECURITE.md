@@ -102,6 +102,14 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - **Déconnexion** : en plus de la session, le code d'invitation en attente, les préférences de confort (budget du scanner,
   état des propositions de Lia) et le brouillon du scanner sont effacés de l'appareil.
 
+## Sauvegardes
+
+- Chaque mois et avant chaque mise à jour importante, depuis le PC du responsable : `scripts/sauvegarde.ps1` (voir
+  INSTALLATION.md). Lecture par l'outil officiel de Supabase, connecté dans le navigateur : aucun mot de passe de la base.
+- Chiffrées par un mot de passe que seul le responsable connaît (AES-256 puis HMAC-SHA256, clés PBKDF2-SHA256 à 600 000
+  tours, sel et vecteur aléatoires) ; jamais écrites en clair sur le disque ; relues et vérifiées aussitôt.
+- Contenu : tables de l'application, comptes (avec le mot de passe haché) et liste des photos, sans leurs fichiers.
+
 ## Durées de conservation
 
 Validées le 26/10/2026, appliquées par la fonction `retention_purge` (chaque nuit) et par cave-api, appelée par deux tâches

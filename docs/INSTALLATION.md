@@ -101,6 +101,28 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Documents légaux : complétez et faites valider les projets de `docs/legal/` (voir son `LISEZMOI.md`), puis publiez-les
   depuis **Administration › Documents légaux**. Rien n'est demandé aux personnes tant qu'aucun document n'est publié.
 
+## Sauvegardes (chaque mois, et avant chaque mise à jour importante)
+
+L'offre gratuite de Supabase ne sauvegarde pas la base : la sauvegarde se fait depuis votre PC, chiffrée.
+
+1. Une seule fois : dans un terminal, `npx.cmd -y supabase@2 login` (la connexion se fait dans votre navigateur).
+2. Depuis le dossier Cave : `powershell -ExecutionPolicy Bypass -File scripts\sauvegarde.ps1`.
+3. Choisissez un mot de passe de chiffrement (12 caractères au moins), tapé deux fois sans s'afficher. Rangez-le dans un
+   gestionnaire de mots de passe : il n'est écrit nulle part, et sans lui la sauvegarde est illisible.
+4. Le fichier `cave-sauvegarde.json.enc` est écrit dans `B:\Claude Project\sauvegardes\<date>\`, puis relu et vérifié. Le
+   script affiche le nombre de tables, de lignes, de comptes et de photos.
+
+Contenu : toutes les tables de l'application, les comptes (adresse e-mail, mot de passe haché, dates) et la **liste** des
+photos. Les fichiers des photos ne sont pas copiés. Les données ne sont jamais écrites en clair sur le disque.
+
+- Relire une sauvegarde : `powershell -ExecutionPolicy Bypass -File scripts\dechiffrer-sauvegarde.ps1 -Fichier "<dossier>\cave-sauvegarde.json.enc"`.
+  Le fichier obtenu est en clair : supprimez-le dès que vous n'en avez plus besoin.
+- Chiffrer une ancienne sauvegarde restée en clair :
+  `powershell -ExecutionPolicy Bypass -File scripts\sauvegarde.ps1 -Chiffrer "<chemin du fichier>"`. Le script vérifie la
+  copie chiffrée, puis vous supprimez vous-même l'original.
+- Chiffrement : AES-256 avec authentification (HMAC-SHA256), clés tirées du mot de passe par PBKDF2 (600 000 tours). Un mauvais
+  mot de passe ou un fichier modifié sont refusés.
+
 ## Réglages de connexion recommandés (Supabase › Authentication)
 
 - **Sign In / Providers › Email** : « Minimum password length » à **8**, « Password requirements » à **Letters and
