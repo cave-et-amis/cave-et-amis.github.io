@@ -494,8 +494,8 @@ begin
                          'service', split_part(split_part(s.endpoint, '://', 2), '/', 1), 'active_le', s.created_at,
                          'dernier_envoi_reussi', s.last_success_at, 'echecs', s.failures))
                        from public.push_subscriptions s where s.user_id = me), '[]'::jsonb),
-    'agenda_nous', (select jsonb_build_object('prenom_dans_nous', l.nous_display_name, 'envois_actifs', l.sync_enabled, 'reliee_le', l.linked_at)
-                    from public.nous_links l where l.user_id = me),
+    -- Toutes les colonnes de la liaison (réglages compris), sans les identifiants techniques.
+    'agenda_nous', (select to_jsonb(l) - 'user_id' - 'nous_user_id' from public.nous_links l where l.user_id = me),
     'documents_et_consentements', public.my_legal_history(),
     'photos', coalesce((select jsonb_agg(o.name order by o.name) from storage.objects o
                         where o.bucket_id = 'photos' and o.name like me::text || '/%'), '[]'::jsonb)

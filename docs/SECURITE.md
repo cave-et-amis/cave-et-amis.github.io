@@ -105,6 +105,18 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - **Déconnexion** : en plus de la session, le code d'invitation en attente, les préférences de confort (budget du scanner,
   état des propositions de Lia) et le brouillon du scanner sont effacés de l'appareil.
 
+## Liaison avec l'agenda Nous (Cocon)
+
+Contrat complet : `docs/INTEGRATION-NOUS.md`.
+
+- **Ouverture depuis Nous sans mot de passe** : option désactivée par défaut, y compris pour les liaisons existantes,
+  activable seulement depuis une session Cave, jamais pour l'administrateur, vérifiée à chaque demande (`nous_jump_check`).
+  Sinon `jump.token` répond `jump_disabled`, et Nous ouvre simplement Cave.
+- **Avis après chaque liaison** (`nous_linked`), aussi en notification push : une liaison faite à l'insu de la personne se
+  voit tout de suite.
+- **Anti-rejeu** : l'empreinte SHA-256 de chaque signature acceptée est gardée 10 minutes (`eco_replay`) ; une requête
+  rejouée est refusée (401 `replay`) ; si la vérification est impossible, la requête est refusée.
+
 ## Sauvegardes
 
 - Chaque mois et avant chaque mise à jour importante, depuis le PC du responsable : `scripts/sauvegarde.ps1` (voir

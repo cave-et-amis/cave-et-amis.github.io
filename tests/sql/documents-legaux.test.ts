@@ -234,6 +234,7 @@ describe('export complet de ses données', () => {
     await asService(db, `insert into ai_messages (conversation_id, user_id, role, content) values ($1, $2, 'user', 'Quel vin avec un gigot ?')`, [conv[0].id, claire]);
     await db.query(`insert into storage.objects (bucket_id, name) values ('photos', $1), ('photos', $2)`, [`${claire}/etiquette.jpg`, `${bruno}/autre.jpg`]);
     await one(db, claire, `select consent_set('recherche_amis', true, 'reglages')`);
+    await asService(db, `insert into nous_links (user_id, nous_user_id, nous_display_name) values ($1, gen_random_uuid(), 'Claire (Nous)')`, [claire]);
 
     const ex = (await one<{ e: Record<string, unknown> }>(db, claire, `select export_my_data() as e`)).e as Record<string, any>;
     expect(ex.format).toBe('cave-export-v1');
@@ -247,7 +248,10 @@ describe('export complet de ses données', () => {
     expect(ex.liens_d_invitation[0]).not.toHaveProperty('code_hash');
     expect(ex.assistant.conversations[0].messages).toEqual([expect.objectContaining({ role: 'user', texte: 'Quel vin avec un gigot ?' })]);
     expect(ex.photos).toEqual([`${claire}/etiquette.jpg`]);
-    expect(ex.documents_et_consentements.current).toEqual({ recherche_amis: true });
+    expect(ex.documents_et_consentements.current).toEqual({ recherche_amis: true, liaison_nous: true });
+    // Liaison avec Nous : ses réglages, sans les identifiants techniques.
+    expect(ex.agenda_nous).toMatchObject({ nous_display_name: 'Claire (Nous)', sync_enabled: true, allow_jump: false });
+    expect(ex.agenda_nous).not.toHaveProperty('nous_user_id');
     const text = JSON.stringify(ex);
     expect(text).not.toContain('Pomerol secret de Bruno');
     expect(text).not.toContain(`${bruno}/autre.jpg`);
