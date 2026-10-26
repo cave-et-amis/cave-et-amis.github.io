@@ -79,7 +79,9 @@ Vous restez responsable des contenus que vous ajoutez et partagez. Vous pouvez b
 ## La liaison avec l'agenda Nous
 
 - La liaison entre votre compte Cave & Amis et votre compte Nous (application Cocon) est facultative. Elle se lance depuis les Réglages de Cave & Amis et se confirme dans Nous.
+- Après chaque liaison, une notification vous prévient dans Cave & Amis (« Votre compte est relié à l'agenda Nous de… »), et aussi sur vos appareils si vous y avez activé les notifications. Si ce n'est pas vous, déliez les comptes dans les Réglages.
 - Les événements auxquels vous participez apparaissent alors dans votre agenda Nous, avec leur lieu, les prénoms et réponses des participants et les vins prévus. Vous pouvez y répondre ; votre réponse revient dans Cave & Amis.
+- Ouvrir Cave & Amis depuis Nous sans mot de passe est une option, désactivée au départ, y compris pour les comptes déjà reliés et à chaque nouvelle liaison. Vous l'activez ou la désactivez dans les Réglages (« Agenda Nous »). Une fois activée, toute personne qui accède à votre compte Nous peut aussi ouvrir votre compte Cave & Amis. Elle n'est jamais proposée au compte administrateur. Désactivée, Nous ne peut pas vous connecter à Cave & Amis : vous vous connectez comme d'habitude.
 - Vous pouvez suspendre les envois ou délier vos comptes à tout moment, depuis l'une ou l'autre application.
 
 ## Disponibilité et évolution du service

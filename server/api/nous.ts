@@ -3,7 +3,9 @@
  * connexion directe d'une application à l'autre. Contrat : docs/INTEGRATION-NOUS.md.
  *
  * Les échanges serveur à serveur sont signés (HMAC-SHA256, secret ECOSYSTEM_SECRET commun aux deux projets, jamais dans
- * le navigateur). Sans ce secret ou sans l'adresse de Nous, l'intégration est simplement désactivée.
+ * le navigateur) et une signature ne sert qu'une fois (anti-rejeu). Sans ce secret ou sans l'adresse de Nous,
+ * l'intégration est simplement désactivée.
+ * La connexion directe depuis Nous (jump.token) n'est accordée que si la personne l'a activée, jamais à un administrateur.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { AiFailure, isUuid, sanitize, type ApiEnv } from './util.ts';
@@ -13,10 +15,11 @@ export const ECO_WINDOW_MS = 5 * 60_000;
 export const ECO_MAX_BODY = 64_000;
 const enc = new TextEncoder();
 
+const hex = (bytes: ArrayBuffer) => Array.from(new Uint8Array(bytes), (b) => b.toString(16).padStart(2, '0')).join('');
+
 async function hmacHex(secret: string, message: string) {
   const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(message)));
-  return Array.from(sig, (b) => b.toString(16).padStart(2, '0')).join('');
+  return hex(await crypto.subtle.sign('HMAC', key, enc.encode(message)));
 }
 
 /** Comparaison à temps constant (même longueur attendue : 64 caractères hexadécimaux). */
@@ -75,7 +78,14 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
 
   async function linkOf(userId: string) {
     const { data } = await svc.from('nous_links').select('*').eq('user_id', userId).maybeSingle();
-    return data as { user_id: string; nous_user_id: string; nous_display_name: string | null; sync_enabled: boolean; linked_at: string } | null;
+    return data as {
+      user_id: string;
+      nous_user_id: string;
+      nous_display_name: string | null;
+      sync_enabled: boolean;
+      allow_jump?: boolean;
+      linked_at: string;
+    } | null;
   }
 
   async function rpc<T>(fn: string, args: Record<string, unknown>): Promise<T> {
@@ -148,7 +158,9 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
         return {
           enabled: enabled(),
           app_url: nousAppUrl,
-          link: link ? { nous_display_name: link.nous_display_name, sync_enabled: link.sync_enabled, linked_at: link.linked_at } : null,
+          link: link
+            ? { nous_display_name: link.nous_display_name, sync_enabled: link.sync_enabled, allow_jump: link.allow_jump === true, linked_at: link.linked_at }
+            : null,
         };
       }
       case 'nous_link_start': {
@@ -169,6 +181,12 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
         if (error) throw new AiFailure(sqlCode(error) ?? 'internal', sanitize(error.message));
         await flush(50).catch(() => undefined);
         return { sync_enabled: body.enabled === true };
+      }
+      // « Ouvrir Cave & Amis depuis Nous sans mot de passe » (refusé à un administrateur par la base).
+      case 'nous_set_jump': {
+        const { data, error } = await user.rpc('nous_set_allow_jump', { p_enabled: body.enabled === true });
+        if (error) throw new AiFailure(sqlCode(error) ?? 'internal', sanitize(error.message));
+        return { allow_jump: data === true };
       }
       // Appelé par l'application juste après une modification d'événement : l'agenda Nous est à jour sans attendre le cron.
       case 'nous_flush':
@@ -221,7 +239,9 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
       }
       case 'jump.token': {
         const p = pair();
-        if (!(await rpc<boolean>('nous_link_check', p))) throw new AiFailure('not_linked');
+        // Lien magique seulement si la personne a activé la connexion directe, et jamais pour un compte administrateur :
+        // sinon « jump_disabled » (Nous ouvre alors simplement le site).
+        await rpc<boolean>('nous_jump_check', p);
         return { token_hash: await loginTokenFor(p.p_user) };
       }
       default:
@@ -234,7 +254,20 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
     return data === true;
   }
 
-  return { enabled, flush, handleUser, handleSigned, cronTokenOk };
+  /**
+   * Anti-rejeu, pour une requête dont la signature vient d'être vérifiée : vrai la première fois, faux si la même
+   * signature a déjà été reçue (seule son empreinte SHA-256 est gardée, 10 minutes après l'horodatage).
+   */
+  async function firstUse(signature: string, timestamp: string) {
+    const { data, error } = await svc.rpc('eco_replay_claim', {
+      p_signature_sha256: hex(await crypto.subtle.digest('SHA-256', enc.encode(signature))),
+      p_signed_at: new Date(Number(timestamp)).toISOString(),
+    });
+    if (error) throw new AiFailure('internal', sanitize(error.message));
+    return data === true;
+  }
+
+  return { enabled, flush, handleUser, handleSigned, cronTokenOk, firstUse };
 }
 
-export const NOUS_ACTIONS = new Set(['nous_status', 'nous_link_start', 'nous_unlink', 'nous_set_sync', 'nous_flush', 'nous_jump']);
+export const NOUS_ACTIONS = new Set(['nous_status', 'nous_link_start', 'nous_unlink', 'nous_set_sync', 'nous_set_jump', 'nous_flush', 'nous_jump']);

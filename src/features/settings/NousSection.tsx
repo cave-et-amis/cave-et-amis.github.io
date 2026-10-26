@@ -4,7 +4,8 @@ import { useStore } from '../../data/store';
 import { dateLong, todayIso } from '../../domain/format';
 import { Button, Check, Notice, useConfirm, useToast } from '../../ui/kit';
 
-type NousLink = { nous_display_name: string | null; sync_enabled: boolean; linked_at: string };
+/** allow_jump : « Voir dans Cave & Amis » depuis Nous connecte sans mot de passe (désactivé par défaut). */
+type NousLink = { nous_display_name: string | null; sync_enabled: boolean; allow_jump: boolean; linked_at: string };
 type NousState = { loaded: boolean; enabled: boolean; link: NousLink | null; failure: string | null };
 
 /** État de la liaison avec l'agenda Nous (lu par la fonction serveur). */
@@ -60,7 +61,7 @@ export function NousEventLink({ startsAt }: { startsAt: string }) {
 }
 
 export function NousSection() {
-  const { api } = useStore();
+  const { api, me } = useStore();
   const nous = useNousStatus();
   const confirm = useConfirm();
   const toast = useToast();
@@ -114,6 +115,37 @@ export function NousSection() {
             label="Envoyer mes événements vers mon agenda Nous"
             hint="Décocher suspend les envois ; les événements déjà dans Nous y restent."
           />
+          {/* Jamais proposé à l'administrateur (la base et le serveur le refusent aussi). */}
+          {me.is_admin ? (
+            <p className="small faint">Compte administrateur : par sécurité, Cave &amp; Amis ne s’ouvre jamais depuis Nous sans mot de passe.</p>
+          ) : (
+            <Check
+              checked={nous.link.allow_jump === true}
+              onChange={async (enabled) => {
+                // Activer : le risque est expliqué et confirmé d'abord.
+                if (
+                  enabled &&
+                  !(await confirm({
+                    title: 'Ouvrir Cave & Amis depuis Nous sans mot de passe ?',
+                    message:
+                      'Quiconque accède à votre compte Nous (téléphone prêté, mot de passe deviné…) pourra alors ouvrir votre compte Cave & Amis. Vous pourrez désactiver cette option à tout moment.',
+                    confirmLabel: 'Activer',
+                  }))
+                )
+                  return;
+                void act(
+                  'jump',
+                  () => api.ai('nous_set_jump', { enabled }),
+                  () => {
+                    toast(enabled ? 'Ouverture depuis Nous sans mot de passe activée' : 'Ouverture depuis Nous sans mot de passe désactivée');
+                    void nous.refresh();
+                  },
+                );
+              }}
+              label="Ouvrir Cave & Amis depuis Nous sans mot de passe"
+              hint="Désactivé par défaut : depuis Nous, vous vous connectez à Cave & Amis comme d’habitude. Si vous l’activez, quiconque accède à votre compte Nous pourrait aussi ouvrir votre compte Cave & Amis."
+            />
+          )}
           <div className="inline">
             <Button variant="secondary" icon={<ExternalLink />} loading={busy === 'open'} onClick={() => void act('open', async () => (await openNous(api, '#/agenda'), { ok: true }))}>
               Ouvrir mon agenda Nous
