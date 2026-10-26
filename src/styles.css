@@ -2429,3 +2429,12 @@ details.help-topic:not([open]) > summary::after {
 .legal-links a {
   color: var(--ink-2);
 }
+/* Lien vers un autre site (réponses de Lia, documents légaux) : son domaine, et une alerte si le texte en annonce un autre. */
+.link-host {
+  color: var(--ink-3);
+  font-size: 0.88em;
+}
+.link-host.warn {
+  color: var(--warn);
+  font-weight: 600;
+}

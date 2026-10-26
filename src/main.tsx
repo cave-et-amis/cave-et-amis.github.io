@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/source-sans-3';
 import './styles.css';
-import { App, ConfigProblem } from './App';
+import { App, ConfigProblem, Framed } from './App';
 import { readConfig } from './config';
 import { Api } from './data/api';
 
@@ -29,24 +29,41 @@ function boot() {
   root.render(<App api={api} local={config.local} />);
 }
 
-try {
-  boot();
-} catch (e) {
-  console.error(e);
-  root.render(<ConfigProblem problem="L’application n’a pas pu démarrer. Rechargez la page ; si le problème continue, videz le cache du navigateur." />);
+/**
+ * Page affichée dans le cadre (iframe) d'un autre site : l'application ne démarre pas, pour qu'on ne puisse pas faire
+ * cliquer la personne à son insu sur ses propres boutons (« clickjacking » ; GitHub Pages ne permet pas l'en-tête qui
+ * l'interdirait). Un lien l'ouvre dans son propre onglet.
+ */
+function inFrame() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
 }
 
-// Notification push touchée alors que l'application était ouverte : le service worker demande d'aller sur le bon écran.
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
-    const data = event.data as { type?: string; url?: string } | null;
-    if (data?.type === 'cave-open' && typeof data.url === 'string' && /^#\/[\w\-/?=&%.]*$/.test(data.url)) window.location.hash = data.url.slice(1);
-  });
-}
+if (inFrame()) {
+  root.render(<Framed href={window.location.href} />);
+} else {
+  try {
+    boot();
+  } catch (e) {
+    console.error(e);
+    root.render(<ConfigProblem problem="L’application n’a pas pu démarrer. Rechargez la page ; si le problème continue, videz le cache du navigateur." />);
+  }
 
-// Installation sur l'écran d'accueil et ouverture rapide de l'interface (version en ligne uniquement).
-if (import.meta.env.PROD && 'serviceWorker' in navigator && window.location.protocol === 'https:') {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => undefined);
-  });
+  // Notification push touchée alors que l'application était ouverte : le service worker demande d'aller sur le bon écran.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null;
+      if (data?.type === 'cave-open' && typeof data.url === 'string' && /^#\/[\w\-/?=&%.]*$/.test(data.url)) window.location.hash = data.url.slice(1);
+    });
+  }
+
+  // Installation sur l'écran d'accueil et ouverture rapide de l'interface (version en ligne uniquement).
+  if (import.meta.env.PROD && 'serviceWorker' in navigator && window.location.protocol === 'https:') {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => undefined);
+    });
+  }
 }

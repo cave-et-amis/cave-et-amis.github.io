@@ -79,8 +79,11 @@ la purge existante). Rien n'est modifié dans Cave.
 - Celle-ci demande à l'autre côté `jump.token {cave_user_id, nous_user_id}` (signé). L'autre côté vérifie la liaison,
   génère un lien magique (`auth.admin.generateLink({type: 'magiclink'})`) et renvoie **uniquement** `token_hash`
   (usage unique, durée de vie des liens magiques Supabase).
-- Le navigateur ouvre `<APP_URL>?auth=link&token_hash=<…>&next=<chemin>` ; l'application appelle
-  `auth.verifyOtp({type: 'magiclink', token_hash})` puis retire ces paramètres de l'adresse.
+- Le navigateur ouvre `<APP_URL>?auth=link&token_hash=<…>&next=<chemin>` ; l'application retire ces paramètres de
+  l'adresse puis, **seulement si personne n'y est connecté**, appelle `auth.verifyOtp({type: 'magiclink', token_hash})`.
+  Côté Cave & Amis, avant d'entrer : « Vous êtes connecté au compte de {prénom} ({adresse e-mail}) », **Continuer** ou
+  **Ce n'est pas mon compte** (déconnexion) — un lien transmis à quelqu'un d'autre n'ouvre donc pas le compte à son insu.
+  La question revient si la page est rechargée avant la réponse.
 - Si la personne a activé la double authentification dans Nous, Nous lui demande ensuite son code (niveau aal2), comme d'habitude.
 - Nous peut refuser avec `{ ok: false, code: 'jump_disabled' }` dans trois cas :
   - la personne n'a pas activé la connexion directe dans Nous (désactivée par défaut) ;

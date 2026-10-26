@@ -13,6 +13,7 @@
 
 - **Votre session** (jetons de connexion, votre adresse e-mail et votre prénom) : gardée jusqu'à ce que vous vous déconnectiez.
 - **Un vérificateur temporaire**, le temps d'une connexion par lien (par exemple en arrivant depuis l'agenda Nous) : il ne sert à rien sans le lien.
+- **La question « Est-ce bien votre compte ? »** après une connexion par lien depuis l'agenda Nous : gardée jusqu'à votre réponse, pour être reposée si la page est rechargée.
 
 ### Pour une invitation
 
@@ -54,4 +55,5 @@ Si Cave & Amis devait un jour utiliser un traceur qui n'est pas strictement néc
 ## Comment effacer ces informations
 
 - **Se déconnecter** (Réglages) efface la session, le code d'invitation, vos préférences de confort et le brouillon du scanner sur cet appareil.
+- **Déconnecter tous mes appareils** (Réglages) fait de même ici, ferme aussi vos sessions sur vos autres appareils et arrête les notifications sur chacun d'eux.
 - **Pour tout effacer**, utilisez les réglages de votre navigateur : effacez les données du site de Cave & Amis (souvent appelées « cookies et données de site »). Vous serez alors déconnecté.

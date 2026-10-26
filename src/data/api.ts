@@ -141,6 +141,23 @@ export class Api {
     return data.session;
   }
 
+  /** Vérifie auprès du serveur que la session de cet appareil est encore ouverte ; fermée ailleurs, supabase-js la retire. */
+  async checkSession() {
+    await this.sb.auth.getUser();
+  }
+
+  /** Connexion par un lien à usage unique (agenda Nous) ; null si le lien n'est plus valable. */
+  async verifyLink(tokenHash: string): Promise<Session | null> {
+    const { data, error } = await this.sb.auth.verifyOtp({ type: 'magiclink', token_hash: tokenHash });
+    return error ? null : data.session;
+  }
+
+  /** Prénom affiché du compte connecté (null s'il n'a pas pu être lu). */
+  async displayName(userId: string): Promise<string | null> {
+    const { data } = await this.sb.from('profiles').select('display_name').eq('id', userId).maybeSingle();
+    return (data as { display_name?: string } | null)?.display_name ?? null;
+  }
+
   async signIn(email: string, password: string) {
     const { error } = await this.sb.auth.signInWithPassword({ email: email.trim(), password });
     if (error) throw error;
@@ -163,6 +180,18 @@ export class Api {
     await this.sb.auth.signOut({ scope: 'local' });
     // Préférences de confort, code d'invitation, brouillon du scanner : rien ne reste pour la personne suivante.
     await clearDeviceData();
+  }
+
+  /**
+   * « Déconnecter tous mes appareils » : plus aucun appareil ne reçoit mes notifications, puis toutes mes sessions sont
+   * fermées (celle-ci comprise) et le confort de cet appareil est effacé, comme à la déconnexion simple.
+   */
+  async signOutEverywhere() {
+    for (const d of await this.myPushDevices()) await this.removePushDevice(d.id);
+    const { error } = await this.sb.auth.signOut({ scope: 'global' });
+    // Même si le serveur n'a pas répondu, supabase-js a fermé la session de cet appareil.
+    await clearDeviceData();
+    if (error) throw new AppError('Cet appareil est déconnecté, mais les autres n’ont peut-être pas pu l’être. Reconnectez-vous, puis recommencez.', 'signout_partial');
   }
 
   async resetPassword(email: string) {

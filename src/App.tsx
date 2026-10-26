@@ -4,8 +4,8 @@ import type { Api, Snapshot } from './data/api';
 import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
-import { parseMagicLink } from './domain/nous';
-import { AuthScreen, DiscoverScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
+import { parseMagicLink, pendingLink, startSession } from './domain/nous';
+import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
 import { LegalScreen } from './features/legal/LegalViews';
@@ -54,9 +54,31 @@ export function ConfigProblem({ problem }: { problem: string }) {
   );
 }
 
+/** Page affichée dans le cadre (iframe) d'un autre site : l'application n'y démarre pas (voir main.tsx). */
+export function Framed({ href }: { href: string }) {
+  return (
+    <main className="auth">
+      <div className="auth-card">
+        <div className="brand">
+          <img src="./icon.svg" alt="" />
+          <h1>Cave &amp; Amis</h1>
+        </div>
+        <div className="card stack">
+          <p>Par sécurité, Cave &amp; Amis ne s’ouvre pas à l’intérieur d’un autre site.</p>
+          <a className="btn btn-primary btn-block" href={href} target="_blank" rel="noopener noreferrer">
+            Ouvrir Cave &amp; Amis dans son propre onglet
+          </a>
+        </div>
+      </div>
+    </main>
+  );
+}
+
 function Root({ api, local }: { api: Api; local: boolean }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [recovery, setRecovery] = useState(false);
+  // Connexion par un lien venu de Nous : « Est-ce bien votre compte ? » avant d'entrer.
+  const [confirmLink, setConfirmLink] = useState(false);
   // Lien d'invitation ouvert sans être connecté : la vitrine d'abord, puis la création de compte ou la connexion.
   const [authMode, setAuthMode] = useState<'signup' | 'login' | null>(null);
   const route = useRoute();
@@ -68,20 +90,28 @@ function Root({ api, local }: { api: Api; local: boolean }) {
 
   useEffect(() => {
     let alive = true;
-    // Arrivée depuis l'agenda Nous (« Voir dans Cave & Amis ») : jeton retiré de l'adresse, puis connexion directe —
+    let started = false;
+    // Arrivée depuis l'agenda Nous (« Voir dans Cave & Amis ») : jeton retiré de l'adresse, puis connexion par le lien —
     // seulement si personne n'est connecté ici (on ne remplace jamais une session ouverte par une autre).
     const link = parseMagicLink(window.location.href);
     if (link) window.history.replaceState(window.history.state, '', link.cleanUrl);
     void (async () => {
-      let s = await api.getSession();
-      if (!s && link?.tokenHash) {
-        const { data, error } = await api.sb.auth.verifyOtp({ type: 'magiclink', token_hash: link.tokenHash });
-        if (!error) s = data.session;
-      }
-      if (alive) setSession(s);
+      const start = await startSession({ getSession: () => api.getSession(), verify: (h) => api.verifyLink(h) }, link).catch(() => ({ session: null, confirm: false }));
+      if (!alive) return;
+      started = true;
+      setConfirmLink(start.confirm);
+      setSession(start.session);
     })();
     const { data } = api.sb.auth.onAuthStateChange((event, s) => {
       if (event === 'PASSWORD_RECOVERY') setRecovery(true);
+      if (event === 'SIGNED_OUT') {
+        setConfirmLink(false);
+        pendingLink.set(false);
+      }
+      // Pendant le démarrage (connexion par lien en cours), rien n'est montré avant la question. Après, une session
+      // ouverte par un lien dans un autre onglet pose aussi la question ici.
+      if (!started) return;
+      if (s && pendingLink.get()) setConfirmLink(true);
       setSession(s);
     });
     return () => {
@@ -90,7 +120,31 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     };
   }, [api]);
 
+  // Session fermée depuis un autre appareil (« Déconnecter tous mes appareils ») : vérifiée à l'ouverture et à chaque
+  // retour sur l'application ; supabase-js retire alors la session de cet appareil.
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (!userId) return;
+    const check = () => {
+      if (document.visibilityState === 'visible') api.checkSession().catch(() => undefined);
+    };
+    check();
+    document.addEventListener('visibilitychange', check);
+    return () => document.removeEventListener('visibilitychange', check);
+  }, [api, userId]);
+
   if (session === undefined) return <Loading />;
+  if (session && confirmLink)
+    return (
+      <LinkAccountScreen
+        api={api}
+        session={session}
+        onContinue={() => {
+          pendingLink.set(false);
+          setConfirmLink(false);
+        }}
+      />
+    );
   if (session && recovery)
     return (
       <NewPasswordScreen

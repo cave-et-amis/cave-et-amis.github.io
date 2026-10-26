@@ -10,7 +10,7 @@ import { dateShort, todayIso } from '../../domain/format';
 import { availability, HELP_PAGES, HELP_PATHS, HELP_QUESTIONS, helpTopic, topicsForPage, type HelpPage, type HelpTopic } from '../../domain/help';
 import { wineTitle } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
-import { Markdown } from '../../ui/markdown';
+import { Markdown, SafeLink } from '../../ui/markdown';
 import { Button, EmptyState, InlineLoading, Notice, useConfirm } from '../../ui/kit';
 import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
@@ -339,15 +339,17 @@ function AssistantBubble({ message, onChange }: { message: AiMessage; onChange: 
   const actionsList = meta.actions ?? [];
   return (
     <div className="bubble assistant">
-      <Markdown text={message.content} />
+      <Markdown text={message.content} confirmLinks />
       {sources.length > 0 && (
         <div className="sources">
           <span className="strong">Sources consultées :</span>
           {sources.map((s) => (
-            <a key={s.url} href={s.url} target="_blank" rel="noopener noreferrer">
-              {s.title}
-              {s.note ? ` — ${s.note}` : ''} <ExternalLink aria-hidden style={{ width: 13, height: 13, verticalAlign: -1 }} />
-            </a>
+            <span key={s.url}>
+              <SafeLink href={s.url} label={`${s.title || s.url}${s.note ? ` — ${s.note}` : ''}`} confirmOpen>
+                {' '}
+                <ExternalLink aria-hidden style={{ width: 13, height: 13, verticalAlign: -1 }} />
+              </SafeLink>
+            </span>
           ))}
         </div>
       )}
