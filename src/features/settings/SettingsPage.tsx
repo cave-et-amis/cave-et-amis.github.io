@@ -6,6 +6,7 @@ import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
 import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { go } from '../../ui/router';
+import { useCaptcha } from '../auth/Captcha';
 import { useAiStatus } from '../cellar/LabelScan';
 import { LegalLinks } from '../legal/LegalViews';
 import { useTour } from '../tour/Tour';
@@ -289,6 +290,8 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
   const [current, setCurrent] = useState('');
   const [pw, setPw] = useState('');
   const problem = pw ? passwordProblem(pw) : null;
+  // La vérification de l'actuel est une connexion : avec une clé Turnstile, elle passe aussi le contrôle anti-robots.
+  const captcha = useCaptcha(api.captchaSiteKey);
   return (
     <Sheet
       open
@@ -300,7 +303,7 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
           onClick={async () => {
             const res = await run(
               async () => {
-                await api.verifyPassword(current);
+                await api.verifyPassword(current, captcha.take());
                 await api.updatePassword(pw, current);
               },
               { success: 'Mot de passe changé', reload: false },
@@ -319,6 +322,7 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
         <Field label="Nouveau mot de passe" htmlFor="pw-new" hint={PASSWORD_HINT} error={problem ?? undefined}>
           <input id="pw-new" className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
         </Field>
+        {captcha.view}
       </div>
     </Sheet>
   );

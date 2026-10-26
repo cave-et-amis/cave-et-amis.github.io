@@ -309,6 +309,9 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     ).rows[0];
 
   async function handleAuth(path: string, url: URL, method: string, headers: Headers, body: Json) {
+    // Pas de contrôle anti-robots en local : le jeton Turnstile éventuel (gotrue_meta_security.captcha_token) est accepté
+    // et ignoré, comme par un projet Supabase sans protection CAPTCHA.
+    delete body.gotrue_meta_security;
     if (path === 'signup' && method === 'POST') {
       const email = String(body.email ?? '')
         .trim()

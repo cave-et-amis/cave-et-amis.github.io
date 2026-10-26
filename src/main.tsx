@@ -25,6 +25,7 @@ function boot() {
         storageKey: config.local ? 'cave-amis-local-auth' : 'cave-amis-auth',
       },
     }),
+    { captchaSiteKey: config.turnstileSiteKey },
   );
   root.render(<App api={api} local={config.local} />);
 }

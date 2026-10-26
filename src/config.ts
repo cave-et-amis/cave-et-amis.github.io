@@ -1,19 +1,23 @@
 /**
- * Configuration publique. Seules l'adresse du projet Supabase et sa clé PUBLIQUE (publishable / anon)
- * peuvent apparaître ici : elles sont visibles dans le navigateur par nature. La clé Anthropic n'est
- * JAMAIS côté navigateur : elle reste dans les secrets de la fonction serveur.
+ * Configuration publique. Seules l'adresse du projet Supabase, sa clé PUBLIQUE (publishable / anon) et la clé de SITE
+ * Cloudflare Turnstile peuvent apparaître ici : elles sont visibles dans le navigateur par nature. La clé Anthropic et la
+ * clé secrète Turnstile ne sont JAMAIS côté navigateur (secrets de la fonction serveur, réglages de Supabase).
  */
-export type AppConfig = { mode: 'supabase'; url: string; key: string; local: boolean } | { mode: 'missing'; problem: string };
+export type AppConfig =
+  | { mode: 'supabase'; url: string; key: string; local: boolean; turnstileSiteKey: string | null }
+  | { mode: 'missing'; problem: string };
 
-type RuntimeConfig = { supabaseUrl?: string; supabaseKey?: string; local?: boolean };
+type RuntimeConfig = { supabaseUrl?: string; supabaseKey?: string; turnstileSiteKey?: string; local?: boolean };
 
 const LOCAL_KEY = 'local-publishable-key';
 
 /**
  * Ordre de lecture :
- *  1. serveur local (`npm run local`, variable VITE_LOCAL_API = port) : même machine ou téléphone sur le même Wi-Fi ;
- *  2. variables de compilation VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY ;
- *  3. config.js chargé par la page (modifiable après l'export, sans recompiler).
+ *  1. serveur local (`npm run local`, variable VITE_LOCAL_API = port) : même machine ou téléphone sur le même Wi-Fi,
+ *     sans contrôle anti-robots ;
+ *  2. variables de compilation VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY / VITE_TURNSTILE_SITE_KEY ;
+ *  3. config.js chargé par la page. La clé publique s'y change sans recompiler ; pas l'adresse Supabase ni l'ajout d'une
+ *     clé Turnstile, que la politique de sécurité de la page fixe à l'export.
  */
 export function readConfig(
   env: Record<string, string | boolean | undefined> = import.meta.env,
@@ -22,7 +26,7 @@ export function readConfig(
 ): AppConfig {
   const localPort = String(env.VITE_LOCAL_API ?? '').trim();
   if (localPort && location) {
-    return { mode: 'supabase', url: `${location.protocol}//${location.hostname}:${localPort}`, key: LOCAL_KEY, local: true };
+    return { mode: 'supabase', url: `${location.protocol}//${location.hostname}:${localPort}`, key: LOCAL_KEY, local: true, turnstileSiteKey: null };
   }
   const url = String(env.VITE_SUPABASE_URL || runtime?.supabaseUrl || '')
     .trim()
@@ -44,7 +48,10 @@ export function readConfig(
   if (/^sk-ant-/.test(key)) {
     return { mode: 'missing', problem: 'Une clé Anthropic ne doit jamais être placée dans le site : elle se configure dans les secrets du serveur.' };
   }
-  return { mode: 'supabase', url, key, local: Boolean(runtime?.local) || isLocalUrl };
+  // Facultative : sans clé de site, aucun contrôle anti-robots (rien n'est chargé depuis Cloudflare).
+  const turnstile = String(env.VITE_TURNSTILE_SITE_KEY || runtime?.turnstileSiteKey || '').trim();
+  const turnstileSiteKey = turnstile && !/xxxxxxxx/.test(turnstile) ? turnstile : null;
+  return { mode: 'supabase', url, key, local: Boolean(runtime?.local) || isLocalUrl, turnstileSiteKey };
 }
 
 /** Détecte une clé serveur collée par erreur (sb_secret_… ou jeton de rôle service_role). */
