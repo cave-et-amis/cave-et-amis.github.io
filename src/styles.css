@@ -1855,6 +1855,19 @@ details.advanced .form {
   border: 1px dashed var(--border-strong);
   word-break: break-all;
 }
+/* Double authentification : clé à recopier (32 caractères), code à 6 chiffres. */
+.kbd-code.mfa-key {
+  font-size: 1.05rem;
+  letter-spacing: 0.06em;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+.input.otp {
+  font-size: 1.4rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 
 .meter {
   height: 10px;

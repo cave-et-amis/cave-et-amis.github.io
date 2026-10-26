@@ -128,10 +128,18 @@ async function pages<T>(fetchPage: (from: number, to: number) => PromiseLike<Res
 
 export const newId = () => crypto.randomUUID();
 
+/** Mon code de double authentification actif (application d'authentification). */
+export type MfaFactor = { id: string; created_at: string; updated_at: string };
+/** Activation commencée : clé à recopier à la main et adresse otpauth:// du QR code (jamais à journaliser). */
+export type MfaEnrollment = { id: string; secret: string; uri: string };
+
 export class Api {
   sb: SupabaseClient;
-  constructor(sb: SupabaseClient) {
+  /** Client à part, sans session gardée : vérifie un mot de passe sans remplacer la session de l'application. */
+  private checker: (() => SupabaseClient) | null;
+  constructor(sb: SupabaseClient, checker: (() => SupabaseClient) | null = null) {
     this.sb = sb;
+    this.checker = checker;
   }
 
   // ───────────── Comptes ─────────────
@@ -177,13 +185,73 @@ export class Api {
     if (error) throw error;
   }
 
-  /** Vérifie le mot de passe actuel avant un changement sensible : une session restée ouverte ne suffit pas. */
+  /**
+   * Vérifie le mot de passe actuel avant un changement sensible : une session restée ouverte ne suffit pas. Avec le client
+   * à part, la session de l'application reste celle vérifiée par le code de double authentification (le serveur l'exige
+   * pour changer de mot de passe).
+   */
   async verifyPassword(password: string) {
     const { data } = await this.sb.auth.getUser();
     const email = data.user?.email;
     if (!email) throw new AppError('Session expirée : reconnectez-vous.', 'not_authenticated');
-    const { error } = await this.sb.auth.signInWithPassword({ email, password });
+    const client = this.checker?.() ?? this.sb;
+    const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) throw new AppError('Mot de passe actuel incorrect.', 'invalid_password');
+    if (client !== this.sb) await client.auth.signOut({ scope: 'local' });
+  }
+
+  // ───────────── Double authentification (code à 6 chiffres d'une application d'authentification) ─────────────
+
+  /**
+   * Faut-il demander le code avant d'entrer ? Oui quand le compte a un code actif et que la session n'est passée que par
+   * le mot de passe (niveau aal1). Avec `token`, les codes sont relus sur le serveur (activés depuis un autre appareil
+   * compris) ; sans réseau, d'après la session gardée sur l'appareil.
+   */
+  async mfaRequired(token?: string) {
+    const mfa = this.sb.auth.mfa;
+    let res = token ? await mfa.getAuthenticatorAssuranceLevel(token) : null;
+    if (!res || res.error) res = await mfa.getAuthenticatorAssuranceLevel();
+    if (res.error) throw res.error;
+    return res.data.nextLevel === 'aal2' && res.data.currentLevel !== 'aal2';
+  }
+
+  /** Mon code actif (null : double authentification désactivée), relu sur le serveur. */
+  async mfaFactor(): Promise<MfaFactor | null> {
+    const { data, error } = await this.sb.auth.mfa.listFactors();
+    if (error) throw error;
+    const f = data.totp[0];
+    return f ? { id: f.id, created_at: f.created_at, updated_at: f.updated_at } : null;
+  }
+
+  /** Commence l'activation : le nouveau code n'est actif qu'une fois vérifié. Les activations abandonnées sont retirées. */
+  async mfaEnroll(): Promise<MfaEnrollment> {
+    const { data: list, error: listError } = await this.sb.auth.mfa.listFactors();
+    if (listError) throw listError;
+    for (const f of list.all) if (f.factor_type === 'totp' && f.status === 'unverified') await this.mfaUnenroll(f.id);
+    const { data, error } = await this.sb.auth.mfa.enroll({ factorType: 'totp', issuer: 'Cave & Amis' });
+    if (error) throw error;
+    return { id: data.id, secret: data.totp.secret, uri: data.totp.uri };
+  }
+
+  /** Vérifie un code à 6 chiffres (fin de l'activation, ou connexion) : la session passe au niveau aal2. */
+  async mfaVerify(factorId: string, code: string) {
+    const { data: challenge, error } = await this.sb.auth.mfa.challenge({ factorId });
+    if (error) throw error;
+    const { error: verifyError } = await this.sb.auth.mfa.verify({ factorId, challengeId: challenge.id, code: code.trim() });
+    if (verifyError) throw verifyError;
+  }
+
+  /** Code demandé à la connexion. */
+  async mfaSignIn(code: string) {
+    const factor = await this.mfaFactor();
+    if (!factor) throw new AppError('La double authentification n’est plus active sur ce compte : rechargez la page.', 'mfa_factor_not_found');
+    await this.mfaVerify(factor.id, code);
+  }
+
+  /** Retire un code ; un code actif ne se retire qu'avec une session vérifiée par lui. */
+  async mfaUnenroll(factorId: string) {
+    const { error } = await this.sb.auth.mfa.unenroll({ factorId });
+    if (error) throw error;
   }
 
   async updateProfile(id: string, patch: Partial<Pick<Profile, 'display_name' | 'currency' | 'preferences'>>) {

@@ -11,6 +11,7 @@ import { LegalLinks } from '../legal/LegalViews';
 import { useTour } from '../tour/Tour';
 import { PushSettings } from '../push/PushSettings';
 import { DeleteAccountSheet } from './DeleteAccountSheet';
+import { MfaSection } from './MfaSection';
 import { NousSection } from './NousSection';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP', 'CAD'];
@@ -71,6 +72,8 @@ export function SettingsPage() {
           Changer de mot de passe
         </Button>
       </section>
+
+      {me.is_admin && <MfaSection />}
 
       <section className="card form" aria-labelledby="h-prefs">
         <h2 id="h-prefs" className="section">

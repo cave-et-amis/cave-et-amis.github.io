@@ -4,16 +4,35 @@
  * avec les mêmes rôles et les mêmes règles RLS.
  *
  * Sert au serveur local (`npm run local`) et aux tests. Couverture volontairement limitée aux requêtes
- * qu'emploie l'application. Ce module n'est jamais inclus dans l'export de production.
+ * qu'emploie l'application, double authentification (codes TOTP) comprise. Ce module n'est jamais inclus dans l'export
+ * de production.
  */
 import type { PGlite, Transaction } from '@electric-sql/pglite';
+import { base32Encode, totpValid } from './totp.ts';
 
 type Json = Record<string, unknown>;
-export type Claims = { sub: string; email: string; exp: number; role: 'authenticated'; aud: 'authenticated'; session_id: string };
+type Aal = 'aal1' | 'aal2';
+/** Méthode de connexion notée dans le jeton (« amr »), comme chez Supabase. */
+type Amr = { method: string; timestamp: number };
+export type Claims = {
+  sub: string;
+  email: string;
+  exp: number;
+  iat: number;
+  role: 'authenticated';
+  aud: 'authenticated';
+  session_id: string;
+  /** Niveau de la session : aal1 (mot de passe, lien), aal2 (code de double authentification vérifié). */
+  aal: Aal;
+  amr: Amr[];
+};
 type Who = { kind: 'anon' } | { kind: 'user'; claims: Claims } | { kind: 'service' };
+/** Session ouverte : son niveau de double authentification survit au rafraîchissement du jeton. */
+type SessionInfo = { id: string; userId: string; aal: Aal; amr: Amr[]; factorId: string | null };
 
 const IDENT = /^[a-z_][a-z0-9_]*$/;
 const TOKEN_LIFETIME = 3600;
+const CHALLENGE_LIFETIME = 300;
 
 export type FakeSupabaseOptions = {
   /** Clé « service » acceptée comme rôle service_role (contourne RLS, comme la clé secrète de Supabase). */
@@ -38,6 +57,8 @@ function unb64urlText(s: string) {
   const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
   return new TextDecoder().decode(Uint8Array.from(bin, (c) => c.charCodeAt(0)));
 }
+// Fin des jetons : du base64url valable (supabase-js décode les jetons pour lire leur niveau), reconnu ici seulement.
+const SIGNATURE = b64urlText('local');
 
 function respond(status: number, body?: unknown, headers: Record<string, string> = {}) {
   const text = body === undefined ? null : typeof body === 'string' ? body : JSON.stringify(body);
@@ -55,34 +76,54 @@ function storageError(status: number, error: string, message: string) {
   return respond(status, { statusCode: String(status), error, message });
 }
 
-export function makeAccessToken(user: { id: string; email: string }) {
+export function makeAccessToken(
+  user: { id: string; email: string },
+  session: Pick<SessionInfo, 'id' | 'aal' | 'amr'> = { id: crypto.randomUUID(), aal: 'aal1', amr: [] },
+) {
   const now = Math.floor(Date.now() / 1000);
   const claims: Claims = {
     sub: user.id,
     email: user.email,
     exp: now + TOKEN_LIFETIME,
+    iat: now,
     role: 'authenticated',
     aud: 'authenticated',
-    session_id: crypto.randomUUID(),
+    session_id: session.id,
+    aal: session.aal,
+    amr: session.amr,
   };
-  return { token: `${b64urlText(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${b64urlText(JSON.stringify(claims))}.local`, claims };
+  return { token: `${b64urlText(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${b64urlText(JSON.stringify(claims))}.${SIGNATURE}`, claims };
 }
 
-function makeSession(user: Json) {
-  const { token, claims } = makeAccessToken({ id: String(user.id), email: String(user.email) });
+function makeSession(user: Json, session: SessionInfo) {
+  const { token, claims } = makeAccessToken({ id: String(user.id), email: String(user.email) }, session);
   return {
     access_token: token,
     token_type: 'bearer',
     expires_in: TOKEN_LIFETIME,
     expires_at: claims.exp,
-    refresh_token: `local-refresh.${b64urlText(String(user.id))}.${crypto.randomUUID()}`,
+    // Le compte et la session : le niveau de la session est retrouvé au rafraîchissement.
+    refresh_token: `local-refresh.${b64urlText(String(user.id))}.${session.id}`,
     user,
   };
 }
 
 type UserRow = { id: string; email: string; raw_user_meta_data: Json | null; created_at: string; last_sign_in_at: string | null };
+type FactorRow = { id: string; friendly_name: string | null; factor_type: string; status: string; created_at: Date | string; updated_at: Date | string };
 
-function userJson(row: UserRow) {
+/** Code de double authentification tel que Supabase le décrit (jamais sa clé). */
+function factorJson(f: FactorRow) {
+  return {
+    id: f.id,
+    ...(f.friendly_name ? { friendly_name: f.friendly_name } : {}),
+    factor_type: f.factor_type,
+    status: f.status,
+    created_at: new Date(f.created_at).toISOString(),
+    updated_at: new Date(f.updated_at).toISOString(),
+  };
+}
+
+function userJson(row: UserRow, factors: FactorRow[] = []) {
   return {
     id: row.id,
     aud: 'authenticated',
@@ -98,6 +139,8 @@ function userJson(row: UserRow) {
     created_at: row.created_at,
     updated_at: row.created_at,
     is_anonymous: false,
+    // Comme chez Supabase : absents tant que le compte n'a aucun code.
+    ...(factors.length ? { factors: factors.map(factorJson) } : {}),
   };
 }
 
@@ -107,7 +150,7 @@ function bearer(headers: Headers) {
 
 function claimsFromToken(token: string): Claims | null {
   const parts = token.split('.');
-  if (parts.length !== 3 || parts[2] !== 'local') return null;
+  if (parts.length !== 3 || parts[2] !== SIGNATURE) return null;
   try {
     const claims = JSON.parse(unb64urlText(parts[1])) as Claims;
     if (!claims.sub || claims.exp * 1000 < Date.now()) return null;
@@ -308,6 +351,119 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       )
     ).rows[0];
 
+  // Sessions et défis de double authentification, en mémoire comme les liens magiques. Après un redémarrage, un jeton de
+  // rafraîchissement inconnu rouvre une session au niveau du seul mot de passe (aal1).
+  const sessions = new Map<string, SessionInfo>();
+  const challenges = new Map<string, { factorId: string; expiresAt: number }>();
+  const nowSeconds = () => Math.floor(Date.now() / 1000);
+  function openSession(userId: string, method: string) {
+    const s: SessionInfo = { id: crypto.randomUUID(), userId, aal: 'aal1', amr: [{ method, timestamp: nowSeconds() }], factorId: null };
+    sessions.set(s.id, s);
+    return s;
+  }
+  const factorsOf = async (userId: string) =>
+    (
+      await db.query<FactorRow>(
+        `select id, friendly_name, factor_type, status, created_at, updated_at from auth.mfa_factors where user_id = $1 order by created_at, id`,
+        [userId],
+      )
+    ).rows;
+  const userOut = async (row: UserRow) => userJson(row, await factorsOf(row.id));
+  /** Code vérifié du compte (`factorId` : celui-là précisément). */
+  const hasVerifiedFactor = async (userId: string, factorId: string | null = null) =>
+    (
+      await db.query(`select 1 from auth.mfa_factors where user_id = $1 and status = 'verified' and ($2::uuid is null or id = $2::uuid)`, [
+        userId,
+        factorId,
+      ])
+    ).rows.length > 0;
+
+  /** Double authentification, comme chez Supabase : inscription d'un code, défi, vérification (passage en aal2), retrait. */
+  async function handleFactors(path: string, url: URL, method: string, w: Who, body: Json) {
+    const claims = w.kind === 'user' ? w.claims : null;
+    const user = claims ? await findUser('id = $1', claims.sub) : undefined;
+    if (!claims || !user) return authError(401, 'bad_jwt', 'invalid JWT');
+    const strong = claims.aal === 'aal2';
+    const route = /^factors(?:\/([0-9a-f-]{36})(?:\/(challenge|verify))?)?$/.exec(path);
+    if (!route) return authError(404, 'not_found', `Auth : ${path} non pris en charge en local`);
+    const [, factorId, action] = route;
+
+    if (!factorId && method === 'POST') {
+      if (body.factor_type !== 'totp') return authError(422, 'validation_failed', 'Seuls les codes TOTP sont simulés en local');
+      const factors = await factorsOf(user.id);
+      // Un nouveau code ne s'ajoute à un code actif qu'avec une session déjà vérifiée par celui-ci.
+      if (factors.some((f) => f.status === 'verified') && !strong) return authError(403, 'insufficient_aal', 'AAL2 required to enroll a new factor');
+      if (factors.length >= 10) return authError(422, 'too_many_enrolled_mfa_factors', 'Maximum number of enrolled factors reached, unenroll to continue');
+      const name = String(body.friendly_name ?? '').trim();
+      if (name && factors.some((f) => f.friendly_name === name))
+        return authError(422, 'mfa_factor_name_conflict', `A factor with the friendly name "${name}" for this user already exists`);
+      const secret = base32Encode(crypto.getRandomValues(new Uint8Array(20)));
+      const issuer = String(body.issuer ?? '').trim() || url.host;
+      const id = (
+        await db.query<{ id: string }>(
+          `insert into auth.mfa_factors (user_id, friendly_name, factor_type, status, secret) values ($1, $2, 'totp', 'unverified', $3) returning id`,
+          [user.id, name || null, secret],
+        )
+      ).rows[0].id;
+      const uri = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(user.email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+      // Pas d'image de QR code : l'application le dessine elle-même à partir de l'adresse otpauth://.
+      return respond(200, { id, type: 'totp', ...(name ? { friendly_name: name } : {}), totp: { qr_code: '', secret, uri } });
+    }
+
+    const factor = factorId
+      ? (
+          await db.query<FactorRow & { secret: string | null }>(
+            `select id, friendly_name, factor_type, status, secret, created_at, updated_at from auth.mfa_factors where id = $1 and user_id = $2`,
+            [factorId, user.id],
+          )
+        ).rows[0]
+      : undefined;
+    if (!factor) return authError(404, 'mfa_factor_not_found', 'Factor not found');
+
+    if (!action && method === 'DELETE') {
+      // Retirer un code actif demande une session vérifiée par un code.
+      if (factor.status === 'verified' && !strong) return authError(422, 'insufficient_aal', 'AAL2 required to unenroll verified factor');
+      await db.query(`delete from auth.mfa_factors where id = $1`, [factor.id]);
+      return respond(200, { id: factor.id });
+    }
+
+    if (action === 'challenge' && method === 'POST') {
+      for (const [k, c] of challenges) if (c.expiresAt < nowSeconds()) challenges.delete(k);
+      const challenge = { id: crypto.randomUUID(), factorId: factor.id, expiresAt: nowSeconds() + CHALLENGE_LIFETIME };
+      challenges.set(challenge.id, challenge);
+      return respond(200, { id: challenge.id, type: 'totp', expires_at: challenge.expiresAt });
+    }
+
+    if (action === 'verify' && method === 'POST') {
+      const challengeId = String(body.challenge_id ?? '');
+      const challenge = challenges.get(challengeId);
+      // Un défi ne sert qu'une fois, code juste ou faux.
+      challenges.delete(challengeId);
+      if (!challenge || challenge.factorId !== factor.id || challenge.expiresAt < nowSeconds())
+        return authError(422, 'mfa_challenge_expired', 'MFA challenge has expired, verify against another challenge or create a new challenge.');
+      if (!factor.secret || !(await totpValid(factor.secret, String(body.code ?? '').trim())))
+        return authError(422, 'mfa_verification_failed', 'Invalid TOTP code entered');
+      if (factor.status !== 'verified') {
+        await db.query(`update auth.mfa_factors set status = 'verified', updated_at = now() where id = $1`, [factor.id]);
+        // Comme chez Supabase : les autres activations commencées et non terminées sont retirées.
+        await db.query(`delete from auth.mfa_factors where user_id = $1 and factor_type = 'totp' and status = 'unverified'`, [user.id]);
+      }
+      // La session en cours passe au niveau aal2 (nouveaux jetons, même session).
+      const known = sessions.get(claims.session_id);
+      const base = known?.userId === user.id ? known : { id: claims.session_id || crypto.randomUUID(), amr: claims.amr ?? [] };
+      const s: SessionInfo = {
+        id: base.id,
+        userId: user.id,
+        aal: 'aal2',
+        amr: [{ method: 'totp', timestamp: nowSeconds() }, ...base.amr.filter((a) => a.method !== 'totp')],
+        factorId: factor.id,
+      };
+      sessions.set(s.id, s);
+      return respond(200, makeSession(await userOut(user), s));
+    }
+    return authError(404, 'not_found', `Auth : ${path} non pris en charge en local`);
+  }
+
   async function handleAuth(path: string, url: URL, method: string, headers: Headers, body: Json) {
     if (path === 'signup' && method === 'POST') {
       const email = String(body.email ?? '')
@@ -323,7 +479,7 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
          values ($1::uuid, $2, encode(sha256(convert_to($1::text || ':' || $3, 'UTF8')), 'hex'), $4, now())`,
         [id, email, password, JSON.stringify(body.data ?? {})],
       );
-      return respond(200, makeSession(userJson((await findUser('id = $1', id))!)));
+      return respond(200, makeSession(userJson((await findUser('id = $1', id))!), openSession(id, 'password')));
     }
 
     if (path === 'token' && method === 'POST') {
@@ -339,14 +495,23 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
           [email, String(body.password ?? '')],
         );
         if (!res.rows[0]) return authError(400, 'invalid_credentials', 'Invalid login credentials');
-        return respond(200, makeSession(userJson(res.rows[0])));
+        // Nouvelle session au niveau du mot de passe, même si le compte a un code (il sera demandé ensuite).
+        return respond(200, makeSession(await userOut(res.rows[0]), openSession(res.rows[0].id, 'password')));
       }
       if (grant === 'refresh_token') {
         const token = String(body.refresh_token ?? '');
-        const m = /^local-refresh\.([^.]+)\./.exec(token);
+        const m = /^local-refresh\.([^.]+)\.([^.]+)$/.exec(token);
         const user = m ? await findUser('id::text = $1', unb64urlText(m[1])) : undefined;
-        if (!user) return authError(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
-        return respond(200, makeSession(userJson(user)));
+        if (!m || !user) return authError(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
+        let s = sessions.get(m[2]);
+        if (!s || s.userId !== user.id) s = openSession(user.id, 'password');
+        else if (s.aal === 'aal2' && !(await hasVerifiedFactor(user.id, s.factorId))) {
+          // Code retiré entre-temps : la session redescend au niveau du mot de passe, comme chez Supabase.
+          s.aal = 'aal1';
+          s.factorId = null;
+          s.amr = s.amr.filter((a) => a.method !== 'totp');
+        }
+        return respond(200, makeSession(await userOut(user), s));
       }
       return authError(400, 'validation_failed', 'unsupported_grant_type');
     }
@@ -357,10 +522,11 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       const user = userId ? await findUser('id = $1', userId) : undefined;
       if (!user) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
       magicTokens.delete(String(body.token_hash));
-      return respond(200, makeSession(userJson(user)));
+      return respond(200, makeSession(await userOut(user), openSession(user.id, 'magiclink')));
     }
 
     const w = who(headers);
+    if (path === 'factors' || path.startsWith('factors/')) return handleFactors(path, url, method, w, body);
     if (path === 'admin/generate_link' && method === 'POST') {
       if (w.kind !== 'service') return authError(403, 'not_admin', 'User not allowed');
       const user = await findUser('email = $1', String(body.email ?? '').toLowerCase());
@@ -377,13 +543,17 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
         return respond(200, {});
       }
       const user = await findUser('id = $1', adminUser[1]);
-      return user ? respond(200, userJson(user)) : authError(404, 'user_not_found', 'User not found');
+      return user ? respond(200, await userOut(user)) : authError(404, 'user_not_found', 'User not found');
     }
     if (path === 'user') {
-      const user = w.kind === 'user' ? await findUser('id = $1', w.claims.sub) : undefined;
-      if (!user) return authError(401, 'bad_jwt', 'invalid JWT');
+      const claims = w.kind === 'user' ? w.claims : null;
+      const user = claims ? await findUser('id = $1', claims.sub) : undefined;
+      if (!claims || !user) return authError(401, 'bad_jwt', 'invalid JWT');
       if (method === 'PUT') {
         if (body.password !== undefined) {
+          // Comme chez Supabase : avec un code actif, changer de mot de passe demande une session vérifiée par ce code.
+          if (claims.aal !== 'aal2' && (await hasVerifiedFactor(user.id)))
+            return authError(401, 'insufficient_aal', 'AAL2 session is required to update email or password when MFA is enabled.');
           const password = String(body.password);
           if (password.length < 8) return authError(422, 'weak_password', 'Password should be at least 8 characters.');
           await db.query(`update auth.users set password_hash = encode(sha256(convert_to(id::text || ':' || $2, 'UTF8')), 'hex') where id = $1`, [
@@ -397,11 +567,14 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
             JSON.stringify(body.data),
           ]);
         }
-        return respond(200, userJson((await findUser('id = $1', user.id))!));
+        return respond(200, await userOut((await findUser('id = $1', user.id))!));
       }
-      return respond(200, userJson(user));
+      return respond(200, await userOut(user));
     }
-    if (path === 'logout') return respond(204);
+    if (path === 'logout') {
+      if (w.kind === 'user') sessions.delete(w.claims.session_id);
+      return respond(204);
+    }
     // Pas d'envoi d'e-mails en local : la demande est acceptée (comme Supabase, sans dire si le compte existe).
     if (path === 'recover') return respond(200, {});
     return authError(404, 'not_found', `Auth : ${path} non pris en charge en local`);

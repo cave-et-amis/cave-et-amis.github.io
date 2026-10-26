@@ -6,6 +6,7 @@ import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink } from './domain/nous';
 import { AuthScreen, DiscoverScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
+import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
 import { LegalScreen } from './features/legal/LegalViews';
@@ -91,16 +92,6 @@ function Root({ api, local }: { api: Api; local: boolean }) {
   }, [api]);
 
   if (session === undefined) return <Loading />;
-  if (session && recovery)
-    return (
-      <NewPasswordScreen
-        api={api}
-        onDone={() => {
-          setRecovery(false);
-          go('/', { replace: true });
-        }}
-      />
-    );
   if (!session) {
     // Documents légaux : lisibles avant l'inscription.
     const legal = /^\/legal\/([a-z]+)/.exec(route)?.[1];
@@ -136,7 +127,23 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     }
     return <AuthScreen key={authMode ?? 'auth'} api={api} local={local} inviteCode={invite ?? pendingInvite()} initialMode={authMode ?? undefined} />;
   }
-  return <SignedIn key={session.user.id} api={api} local={local} session={session} />;
+  // Double authentification activée : le code d'abord, avant même un nouveau mot de passe (le serveur exige alors une
+  // session vérifiée par le code pour le changer).
+  return (
+    <MfaGate key={session.user.id} api={api} session={session} fallback={<Loading text="Ouverture de votre cave…" />}>
+      {recovery ? (
+        <NewPasswordScreen
+          api={api}
+          onDone={() => {
+            setRecovery(false);
+            go('/', { replace: true });
+          }}
+        />
+      ) : (
+        <SignedIn api={api} local={local} session={session} />
+      )}
+    </MfaGate>
+  );
 }
 
 function SignedIn({ api, local, session }: { api: Api; local: boolean; session: Session }) {
