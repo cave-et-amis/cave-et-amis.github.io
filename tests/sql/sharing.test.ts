@@ -88,14 +88,15 @@ describe('partage sélectif', () => {
     await one(db, claire, `select remove_friend($1)`, [bruno]);
     expect(await as(db, claire, `select * from shared_lots(null)`)).toEqual([]);
     expect(await as(db, bruno, `select * from shared_lots(null)`)).toEqual([]);
-    // Le profil de l'ancien ami n'est plus lisible (aucun événement commun).
-    expect(await as(db, claire, `select * from profiles where id = $1`, [bruno])).toEqual([]);
+    // Le prénom de l'ancien ami n'est plus lisible (aucun événement commun).
+    expect(await as(db, claire, `select * from profile_names() where id = $1`, [bruno])).toEqual([]);
   });
 
-  it('les profils visibles : moi et mes amis', async () => {
+  it('les prénoms visibles : moi et mes amis ; le profil complet : moi seul', async () => {
     await befriend(db, bruno, claire);
-    const names = await as<{ display_name: string }>(db, bruno, `select display_name from profiles order by display_name`);
+    const names = await as<{ display_name: string }>(db, bruno, `select display_name from profile_names()`);
     expect(names.map((n) => n.display_name)).toEqual(['Bruno', 'Claire']);
+    expect(await as(db, bruno, `select display_name from profiles`)).toEqual([{ display_name: 'Bruno' }]);
     await expectError(as(db, bruno, `update profiles set is_admin = true where id = auth.uid()`), /permission denied/);
   });
 

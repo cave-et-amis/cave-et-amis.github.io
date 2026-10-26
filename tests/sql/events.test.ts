@@ -157,8 +157,9 @@ describe('événements', () => {
     expect(await as(db, bruno, `select * from shared_lots(null)`)).toEqual([]);
     const memory = await as<{ wine_name: string; consumed_qty: number }>(db, bruno, `select wine_name, consumed_qty from event_wines`);
     expect(memory).toEqual([{ wine_name: 'Souvenir', consumed_qty: 1 }]);
-    // Le nom reste lisible grâce à l'événement commun.
-    expect((await as(db, bruno, `select display_name from profiles where id = $1`, [claire])).length).toBe(1);
+    // Le prénom reste lisible grâce à l'événement commun (le reste du profil, jamais).
+    expect(await as(db, bruno, `select display_name from profile_names() where id = $1`, [claire])).toEqual([{ display_name: 'Claire' }]);
+    expect(await as(db, bruno, `select * from profiles where id = $1`, [claire])).toEqual([]);
   });
 
   it('ordre de service et menu', async () => {

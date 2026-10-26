@@ -36,6 +36,7 @@ import type {
   Movement,
   MyGroup,
   Participant,
+  PersonName,
   Preferences,
   PriceCheck,
   Scan,
@@ -55,8 +56,10 @@ import { thisDeviceEndpoint, type DeviceSubscription } from './pushDevice';
 import { AI_MESSAGES } from '../domain/errors';
 
 export type Snapshot = {
+  /** Mon profil complet : la base ne donne que le sien. */
   me: Profile;
-  profiles: Profile[];
+  /** Prénoms des personnes que je connais : moi, mes contacts, les participants de mes événements. */
+  people: PersonName[];
   cellars: Cellar[];
   locations: Location[];
   wines: Wine[];
@@ -198,8 +201,9 @@ export class Api {
 
   async load(userId: string): Promise<Snapshot> {
     const sb = this.sb;
-    const [profiles, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks] = await Promise.all([
-      pages<Profile>((a, b) => sb.from('profiles').select('*').order('display_name').range(a, b)),
+    const [me, people, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks] = await Promise.all([
+      sb.from('profiles').select('*').eq('id', userId).maybeSingle().then((r) => must(r) as Profile | null),
+      sb.rpc('profile_names').then((r) => must(r) as PersonName[]),
       pages<Cellar>((a, b) => sb.from('cellars').select('*').order('position').order('created_at').range(a, b)),
       pages<Location>((a, b) => sb.from('locations').select('*').order('position').order('name').range(a, b)),
       pages<Wine>((a, b) => sb.from('wines').select('*').order('name').order('id').range(a, b)),
@@ -231,11 +235,10 @@ export class Api {
       pages<GroupShare>((a, b) => sb.from('group_shares').select('*').eq('owner_id', userId).range(a, b)),
       sb.rpc('my_cellar_links').then((r) => must(r) as CellarLink[]),
     ]);
-    const me = profiles.find((p) => p.id === userId);
     if (!me) throw new AppError('Votre profil est introuvable. Reconnectez-vous.', 'not_found');
     // Mes caves d'abord, puis celles que je gère avec leur propriétaire.
     cellars.sort((a, b) => Number(a.owner_id !== userId) - Number(b.owner_id !== userId));
-    return { me, profiles, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks };
+    return { me, people, cellars, locations, wines, lots, friendships, relations, invites, events, participants, tastings, wishlist, prices, myEventWines, requests, blocks, notifications, groups, groupShares, cellarLinks };
   }
 
   // ───────────── Caves et emplacements ─────────────

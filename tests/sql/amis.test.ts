@@ -49,6 +49,7 @@ describe('recherche d’amis', () => {
   it('le profil d’un inconnu n’est pas lisible : seul le nom sort par la recherche', async () => {
     await visible(claire);
     expect(await as(db, bruno, `select * from profiles where id = $1`, [claire])).toEqual([]);
+    expect(await as(db, bruno, `select * from profile_names() where id = $1`, [claire])).toEqual([]);
   });
 });
 

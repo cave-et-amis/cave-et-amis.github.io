@@ -107,7 +107,7 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 
 - **Vous**, toujours.
 - **Les personnes que vous choisissez** : celles à qui vous ouvrez votre cave (ce que vous leur montrez), les membres de vos groupes, les participants de vos événements, les personnes associées à une cave gérée à plusieurs.
-- **Vos contacts et les personnes avec qui vous partagez un événement** voient votre prénom. Ils peuvent aussi lire techniquement le reste de votre profil : devise, date d'inscription, préférences d'affichage, et le fait d'être ou non l'administrateur. [À VALIDER : à retirer quand l'accès au profil sera limité au prénom]
+- **Vos contacts et les personnes avec qui vous partagez un événement** voient votre prénom. À ce titre, ils ne voient pas le reste de votre profil : ni votre devise, ni votre date d'inscription, ni vos préférences, ni le fait d'être ou non l'administrateur.
 - **Les personnes inscrites** peuvent trouver votre prénom par la recherche, seulement si vous avez choisi d'y apparaître.
 - **L'administrateur de l'application** voit l'adresse e-mail de chaque compte, sa consommation de l'assistant et les erreurs techniques. Il ne voit pas, dans l'application, le contenu de vos conversations.
 - **L'éditeur**, qui gère l'hébergement technique, peut techniquement accéder à toutes les données enregistrées sur le serveur, y compris les conversations et les photos. Il s'engage à ne le faire que pour la maintenance, la sécurité ou une obligation légale. [À VALIDER : engagement de l'éditeur sur son accès technique aux données]

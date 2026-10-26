@@ -307,19 +307,20 @@ export async function eventDetails(sb: SupabaseClient, eventId: string, data: Ce
   if (error) throw new AiFailure('internal', sanitize(error.message));
   if (!ev) return { error: 'Événement introuvable ou la personne n’y participe pas.' };
   const groupId = (ev as { group_id: string | null }).group_id ?? null;
-  const [parts, dishes, wines, profiles, suggestable, forGroup, groupRow] = await Promise.all([
+  const [parts, dishes, wines, people, suggestable, forGroup, groupRow] = await Promise.all([
     all<{ user_id: string; role: string; rsvp: string }>(() => sb.from('event_participants').select('*').eq('event_id', eventId)),
     all<{ course: string; name: string; position: number }>(() => sb.from('event_dishes').select('*').eq('event_id', eventId).order('position')),
     // Sans la note qui accompagne un vin proposé (texte libre).
     all<{ id: string; owner_id: string; status: string; quantity: number; wine_name: string; wine_vintage: number | null; wine_color: string | null; wine_type: string | null; wine_appellation: string | null; service_position: number | null }>(
       () => sb.from('event_wines').select('id, owner_id, status, quantity, wine_name, wine_vintage, wine_color, wine_type, wine_appellation, service_position').eq('event_id', eventId),
     ),
-    all<{ id: string; display_name: string }>(() => sb.from('profiles').select('id, display_name')),
+    // Prénoms des autres participants : la table profiles ne donne que sa propre ligne.
+    all<{ id: string; display_name: string }>(() => sb.rpc('profile_names')),
     sb.rpc('event_suggestable_lots', { p_event: eventId }).then((r) => (r.data ?? []) as SuggestableLot[]),
     myGroupAllocations(sb, groupId),
     groupId ? sb.from('groups').select('name').eq('id', groupId).maybeSingle().then((r) => r.data as { name: string } | null) : Promise.resolve(null),
   ]);
-  const name = (id: string) => (id === me ? 'vous' : (profiles.find((p) => p.id === id)?.display_name ?? 'un participant'));
+  const name = (id: string) => (id === me ? 'vous' : (people.find((p) => p.id === id)?.display_name ?? 'un participant'));
   const event = ev as { title: string; kind: string; starts_at: string; place: string | null; description: string | null; theme: string | null; budget: number | null; status: string; organizer_id: string };
   // Lieu (souvent une adresse), budget et description : seulement si la personne organise l'événement.
   const organizer = event.organizer_id === me;

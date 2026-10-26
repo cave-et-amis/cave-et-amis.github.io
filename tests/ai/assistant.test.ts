@@ -103,6 +103,11 @@ describe('assistant : sécurité et droits', () => {
     expect((await call(bruno.sb, { action: 'chat', message: 'Que pourrait apporter Marc ?' })).ok).toBe(true);
     expect(lastResults(1)).toContain('total_matching');
     expect(lastResults(1)).not.toContain('Bandol de Marc');
+    // Prénoms des participants : lus par profile_names (la table profiles ne donne que sa propre ligne).
+    const blocks = (env.anthropic.requests[1].body!.messages as { content: { tool_use_id: string; content: string }[] }[]).at(-1)!.content;
+    const event = JSON.parse(blocks.find((b) => b.tool_use_id === 't2')!.content) as { organizer: string; participants: { name: string }[] };
+    expect(event.organizer).toBe('vous');
+    expect(event.participants.map((p) => p.name).sort()).toEqual(['Marc', 'vous']);
     // Une fois sa cave ouverte à Bruno, la bouteille apparaît.
     await marc.sb.rpc('grant_cellar_access', { p_user: bruno.id });
     env.anthropic.reply(

@@ -37,7 +37,6 @@ Chaque mention « [À VALIDER : …] » signale une clause à faire vérifier. R
 - **Stockage sur l'appareil** : qualification de « strictement nécessaire » (page cookies).
 - **Directives après le décès** (loi Informatique et Libertés).
 - **Prestataires à venir** : ajouter Brevo (e-mails) et Cloudflare Turnstile (anti-robots) s'ils sont en place au moment de la publication.
-- **Profil visible des contacts** : la politique dit honnêtement qu'ils peuvent lire tout le profil ; retirer ce point quand l'accès sera limité au prénom (priorité 3 de l'audit).
 
 ## Comment publier
 
