@@ -44,9 +44,9 @@ export function DeleteAccountSheet({ onClose, onDeleted }: { onClose: () => void
           vos bouteilles réservées ailleurs seront libérées.
         </Notice>
         <p className="small muted">
-          Restent chez les autres : votre prénom dans leurs notifications et dans l’activité de leurs groupes, et les envies que vous avez proposées dans un
-          groupe (sans votre nom). La preuve que vous aviez accepté les conditions d’utilisation est gardée 5 ans, puis effacée. Pensez à télécharger vos
-          données avant (Réglages › Confidentialité et mes données).
+          Chez les autres, votre prénom est remplacé par « Ancien membre » dans leurs notifications et dans l’activité de leurs groupes ; les envies que
+          vous avez proposées dans un groupe restent, sans votre nom. La preuve que vous aviez accepté les conditions d’utilisation est gardée 5 ans, puis
+          effacée. Pensez à télécharger vos données avant (Réglages › Confidentialité et mes données).
         </p>
         <Field label="Tapez SUPPRIMER pour confirmer" htmlFor="del-confirm">
           <input id="del-confirm" className="input" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />

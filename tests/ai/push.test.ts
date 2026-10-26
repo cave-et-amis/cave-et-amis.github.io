@@ -112,4 +112,16 @@ describe('notifications push : serveur', () => {
     expect(await cron(env, 'push_test')).toMatchObject({ status: 403, code: 'forbidden' });
     expect(await cron(env, 'push_flush')).toMatchObject({ status: 200, ok: true, claimed: 0 });
   });
+
+  it('notification d’essai : 5 par heure et par personne au plus (audit, F4)', async () => {
+    const { env, service, bruno, claire } = await setup();
+    await subscribe(bruno.sb, await makeDevice('https://fcm.googleapis.com/fcm/send/essais-de-bruno'), 'Android');
+    for (let i = 0; i < 5; i++) expect(await call(bruno.sb, { action: 'push_test' })).toMatchObject({ ok: true, sent: 1 });
+    expect(await call(bruno.sb, { action: 'push_test' })).toMatchObject({ ok: false, code: 'push_test_rate_limited', message: expect.stringMatching(/une heure/) });
+    expect(service.received).toHaveLength(5);
+    // Claire n'est pas concernée ; une heure plus tard, Bruno peut de nouveau essayer.
+    expect(await call(claire.sb, { action: 'push_test' })).toMatchObject({ ok: true, devices: 0 });
+    await env.db.query(`update rate_hits set at = at - interval '61 minutes' where subject = $1`, [bruno.id]);
+    expect(await call(bruno.sb, { action: 'push_test' })).toMatchObject({ ok: true, sent: 1 });
+  });
 });

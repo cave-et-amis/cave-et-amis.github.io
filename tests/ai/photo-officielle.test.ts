@@ -114,6 +114,35 @@ describe('photo officielle (Open Food Facts)', () => {
     expect(await call(bruno.sb, { action: 'photo_search', barcode: EAN })).toMatchObject({ ok: false, code: 'photo_service_unavailable' });
   });
 
+  it('nombre d’appels à Open Food Facts limité par personne : 30 par 10 minutes (audit, F4)', async () => {
+    const off = fakeOff();
+    const env = await makeAiEnv({ webFetch: off.fetch });
+    const bruno = await env.signUp('Bruno');
+    const claire = await env.signUp('Claire');
+    expect((await call(bruno.sb, { action: 'photo_search', barcode: EAN })).ok).toBe(true);
+    expect((await env.db.query(`select bucket from rate_hits where subject = $1`, [bruno.id])).rows).toEqual([{ bucket: 'off' }]);
+    await env.db.query(`insert into rate_hits (bucket, subject) select 'off', $1 from generate_series(1, 29)`, [bruno.id]);
+    const calls = off.calls.length;
+    expect(await call(bruno.sb, { action: 'photo_search', barcode: EAN })).toMatchObject({ ok: false, code: 'photo_rate_limited', message: expect.stringMatching(/quelques minutes/) });
+    expect(await call(bruno.sb, { action: 'photo_import', code: EAN })).toMatchObject({ ok: false, code: 'photo_rate_limited' });
+    expect(off.calls).toHaveLength(calls);
+    // Les autres personnes ne sont pas concernées.
+    expect((await call(claire.sb, { action: 'photo_search', barcode: EAN })).ok).toBe(true);
+  });
+
+  it('photo annoncée trop lourde : ni téléchargée ni importée (audit, F9)', async () => {
+    const base = fakeOff();
+    const heavy = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const res = await base.fetch(input, init);
+      if (new URL(String(input)).hostname !== 'images.openfoodfacts.org' || !res.ok) return res;
+      return new Response(res.body, { headers: { 'Content-Type': 'image/jpeg', 'Content-Length': '9000000' } });
+    }) as typeof fetch;
+    const env = await makeAiEnv({ webFetch: heavy });
+    const bruno = await env.signUp('Bruno');
+    expect(await call(bruno.sb, { action: 'photo_import', code: EAN })).toMatchObject({ ok: false, code: 'photo_service_unavailable' });
+    expect((await env.db.query(`select 1 from storage.objects where name like $1`, [`${bruno.id}/%`])).rows).toHaveLength(0);
+  });
+
   it('la base refuse un code-barres ou une origine de photo non valables', async () => {
     const env = await makeAiEnv({ webFetch: fakeOff().fetch });
     const bruno = await env.signUp('Bruno');

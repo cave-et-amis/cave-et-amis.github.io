@@ -1,4 +1,8 @@
-/** Outils communs du serveur : réponses JSON, CORS, nettoyage des messages d'erreur. */
+/** Outils communs du serveur : réponses JSON, CORS, lecture plafonnée, limites de fréquence, nettoyage des erreurs. */
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+/** Site en ligne : seule origine autorisée par défaut à appeler la fonction depuis un navigateur. */
+export const SITE_ORIGIN = 'https://cave-et-amis.github.io';
 
 export type ApiEnv = {
   supabaseUrl: string;
@@ -8,9 +12,9 @@ export type ApiEnv = {
   serviceKey: string;
   /** Clé Anthropic commune, lue côté serveur uniquement. Absente : l'assistant est « non configuré ». */
   anthropicKey?: string;
-  /** Adresse de l'API Anthropic (tests uniquement). */
+  /** Adresse de l'API Anthropic : tests et serveur local seulement (jamais lue dans les réglages en ligne). */
   anthropicBaseUrl?: string;
-  /** Origines autorisées (CORS). Vide : toutes. */
+  /** Origines autorisées (CORS). Vide : l'origine du site (CAVE_APP_URL, sinon SITE_ORIGIN) ; « * » : toutes. */
   allowedOrigins?: string[];
   /** Durée maximale d'une demande à l'assistant (ms), sous la limite d'exécution des fonctions Supabase. */
   deadlineMs?: number;
@@ -41,7 +45,7 @@ export function readEnv(get: (name: string) => string | undefined): ApiEnv {
     publishableKey: firstKey(get('SUPABASE_PUBLISHABLE_KEYS')) ?? get('SUPABASE_ANON_KEY') ?? '',
     serviceKey: firstKey(get('SUPABASE_SECRET_KEYS')) ?? get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
     anthropicKey: (get('ANTHROPIC_API_KEY') ?? '').trim() || undefined,
-    anthropicBaseUrl: (get('ANTHROPIC_BASE_URL') ?? '').trim() || undefined,
+    // ANTHROPIC_BASE_URL n'est pas lue : en ligne, la clé ne part que vers l'adresse officielle d'Anthropic.
     deadlineMs: Number(get('AI_REQUEST_DEADLINE_MS')) > 0 ? Number(get('AI_REQUEST_DEADLINE_MS')) : undefined,
     // Un secret trop court équivaut à aucun secret : l'intégration reste désactivée.
     ecosystemSecret: (get('ECOSYSTEM_SECRET') ?? '').trim().length >= 32 ? (get('ECOSYSTEM_SECRET') ?? '').trim() : undefined,
@@ -55,9 +59,23 @@ export function readEnv(get: (name: string) => string | undefined): ApiEnv {
   };
 }
 
+/** Origine d'une adresse (« https://site.exemple/chemin/ » → « https://site.exemple »), ou null. */
+function originOf(url: string | undefined) {
+  try {
+    return url ? new URL(url).origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * CORS : seul le site (ou les origines d'ALLOWED_ORIGINS) peut lire les réponses depuis un navigateur. Une autre origine
+ * reçoit celle du site, que le navigateur refuse. Sans effet sur les appels de serveur à serveur (Nous, tâches planifiées).
+ */
 export function corsHeaders(env: ApiEnv, req: Request): Record<string, string> {
   const origin = req.headers.get('Origin') ?? '';
-  const allowed = !env.allowedOrigins?.length ? '*' : env.allowedOrigins.includes(origin) ? origin : env.allowedOrigins[0];
+  const list = env.allowedOrigins?.length ? env.allowedOrigins : [originOf(env.caveAppUrl) ?? SITE_ORIGIN];
+  const allowed = list.includes('*') ? '*' : list.includes(origin) ? origin : list[0];
   return {
     'Access-Control-Allow-Origin': allowed,
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -94,6 +112,59 @@ export class AiFailure extends Error {
     this.code = code;
     this.detail = detail;
   }
+}
+
+/**
+ * Lit un corps (requête, réponse, fichier) sans dépasser `max` octets : refus d'après la taille annoncée
+ * (Content-Length), puis lecture interrompue dès que la limite est franchie. null : trop gros.
+ */
+export async function readCapped(body: ReadableStream<Uint8Array> | null, max: number, declared?: string | null): Promise<Uint8Array<ArrayBuffer> | null> {
+  if (declared && Number(declared) > max) {
+    await body?.cancel().catch(() => undefined);
+    return null;
+  }
+  if (!body) return new Uint8Array(new ArrayBuffer(0));
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > max) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(new ArrayBuffer(size));
+  let at = 0;
+  for (const c of chunks) {
+    bytes.set(c, at);
+    at += c.byteLength;
+  }
+  return bytes;
+}
+
+/**
+ * Limites de fréquence hors IA, par personne, sur une fenêtre glissante (comptées par la base : rate_take). Les liens
+ * d'invitation sont limités par la base elle-même (30 par 24 heures).
+ */
+export const RATE_LIMITS = {
+  // Notification d'essai : jusqu'à 10 appareils par envoi.
+  push_test: { max: 5, seconds: 3600 },
+  // Open Food Facts : recherche et import d'une photo officielle, indice du code-barres pour le scanner.
+  off: { max: 30, seconds: 600 },
+  // Envoi immédiat vers l'agenda Nous demandé par l'application (sinon la tâche planifiée s'en charge dans la minute).
+  nous_flush: { max: 20, seconds: 600 },
+} as const;
+
+/** Compte un appel de la personne ; false : limite atteinte (rien n'est compté). */
+export async function rateOk(svc: SupabaseClient, bucket: keyof typeof RATE_LIMITS, userId: string): Promise<boolean> {
+  const limit = RATE_LIMITS[bucket];
+  const { data, error } = await svc.rpc('rate_take', { p_bucket: bucket, p_subject: userId, p_limit: limit.max, p_window_seconds: limit.seconds });
+  if (error) throw new AiFailure('internal', sanitize(error.message));
+  return data === true;
 }
 
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);

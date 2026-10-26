@@ -8,7 +8,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { baseParams, textOf, type Meter } from './claude.ts';
 import { LABEL_SYSTEM } from './prompts.ts';
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
-import { AiFailure, sanitize } from './util.ts';
+import { AiFailure, readCapped, sanitize } from './util.ts';
 
 const FIELDS = ['name', 'domaine', 'producer', 'cuvee', 'country', 'region', 'appellation', 'color', 'wine_type', 'grapes', 'vintage', 'non_vintage', 'volume_ml', 'barcode'] as const;
 const COLORS = ['rouge', 'blanc', 'rose', 'orange', 'effervescent', 'autre'];
@@ -120,10 +120,11 @@ function base64(bytes: Uint8Array) {
 /** Lit la photo avec les droits de la personne (dossier privé) et vérifie taille et format. */
 export async function readPhoto(user: SupabaseClient, userId: string, path: unknown, maxBytes: number) {
   if (typeof path !== 'string' || !path.startsWith(`${userId}/`) || path.includes('..') || path.length > 300) throw new AiFailure('forbidden');
-  const { data, error } = await user.storage.from('photos').download(path);
+  // Lecture en flux, interrompue dès que la taille maximale est dépassée.
+  const { data, error } = await user.storage.from('photos').download(path).asStream();
   if (error || !data) throw new AiFailure('not_found');
-  const bytes = new Uint8Array(await data.arrayBuffer());
-  if (bytes.byteLength > maxBytes) throw new AiFailure('image_too_large');
+  const bytes = await readCapped(data as ReadableStream<Uint8Array>, maxBytes);
+  if (!bytes) throw new AiFailure('image_too_large');
   const type = mediaType(bytes);
   if (!type) throw new AiFailure('image_invalid');
   // Empreinte : une photo déjà lue n'est pas renvoyée à l'IA (cache du scanner).

@@ -100,7 +100,7 @@ Vous restez responsable des contenus que vous ajoutez et partagez. Vous pouvez b
 
 - Vous pouvez supprimer votre compte à tout moment : Réglages › Confidentialité et mes données. Votre mot de passe vous est redemandé.
 - Sont supprimés : votre profil, vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et invitations, ainsi que les événements que vous organisez, pour tous leurs participants.
-- Restent chez les autres : votre prénom dans leurs notifications et dans l'activité de leurs groupes, et les envies que vous avez proposées dans un groupe, sans votre nom. Ce qui est gardé après la suppression, et pour combien de temps, est détaillé dans la politique de confidentialité.
+- Chez les autres, votre prénom est remplacé par « Ancien membre » dans leurs notifications et dans l'activité de leurs groupes. Les envies que vous avez proposées dans un groupe restent, sans votre nom. Ce qui est gardé après la suppression, et pour combien de temps, est détaillé dans la politique de confidentialité.
 - La suppression est définitive. Pensez à télécharger vos données avant.
 
 ## Modification des conditions

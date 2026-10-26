@@ -8,8 +8,9 @@
  * Vivino est exclu de la recherche (ses conditions n'autorisent pas la reprise de ses données).
  */
 import type Anthropic from '@anthropic-ai/sdk';
-import { median } from '../../src/domain/scan.ts';
+import { median, wineKey } from '../../src/domain/scan.ts';
 import type { QualityTier, ScanAssessment, ScanMarket, ScanMarketOffer, ScanWine, SourcedText } from '../../src/domain/types.ts';
+import { fold } from '../../src/domain/wine.ts';
 import type { Meter } from './claude.ts';
 import { normUrl, researchWithTool, validateOffers } from './price.ts';
 import { QUALITY_SYSTEM, SCAN_PRICE_SYSTEM } from './prompts.ts';
@@ -127,19 +128,38 @@ export const SCAN_OFFERS_TOOL: Anthropic.Messages.Tool = {
   },
 };
 
+/** Champ de la fiche vérifiée (modifiable par la personne) : une seule ligne, 120 caractères au plus. */
+const line = (v: unknown) => (typeof v === 'string' && v.trim() ? sanitize(v, 120) : null);
+const int = (v: unknown, min: number, max: number) => (Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? (v as number) : null);
+
+/** Description du vin envoyée à l'IA (analyse et prix). */
 export function describeScanWine(w: ScanWine) {
+  const vintage = int(w.vintage, 1800, 2200);
   return [
-    `Vin : ${w.name}`,
-    w.cuvee ? `Cuvée : ${w.cuvee}` : null,
-    w.domaine || w.producer ? `Producteur : ${w.domaine || w.producer}` : null,
-    w.appellation ? `Appellation : ${w.appellation}` : null,
-    w.region ? `Région : ${w.region}` : null,
-    w.color ? `Couleur : ${w.color}` : null,
-    w.vintage ? `Millésime : ${w.vintage}` : w.non_vintage ? 'Sans millésime' : 'Millésime : inconnu',
-    `Contenance : ${w.volume_ml ?? 750} ml`,
+    `Vin : ${line(w.name) ?? ''}`,
+    line(w.cuvee) ? `Cuvée : ${line(w.cuvee)}` : null,
+    line(w.domaine) || line(w.producer) ? `Producteur : ${line(w.domaine) || line(w.producer)}` : null,
+    line(w.appellation) ? `Appellation : ${line(w.appellation)}` : null,
+    line(w.region) ? `Région : ${line(w.region)}` : null,
+    line(w.color) ? `Couleur : ${line(w.color)}` : null,
+    vintage ? `Millésime : ${vintage}` : w.non_vintage === true ? 'Sans millésime' : 'Millésime : inconnu',
+    `Contenance : ${int(w.volume_ml, 50, 30000) ?? 750} ml`,
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+/**
+ * Clé du cache partagé entre les comptes (analyse 90 jours, prix 72 heures) : empreinte de tout ce que l'IA reçoit pour ce
+ * vin (sa description, à la casse et aux accents près), de son identité (wineKey, gardée dans le résultat) et de la
+ * devise. Une fiche modifiée, même dans un champ que l'identité ignore (appellation, région, couleur), a donc sa propre
+ * entrée : elle ne peut pas fausser le résultat montré aux autres pour le même vin.
+ */
+export async function scanCacheKey(kind: 'assess' | 'price', wine: ScanWine, currency = '') {
+  const description = fold(describeScanWine(wine)).replace(/\s+/g, ' ');
+  const material = new TextEncoder().encode(JSON.stringify([kind, wineKey(wine), description, currency]));
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', material));
+  return `${kind}:v2:${Array.from(digest, (b) => b.toString(16).padStart(2, '0')).join('')}`;
 }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? sanitize(v, max) : null);

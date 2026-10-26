@@ -83,6 +83,7 @@ export const RETENTION: { data: string; duration: string }[] = [
   { data: 'Conversations avec Lia', duration: '12 mois après le dernier message (ou plus tôt si vous les supprimez)' },
   { data: 'Journaux d’usage de l’assistant (quotas, coûts)', duration: '13 mois' },
   { data: 'Journaux d’erreurs techniques', duration: '3 mois' },
+  { data: 'Compteurs des limites d’utilisation (heure de quelques actions sans IA)', duration: '2 jours au plus' },
   { data: 'Relevés de prix', duration: '24 mois' },
   { data: 'Liens d’invitation expirés ou annulés', duration: '90 jours' },
   { data: 'Demandes de contact ou d’accès refusées', duration: '6 mois' },

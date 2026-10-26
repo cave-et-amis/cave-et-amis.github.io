@@ -139,6 +139,38 @@ describe('scanner : identification en magasin', () => {
     expect(env.anthropic.requests).toHaveLength(1);
   });
 
+  it('code-barres : l’indice Open Food Facts compte dans la limite d’appels ; au-delà il est sauté, l’analyse continue (audit, F4)', async () => {
+    const EAN = '4006381333931';
+    const offCalls: string[] = [];
+    const webFetch = (async (input: RequestInfo | URL) => {
+      offCalls.push(String(input));
+      return Response.json({ status: 1, product: { code: EAN, product_name: 'Château Labeille 2016', brands: 'Château Labeille', categories_tags: ['en:wines'] } });
+    }) as typeof fetch;
+    const env = await makeAiEnv({ webFetch });
+    const bruno = await env.signUp('Bruno');
+    env.anthropic.reply({ kind: 'message', content: [text(JSON.stringify(reading()))] }, { kind: 'message', content: [text(JSON.stringify(reading()))] });
+    const a = await upload(env, bruno, 'a.jpg');
+    expect((await call(bruno.sb, { action: 'scan_identify', photos: [{ path: a, role: 'front' }], barcode: EAN })).ok).toBe(true);
+    expect(JSON.stringify(env.anthropic.requests[0].body!.messages)).toContain('hint : code-barres');
+    await env.db.query(`insert into rate_hits (bucket, subject) select 'off', $1 from generate_series(1, 29)`, [bruno.id]);
+    const b = await upload(env, bruno, 'b.jpg', Uint8Array.from([...TINY_JPEG, 0]));
+    expect((await call(bruno.sb, { action: 'scan_identify', photos: [{ path: b, role: 'front' }], barcode: EAN })).ok).toBe(true);
+    expect(JSON.stringify(env.anthropic.requests[1].body!.messages)).not.toContain('hint :');
+    expect(offCalls).toHaveLength(1);
+  });
+
+  it('photo trop lourde : lecture interrompue, refusée sans appel à l’IA (audit, F9)', async () => {
+    const env = await makeAiEnv();
+    await setSettings(env, { max_image_bytes: 100_000 });
+    const bruno = await env.signUp('Bruno');
+    const bytes = new Uint8Array(150_000);
+    bytes.set(TINY_JPEG);
+    const heavy = await upload(env, bruno, 'lourde.jpg', bytes);
+    expect(await call(bruno.sb, { action: 'scan_identify', photos: [{ path: heavy, role: 'front' }] })).toMatchObject({ ok: false, code: 'image_too_large' });
+    expect(await call(bruno.sb, { action: 'identify_label', photo_path: heavy })).toMatchObject({ ok: false, code: 'image_too_large' });
+    expect(env.anthropic.requests).toHaveLength(0);
+  });
+
   it('assistant non configuré : message clair, aucune analyse créée (la saisie à la main reste possible)', async () => {
     const env = await makeAiEnv({ withKey: false });
     const bruno = await env.signUp('Bruno');
