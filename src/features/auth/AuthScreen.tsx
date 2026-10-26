@@ -11,6 +11,7 @@ import { Button, Check, Field, InlineLoading, Notice, Segmented } from '../../ui
 import { go } from '../../ui/router';
 import { inviteHeadline } from '../friends/invite';
 import { LegalLinks, LegalSheet, useLegalDocs } from '../legal/LegalViews';
+import { useCaptcha } from './Captcha';
 import { Discover } from './Discover';
 
 type Mode = 'login' | 'signup' | 'forgot';
@@ -179,6 +180,8 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
   const policy = legal.byKind('confidentialite');
   const [accepted, setAccepted] = useState(false);
   const [reading, setReading] = useState<LegalDoc | null>(null);
+  // Contrôle anti-robots, si une clé Turnstile est configurée : un jeton par essai, pour les trois formulaires.
+  const captcha = useCaptcha(api.captchaSiteKey);
 
   useEffect(() => {
     if (!inviteCode) return;
@@ -194,16 +197,22 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
     setError(null);
     setInfo(null);
     try {
-      if (mode === 'login') await api.signIn(email, password);
+      if (mode === 'login') await api.signIn(email, password, captcha.take());
       else if (mode === 'signup') {
         if (!name.trim()) throw new Error('name');
         const problem = passwordProblem(password);
         if (problem) throw new AppError(problem, 'weak_password');
         if (!accepted) throw new Error('terms');
-        const { needsConfirmation } = await api.signUp(name, email, password, { cgu_version: cgu?.version, confidentialite_version: policy?.version });
+        const { needsConfirmation } = await api.signUp(
+          name,
+          email,
+          password,
+          { cgu_version: cgu?.version, confidentialite_version: policy?.version },
+          captcha.take(),
+        );
         if (needsConfirmation) setInfo('Compte créé. Ouvrez le lien reçu par e-mail pour confirmer votre adresse, puis connectez-vous.');
       } else {
-        await api.resetPassword(email);
+        await api.resetPassword(email, captcha.take());
         setInfo('Si un compte existe avec cette adresse, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe.');
       }
     } catch (err) {
@@ -292,6 +301,7 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
                 )}
               </div>
             )}
+            {captcha.view}
             {error && (
               <p className="field error" role="alert" style={{ color: 'var(--danger)', fontWeight: 650 }}>
                 {error}

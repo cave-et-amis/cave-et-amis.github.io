@@ -133,8 +133,18 @@ export const newId = () => crypto.randomUUID();
 
 export class Api {
   sb: SupabaseClient;
-  constructor(sb: SupabaseClient) {
+  /** Clé de site Cloudflare Turnstile : quand elle est configurée, connexion, inscription et « mot de passe oublié » exigent un jeton. */
+  readonly captchaSiteKey: string | null;
+  constructor(sb: SupabaseClient, options: { captchaSiteKey?: string | null } = {}) {
     this.sb = sb;
+    this.captchaSiteKey = options.captchaSiteKey || null;
+  }
+
+  /** Jeton du contrôle anti-robots joint à l'appel : exigé avec une clé Turnstile, jamais envoyé sans. */
+  private captcha(token: string | null | undefined): { captchaToken?: string } {
+    if (!this.captchaSiteKey) return {};
+    if (!token) throw new AppError('Le contrôle anti-robots n’est pas terminé : patientez un instant, ou cochez la case s’il la propose.', 'captcha_pending');
+    return { captchaToken: token };
   }
 
   // ───────────── Comptes ─────────────
@@ -161,17 +171,23 @@ export class Api {
     return (data as { display_name?: string } | null)?.display_name ?? null;
   }
 
-  async signIn(email: string, password: string) {
-    const { error } = await this.sb.auth.signInWithPassword({ email: email.trim(), password });
+  async signIn(email: string, password: string, captchaToken?: string | null) {
+    const { error } = await this.sb.auth.signInWithPassword({ email: email.trim(), password, options: this.captcha(captchaToken) });
     if (error) throw error;
   }
 
   /** `legal` : versions des conditions acceptées et de la politique présentée, notées par la base avec le compte. */
-  async signUp(name: string, email: string, password: string, legal: { cgu_version?: number; confidentialite_version?: number } = {}) {
+  async signUp(
+    name: string,
+    email: string,
+    password: string,
+    legal: { cgu_version?: number; confidentialite_version?: number } = {},
+    captchaToken?: string | null,
+  ) {
     const meta: Record<string, string> = { display_name: name.trim() };
     if (legal.cgu_version) meta.cgu_version = String(legal.cgu_version);
     if (legal.confidentialite_version) meta.confidentialite_version = String(legal.confidentialite_version);
-    const { data, error } = await this.sb.auth.signUp({ email: email.trim(), password, options: { data: meta } });
+    const { data, error } = await this.sb.auth.signUp({ email: email.trim(), password, options: { data: meta, ...this.captcha(captchaToken) } });
     if (error) throw error;
     return { needsConfirmation: !data.session };
   }
@@ -197,9 +213,10 @@ export class Api {
     if (error) throw new AppError('Cet appareil est déconnecté, mais les autres n’ont peut-être pas pu l’être. Reconnectez-vous, puis recommencez.', 'signout_partial');
   }
 
-  async resetPassword(email: string) {
+  async resetPassword(email: string, captchaToken?: string | null) {
+    const captcha = this.captcha(captchaToken);
     const redirectTo = `${window.location.origin}${window.location.pathname}`;
-    const { error } = await this.sb.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+    const { error } = await this.sb.auth.resetPasswordForEmail(email.trim(), { redirectTo, ...captcha });
     if (error) throw error;
   }
 
@@ -209,13 +226,18 @@ export class Api {
     if (error) throw error;
   }
 
-  /** Vérifie le mot de passe actuel avant un changement sensible : une session restée ouverte ne suffit pas. */
-  async verifyPassword(password: string) {
+  /**
+   * Vérifie le mot de passe actuel avant un changement sensible : une session restée ouverte ne suffit pas. C'est une
+   * connexion : avec une clé Turnstile, elle exige elle aussi un jeton du contrôle anti-robots.
+   */
+  async verifyPassword(password: string, captchaToken?: string | null) {
+    const captcha = this.captcha(captchaToken);
     const { data } = await this.sb.auth.getUser();
     const email = data.user?.email;
     if (!email) throw new AppError('Session expirée : reconnectez-vous.', 'not_authenticated');
-    const { error } = await this.sb.auth.signInWithPassword({ email, password });
-    if (error) throw new AppError('Mot de passe actuel incorrect.', 'invalid_password');
+    const { error } = await this.sb.auth.signInWithPassword({ email, password, options: captcha });
+    // Contrôle anti-robots refusé : le dire, plutôt que « mot de passe incorrect ».
+    if (error) throw error.code === 'captcha_failed' ? error : new AppError('Mot de passe actuel incorrect.', 'invalid_password');
   }
 
   async updateProfile(id: string, patch: Partial<Pick<Profile, 'display_name' | 'currency' | 'preferences'>>) {

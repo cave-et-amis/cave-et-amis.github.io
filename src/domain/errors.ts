@@ -67,6 +67,7 @@ const AUTH_MESSAGES: Record<string, string> = {
   email_address_invalid: 'Adresse e-mail non valable.',
   session_not_found: 'Votre session a expiré. Reconnectez-vous.',
   refresh_token_not_found: 'Votre session a expiré. Reconnectez-vous.',
+  captcha_failed: 'Le contrôle anti-robots n’a pas été validé. Réessayez dans un instant ; si cela continue, rechargez la page.',
 };
 
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */
@@ -150,6 +151,7 @@ export function toMessage(e: unknown): string {
   if (/Email not confirmed/i.test(msg)) return AUTH_MESSAGES.email_not_confirmed;
   if (/already registered/i.test(msg)) return AUTH_MESSAGES.user_already_exists;
   if (/at least \d+ characters/i.test(msg)) return AUTH_MESSAGES.weak_password;
+  if (/captcha/i.test(msg)) return AUTH_MESSAGES.captcha_failed;
   if (err.code === '42501' || /row-level security|permission denied/i.test(msg)) return DB_MESSAGES.forbidden;
   if (err.code === '23505') return 'Cet élément existe déjà.';
   if (err.code === '23503') return 'Cet élément est lié à d’autres données : il ne peut pas être supprimé.';

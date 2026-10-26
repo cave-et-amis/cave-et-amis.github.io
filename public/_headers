@@ -1,6 +1,8 @@
 # En-têtes de sécurité (Netlify et Cloudflare Pages lisent ce fichier).
+# La politique de sécurité (CSP) est construite à l'export par vite.config.ts, d'après la configuration (adresse du
+# projet Supabase, clé Turnstile) : la ligne Content-Security-Policy est remplacée dans dist/_headers.
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://*.supabase.co https://images.openfoodfacts.org; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'
+  Content-Security-Policy: construite à l'export (vite.config.ts)
   Referrer-Policy: no-referrer
   X-Robots-Tag: noindex, nofollow
   X-Content-Type-Options: nosniff
