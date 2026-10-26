@@ -9,6 +9,7 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.134.0";
 //#region src/domain/errors.ts
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */
 var AI_MESSAGES = {
+	invalid_password: "Mot de passe incorrect.",
 	ai_not_configured: "L’assistant n’est pas encore configuré sur ce serveur. Toutes les autres fonctions restent disponibles.",
 	ai_disabled: "L’assistant est désactivé pour le moment. Toutes les autres fonctions restent disponibles.",
 	invalid_key: "L’assistant est indisponible (configuration du serveur à vérifier). Vous pouvez continuer à gérer vos caves et événements.",
@@ -4491,6 +4492,15 @@ function createApiHandler(env, deps = {}) {
 			throw f;
 		}
 	}
+	/** Vérifie le mot de passe d'une personne, par le serveur de connexion (sans rien garder). */
+	async function passwordOk(userId, password) {
+		const { data, error } = await svc.auth.admin.getUserById(userId);
+		if (error || !data?.user?.email) return false;
+		return !(await createClient(env.supabaseUrl, env.publishableKey, opts).auth.signInWithPassword({
+			email: data.user.email,
+			password: password.slice(0, 200)
+		})).error;
+	}
 	async function profileCurrency(user, userId) {
 		const { data } = await user.from("profiles").select("currency").eq("id", userId).maybeSingle();
 		return data?.currency ?? "EUR";
@@ -4688,6 +4698,7 @@ function createApiHandler(env, deps = {}) {
 			case "admin_test": return adminTest(user, userId);
 			case "delete_account": {
 				if (body.confirm !== "SUPPRIMER") throw new AiFailure("invalid");
+				if (typeof body.password !== "string" || !body.password || !await passwordOk(userId, body.password)) throw new AiFailure("invalid_password");
 				const { error } = await user.rpc("prepare_account_deletion");
 				if (error) throw new AiFailure("internal", sanitize(error.message));
 				const del = await svc.auth.admin.deleteUser(userId);

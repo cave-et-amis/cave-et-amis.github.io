@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChevronRight, Compass, Download, Eye, KeyRound, Lightbulb, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
+import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
 import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
@@ -277,9 +278,12 @@ export function SettingsPage() {
   );
 }
 
+/** Changer de mot de passe : l'actuel est redemandé (une session restée ouverte ne suffit pas). */
 function PasswordSheet({ onClose }: { onClose: () => void }) {
   const { api, run } = useStore();
+  const [current, setCurrent] = useState('');
   const [pw, setPw] = useState('');
+  const problem = pw ? passwordProblem(pw) : null;
   return (
     <Sheet
       open
@@ -287,9 +291,15 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
       title="Nouveau mot de passe"
       footer={
         <Button
-          disabled={pw.length < 8}
+          disabled={!current || !pw || Boolean(problem)}
           onClick={async () => {
-            const res = await run(() => api.updatePassword(pw), { success: 'Mot de passe changé', reload: false });
+            const res = await run(
+              async () => {
+                await api.verifyPassword(current);
+                await api.updatePassword(pw, current);
+              },
+              { success: 'Mot de passe changé', reload: false },
+            );
             if (res.ok) onClose();
           }}
         >
@@ -297,9 +307,14 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
         </Button>
       }
     >
-      <Field label="Nouveau mot de passe" htmlFor="pw-new" hint="8 caractères au minimum.">
-        <input id="pw-new" className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} data-autofocus />
-      </Field>
+      <div className="form">
+        <Field label="Mot de passe actuel" htmlFor="pw-current">
+          <input id="pw-current" className="input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} data-autofocus />
+        </Field>
+        <Field label="Nouveau mot de passe" htmlFor="pw-new" hint={PASSWORD_HINT} error={problem ?? undefined}>
+          <input id="pw-new" className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+        </Field>
+      </div>
     </Sheet>
   );
 }
@@ -307,6 +322,7 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
 function DeleteAccountSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: () => Promise<void> }) {
   const { api } = useStore();
   const [typed, setTyped] = useState('');
+  const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
@@ -318,12 +334,12 @@ function DeleteAccountSheet({ onClose, onDeleted }: { onClose: () => void; onDel
         <Button
           variant="danger"
           loading={busy}
-          disabled={typed !== 'SUPPRIMER'}
+          disabled={typed !== 'SUPPRIMER' || !password}
           onClick={async () => {
             setBusy(true);
             setError(null);
             try {
-              const res = await api.ai('delete_account', { confirm: 'SUPPRIMER' });
+              const res = await api.ai('delete_account', { confirm: 'SUPPRIMER', password });
               if (!res.ok) throw new Error(res.message);
               await onDeleted();
             } catch (e) {
@@ -344,6 +360,9 @@ function DeleteAccountSheet({ onClose, onDeleted }: { onClose: () => void; onDel
         </Notice>
         <Field label="Tapez SUPPRIMER pour confirmer" htmlFor="del-confirm">
           <input id="del-confirm" className="input" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+        </Field>
+        <Field label="Votre mot de passe" htmlFor="del-password" hint="Redemandé pour vérifier que c’est bien vous.">
+          <input id="del-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
         </Field>
         {error && <Notice tone="danger">{error}</Notice>}
       </div>

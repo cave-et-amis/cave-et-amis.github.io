@@ -107,6 +107,15 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
   }
 
+  /** Vérifie le mot de passe d'une personne, par le serveur de connexion (sans rien garder). */
+  async function passwordOk(userId: string, password: string) {
+    const { data, error } = await svc.auth.admin.getUserById(userId);
+    if (error || !data?.user?.email) return false;
+    const check = createClient(env.supabaseUrl, env.publishableKey, opts);
+    const res = await check.auth.signInWithPassword({ email: data.user.email, password: password.slice(0, 200) });
+    return !res.error;
+  }
+
   async function profileCurrency(user: SupabaseClient, userId: string) {
     const { data } = await user.from('profiles').select('currency').eq('id', userId).maybeSingle();
     return (data as { currency?: string } | null)?.currency ?? 'EUR';
@@ -291,6 +300,8 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
 
       case 'delete_account': {
         if (body.confirm !== 'SUPPRIMER') throw new AiFailure('invalid');
+        // Mot de passe redemandé : une session volée ou un appareil resté ouvert ne suffit pas pour supprimer le compte.
+        if (typeof body.password !== 'string' || !body.password || !(await passwordOk(userId, body.password))) throw new AiFailure('invalid_password');
         // 1. Libère les réservations et supprime lots, vins et caves (sinon la cascade bute sur « cave non vide »).
         const { error } = await user.rpc('prepare_account_deletion');
         if (error) throw new AiFailure('internal', sanitize(error.message));

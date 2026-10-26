@@ -163,9 +163,19 @@ export class Api {
     if (error) throw error;
   }
 
-  async updatePassword(password: string) {
-    const { error } = await this.sb.auth.updateUser({ password });
+  /** `current` : mot de passe actuel, exigé par le serveur de connexion quand le réglage correspondant est activé. */
+  async updatePassword(password: string, current?: string) {
+    const { error } = await this.sb.auth.updateUser({ password, ...(current ? { current_password: current } : {}) });
     if (error) throw error;
+  }
+
+  /** Vérifie le mot de passe actuel avant un changement sensible : une session restée ouverte ne suffit pas. */
+  async verifyPassword(password: string) {
+    const { data } = await this.sb.auth.getUser();
+    const email = data.user?.email;
+    if (!email) throw new AppError('Session expirée : reconnectez-vous.', 'not_authenticated');
+    const { error } = await this.sb.auth.signInWithPassword({ email, password });
+    if (error) throw new AppError('Mot de passe actuel incorrect.', 'invalid_password');
   }
 
   async updateProfile(id: string, patch: Partial<Pick<Profile, 'display_name' | 'currency' | 'preferences'>>) {

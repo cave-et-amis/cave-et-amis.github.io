@@ -31,7 +31,15 @@
   **Retirer de mes amis** ferme les deux caves ; **Supprimer le contact** retire aussi la relation. Les souvenirs d'événements
   gardent les vins dégustés, sans donner accès au stock ni aux informations privées.
 - **Bloquer** supprime la relation, les accès dans les deux sens, les exceptions et les demandes ; plus aucun lien, demande
-  ni invitation n'est possible entre les deux personnes (dans un sens comme dans l'autre).
+  ni invitation n'est possible entre les deux personnes (dans un sens comme dans l'autre). Le blocage n'est jamais révélé :
+  la règle qui le vérifie n'est appelable que par les fonctions du serveur, pas par les comptes.
+- **Liens d'invitation** : rejoindre un groupe ou un événement demande toujours un clic sur « Accepter ». La seule
+  exception est le parcours choisi sur la vitrine du lien, sur le même appareil (« Créer mon compte »), jamais une adresse.
+- **Mots de passe** : 8 caractères au minimum, avec au moins une lettre et un chiffre. L'actuel est redemandé pour en
+  changer, et le mot de passe est vérifié par le serveur avant toute suppression de compte. Une session restée ouverte sur
+  un appareil ne suffit donc ni pour l'un ni pour l'autre.
+- **Suppression du compte** : tout ou rien, en une seule opération dans la base. Si une étape échoue, rien n'est
+  effacé. Les notes qu'un invité avait partagées avec un de ses événements restent à cet invité, en privé.
 - **Demandes d'accès** : une seule en attente par personne, pas de nouvelle demande pendant 30 jours après un refus,
   20 demandes par jour au plus.
 - **Cave gérée à plusieurs** : une personne associée (invitation acceptée, avec son propre compte) voit et gère les bouteilles,

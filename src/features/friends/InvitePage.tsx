@@ -8,8 +8,8 @@ import { Check, X } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
 import { Button, Check as CheckBox, EmptyState, Field, InlineLoading, Notice } from '../../ui/kit';
-import { go, routeQuery, useRoute } from '../../ui/router';
-import { clearPendingInvite, inviteHeadline } from './invite';
+import { go } from '../../ui/router';
+import { autoAcceptAllowed, clearPendingInvite, forgetAutoAccept, inviteHeadline } from './invite';
 
 type Info = Awaited<ReturnType<ReturnType<typeof useStore>['api']['inviteInfo']>>;
 type Accepted = Awaited<ReturnType<ReturnType<typeof useStore>['api']['respondInvite']>>;
@@ -24,9 +24,9 @@ const DETAIL: Record<string, string> = {
 
 export function InvitePage({ code: initial }: { code: string }) {
   const { api, run, relation } = useStore();
-  const route = useRoute();
-  const auto = routeQuery(route).get('auto') === '1';
   const [code, setCode] = useState(initial);
+  // Venant de la vitrine sur cet appareil seulement (jamais par l'adresse).
+  const auto = autoAcceptAllowed(code);
   const [typed, setTyped] = useState('');
   const [info, setInfo] = useState<Info | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +64,7 @@ export function InvitePage({ code: initial }: { code: string }) {
     if (!auto || autoTried.current || info?.status !== 'pending' || info.is_self) return;
     if (info.kind !== 'group' && info.kind !== 'event') return;
     autoTried.current = true;
+    forgetAutoAccept(code);
     void accept();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auto, info]);

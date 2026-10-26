@@ -67,6 +67,7 @@ const AUTH_MESSAGES: Record<string, string> = {
 
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */
 export const AI_MESSAGES: Record<string, string> = {
+  invalid_password: 'Mot de passe incorrect.',
   ai_not_configured: 'L’assistant n’est pas encore configuré sur ce serveur. Toutes les autres fonctions restent disponibles.',
   ai_disabled: 'L’assistant est désactivé pour le moment. Toutes les autres fonctions restent disponibles.',
   invalid_key: 'L’assistant est indisponible (configuration du serveur à vérifier). Vous pouvez continuer à gérer vos caves et événements.',

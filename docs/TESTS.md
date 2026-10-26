@@ -6,7 +6,7 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 270 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push) | ✔ 270/270 |
+| Vitest : 277 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe) | ✔ 277/277 |
 | Export de production + contrôle des secrets et du code local | ✔ |
 | Playwright (Microsoft Edge) sur l'export de production : 34 parcours téléphone + 3 ordinateur | ✔ 37/37 |
 
@@ -56,6 +56,8 @@ utilisateur, droits par défaut des futures migrations.
 | Scanner : finitions (lot 3e) | e2e `scanner` (photo retrouvée après rechargement de la page, brouillon effacé après l'envoi, photo d'étiquette gardée dans la cave, question à Lia préparée sur une bouteille) ; export contrôlé (`check-dist` : seul le lecteur zxing est admis en plus du studio) |
 
 | Notifications push (iPhone, Android, ordinateur) | `tests/push` (chiffrement identique **octet pour octet** à l'exemple de la RFC 8291, étapes intermédiaires comprises ; message lisible par l'appareil destinataire seul ; jeton VAPID ES256 vérifié, valable moins de 24 h ; seuls les services de notifications connus sont contactés ; texte de chaque type de notification) ; `tests/sql/push` (mise en file seulement pour une personne qui a un appareil ; nouvelles tentatives, abandon après 5 essais ; déjà lue : pas d'envoi ; appareil passé à un autre compte ; 10 appareils au plus ; abonnement expiré retiré ; chacun ne voit et ne retire que ses appareils ; tables et fonctions du serveur inaccessibles ; compte supprimé ; retour arrière sans rien effacer, mise à jour rejouable ; l'envoi immédiat ne bloque jamais une notification, même sans pg_net ni jeton) ; `tests/ai/push` (clés du serveur créées une fois, jamais renvoyées ; abonnement vérifié ; essai chiffré, signé et déchiffré par l'appareil ; une demande de contact arrive sur deux appareils avec le bon texte et le bon écran ; 410 : appareil retiré ; 500 : nouvel essai ; tâche planifiée : jeton exigé) ; e2e `push-notifications` (activation, essai reçu par un faux service de notifications qui déchiffre et vérifie la signature ; vraie notification quand une personne utilise mon lien ; désactivation ; iPhone sans installation : l'explication) |
+
+| Audit de sécurité, priorité 1 | `tests/sql/securite-priorite1` (supprimer un événement : la note partagée par un invité redevient privée chez lui ; compte d'un organisateur dans ce cas : suppression réussie et complète ; « tout ou rien » : une panne simulée en cours de suppression ne laisse rien d'effacé ; `is_blocked_between` inaccessible aux comptes, blocage toujours appliqué ; retour arrière et mise à jour rejouable) ; `tests/ai/account` (mot de passe exigé et vérifié par le serveur pour supprimer le compte ; organisateur supprimé, note de l'invitée conservée) ; `tests/password` (8 caractères, une lettre et un chiffre) ; e2e `visite-aide-invitations` (une adresse piégée `?auto=1` ne fait rien accepter sans clic) |
 
 Captures d'écran des parcours : `reports/screens/`.
 

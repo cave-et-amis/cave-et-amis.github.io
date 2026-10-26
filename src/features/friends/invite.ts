@@ -46,6 +46,22 @@ export function pendingInviteAuto(): boolean {
   return saved()?.auto ?? false;
 }
 
+/**
+ * Acceptation automatique d'un lien de groupe ou d'événement : décidée seulement sur cet appareil, quand la personne a
+ * choisi « Créer mon compte » ou « Me connecter » depuis la vitrine du lien. Jamais par l'adresse (un lien piégé
+ * `#/ami/CODE?auto=1` ne fait rien accepter sans clic).
+ */
+const autoAccept = new Set<string>();
+export function allowAutoAccept(code: string) {
+  autoAccept.add(code.toUpperCase());
+}
+export function autoAcceptAllowed(code: string) {
+  return autoAccept.has(code.toUpperCase());
+}
+export function forgetAutoAccept(code: string) {
+  autoAccept.delete(code.toUpperCase());
+}
+
 export function clearPendingInvite() {
   try {
     localStorage.removeItem(KEY);

@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
-import { toMessage } from '../../domain/errors';
+import { AppError, toMessage } from '../../domain/errors';
+import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import { Button, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { inviteHeadline } from '../friends/invite';
@@ -185,6 +186,8 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
       if (mode === 'login') await api.signIn(email, password);
       else if (mode === 'signup') {
         if (!name.trim()) throw new Error('name');
+        const problem = passwordProblem(password);
+        if (problem) throw new AppError(problem, 'weak_password');
         const { needsConfirmation } = await api.signUp(name, email, password);
         if (needsConfirmation) setInfo('Compte créé. Ouvrez le lien reçu par e-mail pour confirmer votre adresse, puis connectez-vous.');
       } else {
@@ -234,7 +237,7 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
               <input id="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
             </Field>
             {mode !== 'forgot' && (
-              <Field label="Mot de passe" htmlFor="password" hint={mode === 'signup' ? '8 caractères au minimum.' : undefined}>
+              <Field label="Mot de passe" htmlFor="password" hint={mode === 'signup' ? PASSWORD_HINT : undefined}>
                 <PasswordInput id="password" value={password} onChange={setPassword} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
               </Field>
             )}
@@ -289,6 +292,8 @@ export function NewPasswordScreen({ api, onDone }: { api: Api; onDone: () => voi
             setBusy(true);
             setError(null);
             try {
+              const problem = passwordProblem(password);
+              if (problem) throw new AppError(problem, 'weak_password');
               await api.updatePassword(password);
               onDone();
             } catch (err) {
@@ -301,7 +306,7 @@ export function NewPasswordScreen({ api, onDone }: { api: Api; onDone: () => voi
           <h2 className="title-font" style={{ fontSize: '1.25rem' }}>
             Choisissez un nouveau mot de passe
           </h2>
-          <Field label="Nouveau mot de passe" htmlFor="np" hint="8 caractères au minimum." error={error}>
+          <Field label="Nouveau mot de passe" htmlFor="np" hint={PASSWORD_HINT} error={error}>
             <PasswordInput id="np" value={password} onChange={setPassword} autoComplete="new-password" />
           </Field>
           <Button type="submit" block size="lg" loading={busy}>

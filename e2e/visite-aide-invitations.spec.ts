@@ -301,9 +301,13 @@ test('lien de groupe : une personne déjà inscrite l’accepte et arrive dans l
   await expect(ines.getByRole('heading', { name: 'Les amis du vendredi' })).toBeVisible();
   const code = await inviteCode(ines, 'Rejoindre un de mes groupes', 'Les amis du vendredi');
 
-  await theo.goto(`/#/ami/${code}`);
+  // Adresse piégée : « ?auto=1 » ne fait rien accepter à une personne connectée, il faut cliquer (audit, S2).
+  await theo.goto(`/#/ami/${code}?auto=1`);
   await expect(theo.getByRole('heading', { name: 'Ines vous invite à rejoindre le groupe « Les amis du vendredi »' })).toBeVisible();
   await expect(theo.getByText('Vous entrerez dans le groupe', { exact: false })).toBeVisible();
+  await theo.waitForTimeout(1500);
+  await expect(theo).toHaveURL(/#\/ami\//);
+  await expect(theo.getByRole('button', { name: 'Accepter' })).toBeVisible();
   await theo.getByRole('button', { name: 'Accepter' }).click();
   await expect(theo).toHaveURL(/#\/groupes\//);
   await expect(theo.getByRole('heading', { name: 'Les amis du vendredi' })).toBeVisible();

@@ -5,7 +5,7 @@ import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { parseMagicLink } from './domain/nous';
 import { AuthScreen, DiscoverScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
-import { clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
+import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { Shell } from './ui/Shell';
 import { Button, ConfirmProvider, ToastProvider } from './ui/kit';
 import { go, routeQuery, useRoute } from './ui/router';
@@ -169,7 +169,8 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
       if (code) {
         const auto = pendingInviteAuto();
         clearPendingInvite();
-        if (auto || !window.location.hash.startsWith('#/ami/')) go(`/ami/${code}${auto ? '?auto=1' : ''}`, { replace: true });
+        if (auto) allowAutoAccept(code);
+        if (auto || !window.location.hash.startsWith('#/ami/')) go(`/ami/${code}`, { replace: true });
       }
     } catch (e) {
       setError(toMessage(e));

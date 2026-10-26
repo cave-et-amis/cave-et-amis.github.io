@@ -94,3 +94,10 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Notifications push (une seule fois) : après la migration `20261030000001_notifications_push.sql` et le déploiement de
   cave-api, exécutez `supabase/sql/push-envoi.sql` dans le SQL Editor (envoi dès qu'une notification est créée, et
   nouvelles tentatives chaque minute). Aucune clé à créer : celles du serveur se créent seules au premier usage.
+
+## Réglages de connexion recommandés (Supabase › Authentication)
+
+- **Sign In / Providers › Email** : « Minimum password length » à **8**, « Password requirements » à **Letters and
+  digits** (la même règle que l'application), « Require current password when updating » **activé**. Les mots de passe
+  existants restent valables ; seuls les nouveaux suivent la règle.
+- **URL Configuration** : ne garder dans « Redirect URLs » que l'adresse du site en service.
