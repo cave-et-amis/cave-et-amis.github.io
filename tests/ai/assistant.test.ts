@@ -165,7 +165,7 @@ describe('assistant : sécurité et droits', () => {
     expect(found.wines[0].bottles_reserved_for_events).toBeUndefined();
   });
 
-  it('cave gérée à plusieurs : Lia voit la cave partagée, nommée comme telle ; on n’apporte que ses propres bouteilles', async () => {
+  it('cave gérée à plusieurs : Lia voit la cave partagée, nommée comme telle, avec les seules dégustations de la personne ; on n’apporte que ses propres bouteilles', async () => {
     const env = await makeAiEnv();
     const { bruno, claire, madiran } = await cellarWith(env);
     const { data: cellar } = await bruno.sb.from('cellars').select('id').eq('name', 'Ma cave').single();
@@ -173,6 +173,12 @@ describe('assistant : sécurité et droits', () => {
     const { error } = await claire.sb.rpc('respond_cellar_invite', { p_cellar: (cellar as { id: string }).id, p_accept: true });
     expect(error).toBeNull();
     const { data: ev } = await claire.sb.rpc('create_event', { p: { title: 'Dîner', starts_at: '2030-01-01T19:00:00Z' }, p_guests: [] });
+    // Bruno partage sa dégustation du Madiran avec un dîner où Claire est invitée ; Claire a aussi la sienne.
+    const { data: dinner } = await bruno.sb.rpc('create_event', { p: { title: 'Dîner de Bruno', starts_at: '2030-01-02T19:00:00Z' }, p_guests: [claire.id] });
+    const taste = (who: typeof bruno, p: Record<string, unknown>) =>
+      who.sb.rpc('create_tasting', { p: { wine_name: 'Madiran Château Montus', wine_id: madiran.wineId, rating: 4, ...p }, p_consume_lot: null, p_request: crypto.randomUUID() });
+    expect((await taste(bruno, { comment: 'REPERE-DEGUSTATION-BRUNO', event_id: (dinner as { id: string }).id, share_with_event: true })).error).toBeNull();
+    expect((await taste(claire, { comment: 'Ma dégustation à moi' })).error).toBeNull();
     env.anthropic.reply(
       {
         kind: 'message',
@@ -188,6 +194,9 @@ describe('assistant : sécurité et droits', () => {
     expect(res.ok).toBe(true);
     const results = (env.anthropic.requests[1].body!.messages as { content: { content: string }[] }[]).at(-1)!.content.map((c) => c.content);
     expect(JSON.parse(results[0]).lots[0].cellar).toBe('Ma cave (cave de Bruno, gérée à plusieurs)');
+    // Ses dégustations : celles de Claire seulement, jamais celle que Bruno a partagée avec son dîner.
+    expect(JSON.parse(results[0]).my_tastings).toEqual([expect.objectContaining({ comment: 'Ma dégustation à moi', rating_out_of_5: 4 })]);
+    expect(results[0]).not.toContain('REPERE-DEGUSTATION-BRUNO');
     expect(results[1]).toContain('n’est pas proposable');
   });
 
@@ -238,6 +247,86 @@ describe('assistant : sécurité et droits', () => {
     const first = await call(claire.sb, { action: 'chat', message: 'Bonjour' });
     const res = await call(bruno.sb, { action: 'chat', message: 'Suite', conversation_id: first.conversation_id });
     expect(res).toMatchObject({ ok: false, code: 'not_found' });
+  });
+});
+
+describe('assistant : données des autres personnes (minimisation)', () => {
+  const toolResults = (env: AiEnv, i: number) =>
+    (env.anthropic.requests[i].body!.messages as { content: { content: string }[] }[]).at(-1)!.content.map((c) => JSON.parse(c.content) as Record<string, unknown>);
+  /** Tout ce qu'a reçu le faux Anthropic, toutes requêtes confondues. */
+  const everything = (env: AiEnv) => JSON.stringify(env.anthropic.requests.map((r) => r.body));
+
+  it('amis et groupe : prénom et informations simples, jamais les textes écrits par les autres', async () => {
+    const env = await makeAiEnv();
+    const { bruno, claire } = await cellarWith(env);
+    // Bouteille que Claire montre à Bruno, avec des notes qu'elle n'a pas masquées.
+    const { data: w } = await claire.sb.from('wines').insert({ name: 'Gaillac de Claire', vintage: 2019, color: 'rouge', notes: 'REPERE-NOTE-VIN-CLAIRE' }).select().single();
+    const { error } = await claire.sb.rpc('create_lot', { p: { wine_id: w.id, quantity: 4, visibility: 'friends', hide_notes: false, notes: 'REPERE-NOTE-LOT-CLAIRE' }, p_request: crypto.randomUUID() });
+    expect(error).toBeNull();
+    const { data: g } = await bruno.sb.rpc('create_group', { p_name: 'Les copains', p_emoji: '🍷', p_description: null, p_photo: null, p_invite: [claire.id] });
+    const groupId = (g as { id: string }).id;
+    await claire.sb.rpc('respond_group_invite', { p_group: groupId, p_accept: true });
+    const taste = (who: typeof bruno, p: Record<string, unknown>) => who.sb.rpc('create_tasting', { p: { ...p, group_id: groupId }, p_consume_lot: null, p_request: crypto.randomUUID() });
+    await taste(claire, { wine_name: 'Cahors partagé', vintage: 2018, color: 'rouge', rating: 4, comment: 'REPERE-COMMENTAIRE-CLAIRE', dish: 'REPERE-PLAT-CLAIRE', robe: 'REPERE-ROBE-CLAIRE' });
+    await taste(bruno, { wine_name: 'Madiran Château Montus', vintage: 2016, rating: 5, comment: 'Mon commentaire à moi', dish: 'Magret' });
+    await claire.sb.rpc('add_group_wish', { p_group: groupId, p: { wine_name: 'Château Simone', note: 'REPERE-ENVIE-CLAIRE' } });
+    await bruno.sb.rpc('add_group_wish', { p_group: groupId, p: { wine_name: 'Domaine Tempier', note: 'Mon envie à moi' } });
+    env.anthropic.reply(
+      { kind: 'message', stop_reason: 'tool_use', content: [toolUse('t1', 'search_friends_wines', { query: null, color: null, limit: null }), toolUse('t2', 'get_group', { group_id: groupId })] },
+      { kind: 'message', content: [text('Claire a aimé le **Cahors partagé**.')] },
+    );
+    const res = await call(bruno.sb, { action: 'chat', message: 'Que boire avec les copains ?', context: { kind: 'group', id: groupId } });
+    expect(res.ok).toBe(true);
+    const sent = everything(env);
+    for (const hidden of ['REPERE-NOTE-VIN-CLAIRE', 'REPERE-NOTE-LOT-CLAIRE', 'REPERE-COMMENTAIRE-CLAIRE', 'REPERE-PLAT-CLAIRE', 'REPERE-ROBE-CLAIRE', 'REPERE-ENVIE-CLAIRE']) {
+      expect(sent).not.toContain(hidden);
+    }
+    // Ni adresse e-mail ni identifiant de compte, de personne.
+    for (const id of [claire.email, claire.id, bruno.email, bruno.id]) expect(sent).not.toContain(id);
+    const [friends, group] = toolResults(env, 1) as [{ wines: unknown[] }, { members: string[]; member_tastes: unknown[]; common_wishes: unknown[] }];
+    expect(friends.wines).toContainEqual(expect.objectContaining({ name: 'Gaillac de Claire', vintage: 2019, owner: 'Claire', quantity: 4 }));
+    expect(group.members).toEqual(expect.arrayContaining(['Bruno', 'Claire']));
+    // Note d'un autre membre : prénom, vin, millésime, couleur, note sur 5 ; rien d'autre.
+    expect(group.member_tastes).toContainEqual({ member: 'Claire', wine: 'Cahors partagé', vintage: 2018, color: 'Rouge', rating_out_of_5: 4 });
+    expect(group.member_tastes).toContainEqual(expect.objectContaining({ member: 'la personne', rating_out_of_5: 5, comment: 'Mon commentaire à moi', dish: 'Magret' }));
+    expect(group.common_wishes).toContainEqual({ wine: 'Château Simone', participants: 1 });
+    expect(group.common_wishes).toContainEqual(expect.objectContaining({ wine: 'Domaine Tempier', note: 'Mon envie à moi' }));
+  });
+
+  it('événement : lieu, budget et description seulement pour qui l’organise ; jamais la note d’un vin proposé', async () => {
+    const env = await makeAiEnv();
+    const { bruno, claire, sharedClaire } = await cellarWith(env);
+    const { data: ev } = await claire.sb.rpc('create_event', {
+      p: { title: 'Dîner chez Claire', starts_at: '2030-04-01T19:00:00Z', place: 'REPERE-LIEU-CLAIRE', budget: 987.65, description: 'REPERE-DESCRIPTION-CLAIRE', theme: 'Sud-Ouest' },
+      p_guests: [bruno.id],
+    });
+    const theirs = (ev as { id: string }).id;
+    await bruno.sb.rpc('respond_event', { p_event: theirs, p_rsvp: 'yes' });
+    await claire.sb.from('event_dishes').insert({ event_id: theirs, course: 'plat', name: 'Magret de canard' });
+    const { error } = await claire.sb.rpc('propose_event_wine', { p_event: theirs, p_lot: sharedClaire.lotId, p_quantity: 1, p_note: 'REPERE-NOTE-VIN-EVENEMENT', p_bring: true, p_request: crypto.randomUUID() });
+    expect(error).toBeNull();
+    const { data: own } = await bruno.sb.rpc('create_event', {
+      p: { title: 'Pique-nique de Bruno', starts_at: '2030-05-01T12:00:00Z', place: 'Parc de la Tête d’Or', budget: 55, description: 'Chacun apporte un plat' },
+      p_guests: [claire.id],
+    });
+    env.anthropic.reply(
+      { kind: 'message', stop_reason: 'tool_use', content: [toolUse('t1', 'get_event', { event_id: theirs }), toolUse('t2', 'get_event', { event_id: (own as { id: string }).id })] },
+      { kind: 'message', content: [text('Avec le magret, un **Madiran**.')] },
+    );
+    const res = await call(bruno.sb, { action: 'chat', message: 'Que boire avec le magret ?', context: { kind: 'event', id: theirs } });
+    expect(res.ok).toBe(true);
+    const sent = everything(env);
+    for (const hidden of ['REPERE-LIEU-CLAIRE', 'REPERE-DESCRIPTION-CLAIRE', '987.65', 'REPERE-NOTE-VIN-EVENEMENT', claire.email, claire.id, bruno.email, bruno.id]) {
+      expect(sent).not.toContain(hidden);
+    }
+    const [other, mine] = toolResults(env, 1);
+    for (const field of ['place', 'budget', 'description']) expect(other).not.toHaveProperty(field);
+    // L'utile reste : titre, thème, menu, prénoms et réponses, vins prévus et leur propriétaire.
+    expect(other).toMatchObject({ title: 'Dîner chez Claire', theme: 'Sud-Ouest', organizer: 'Claire', menu: ['plat : Magret de canard'] });
+    expect(other.participants).toEqual(expect.arrayContaining([{ name: 'Claire', role: 'organizer', answer: 'yes' }, { name: 'vous', role: 'guest', answer: 'yes' }]));
+    expect(other.wines_planned).toEqual([expect.objectContaining({ wine: 'Cahors partagé', owner: 'Claire', quantity: 1 })]);
+    // Son propre événement : rien ne change.
+    expect(mine).toMatchObject({ title: 'Pique-nique de Bruno', organizer: 'vous', place: 'Parc de la Tête d’Or', budget: 55, description: 'Chacun apporte un plat' });
   });
 });
 

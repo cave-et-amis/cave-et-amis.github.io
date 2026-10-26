@@ -2,6 +2,8 @@
  * Lecture des données pour l'assistant, TOUJOURS avec le client de la personne connectée :
  * la base applique ses droits (RLS) exactement comme dans l'application. Aucun accès « service » ici.
  * Les objets renvoyés au modèle sont compacts : seulement ce qui sert à répondre.
+ * Des autres personnes : leur prénom et des informations simples (vin, millésime, couleur, note sur 5, quantité visible,
+ * statut, réponse) ; jamais un texte libre qu'elles ont écrit, ni le lieu, le budget ou la description de leurs événements.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cellar, Color, Location, Lot, MarketPrice, SharedLot, SuggestableLot, Tasting, Wine } from '../../src/domain/types.ts';
@@ -153,11 +155,12 @@ export function searchWines(
   return { total_matching: rows.length, wines: rows.slice(0, limit) };
 }
 
-export async function wineDetails(sb: SupabaseClient, data: CellarData, wineId: string, year: number) {
+export async function wineDetails(sb: SupabaseClient, data: CellarData, wineId: string, year: number, me: string) {
   const w = data.wines.find((x) => x.id === wineId);
   if (!w) return { error: 'Vin introuvable dans la cave de la personne.' };
   const [tastings, prices] = await Promise.all([
-    all<Tasting>(() => sb.from('tastings').select('*').eq('wine_id', wineId).eq('user_id', w.owner_id).order('tasted_on', { ascending: false }).limit(5)),
+    // Seulement le carnet de la personne : pas les notes d'un propriétaire de cave gérée à plusieurs partagées avec un événement.
+    all<Tasting>(() => sb.from('tastings').select('*').eq('wine_id', wineId).eq('user_id', me).order('tasted_on', { ascending: false }).limit(5)),
     all<MarketPrice>(() => sb.from('market_prices').select('*').eq('wine_id', wineId).order('checked_at', { ascending: false }).limit(3)),
   ]);
   return {
@@ -209,10 +212,10 @@ export async function listTastings(sb: SupabaseClient, userId: string, q: { quer
 
 type GroupLotRow = SharedLot & { mine: boolean; allocated: number };
 type GroupNoteRow = { author_name: string; mine: boolean; wine_name: string; vintage: number | null; color: Color | null; rating: number | null; comment: string | null; dish: string | null; tasted_on: string };
-type GroupWishRow = { wine_name: string; vintage: number | null; producer: string | null; color: Color | null; note: string | null; votes: number; voted: boolean };
+type GroupWishRow = { wine_name: string; vintage: number | null; producer: string | null; color: Color | null; note: string | null; votes: number; created_by: string | null };
 
 /** Vie d'un groupe pour l'assistant (droits de la personne : elle doit en être membre). */
-export async function groupDetails(sb: SupabaseClient, groupId: string) {
+export async function groupDetails(sb: SupabaseClient, groupId: string, me: string) {
   const groups = await all<{ id: string; name: string; my_status: string }>(() => sb.rpc('my_groups'));
   const g = groups.find((x) => x.id === groupId && x.my_status === 'active');
   if (!g) return { error: 'Groupe introuvable, ou la personne n’en est pas membre.' };
@@ -241,15 +244,14 @@ export async function groupDetails(sb: SupabaseClient, groupId: string) {
       set_aside_for_the_group: l.allocated || undefined,
       visible_only: l.allocated ? undefined : true,
     })),
+    // Commentaire, plat et date : seulement pour les notes de la personne.
     member_tastes: notes.slice(0, 40).map((t) => ({
       member: t.mine ? 'la personne' : t.author_name,
       wine: t.wine_name,
       vintage: t.vintage ?? undefined,
       color: colorLabel(t.color) || undefined,
       rating_out_of_5: t.rating ?? undefined,
-      comment: clip(t.comment, 200),
-      dish: t.dish ?? undefined,
-      date: t.tasted_on,
+      ...(t.mine ? { comment: clip(t.comment, 200), dish: t.dish ?? undefined, date: t.tasted_on } : {}),
     })),
     common_wishes: wishes.slice(0, 20).map((w) => ({
       wine: w.wine_name,
@@ -257,7 +259,7 @@ export async function groupDetails(sb: SupabaseClient, groupId: string) {
       producer: w.producer ?? undefined,
       color: colorLabel(w.color) || undefined,
       participants: w.votes,
-      note: clip(w.note, 200),
+      note: w.created_by === me ? clip(w.note, 200) : undefined,
     })),
     evenings: events.map((e) => ({ event_id: e.id, title: e.title, date: e.starts_at.slice(0, 10), status: e.status })),
   };
@@ -277,7 +279,6 @@ export function compactShared(s: SharedLot) {
     quantity: s.hide_quantity ? 'masquée par le propriétaire' : s.quantity,
     in_stock: s.in_stock,
     can_be_suggested_for_events: s.visibility === 'event',
-    owner_notes: s.notes ?? undefined,
   };
 }
 
@@ -309,8 +310,9 @@ export async function eventDetails(sb: SupabaseClient, eventId: string, data: Ce
   const [parts, dishes, wines, profiles, suggestable, forGroup, groupRow] = await Promise.all([
     all<{ user_id: string; role: string; rsvp: string }>(() => sb.from('event_participants').select('*').eq('event_id', eventId)),
     all<{ course: string; name: string; position: number }>(() => sb.from('event_dishes').select('*').eq('event_id', eventId).order('position')),
-    all<{ id: string; owner_id: string; status: string; quantity: number; wine_name: string; wine_vintage: number | null; wine_color: string | null; wine_type: string | null; wine_appellation: string | null; service_position: number | null; note: string | null }>(
-      () => sb.from('event_wines').select('*').eq('event_id', eventId),
+    // Sans la note qui accompagne un vin proposé (texte libre).
+    all<{ id: string; owner_id: string; status: string; quantity: number; wine_name: string; wine_vintage: number | null; wine_color: string | null; wine_type: string | null; wine_appellation: string | null; service_position: number | null }>(
+      () => sb.from('event_wines').select('id, owner_id, status, quantity, wine_name, wine_vintage, wine_color, wine_type, wine_appellation, service_position').eq('event_id', eventId),
     ),
     all<{ id: string; display_name: string }>(() => sb.from('profiles').select('id, display_name')),
     sb.rpc('event_suggestable_lots', { p_event: eventId }).then((r) => (r.data ?? []) as SuggestableLot[]),
@@ -319,16 +321,18 @@ export async function eventDetails(sb: SupabaseClient, eventId: string, data: Ce
   ]);
   const name = (id: string) => (id === me ? 'vous' : (profiles.find((p) => p.id === id)?.display_name ?? 'un participant'));
   const event = ev as { title: string; kind: string; starts_at: string; place: string | null; description: string | null; theme: string | null; budget: number | null; status: string; organizer_id: string };
+  // Lieu (souvent une adresse), budget et description : seulement si la personne organise l'événement.
+  const organizer = event.organizer_id === me;
   return {
     event_id: eventId,
     title: event.title,
     kind: event.kind,
     starts_at: event.starts_at,
-    place: event.place ?? undefined,
+    place: organizer ? (event.place ?? undefined) : undefined,
     theme: event.theme ?? undefined,
-    budget: event.budget ?? undefined,
+    budget: organizer ? (event.budget ?? undefined) : undefined,
     status: event.status,
-    description: clip(event.description, 500),
+    description: organizer ? clip(event.description, 500) : undefined,
     group_evening: groupRow ? `Soirée du groupe « ${groupRow.name} » (bouteilles du groupe proposables ; celles mises à sa disposition sont prises en premier)` : undefined,
     organizer: name(event.organizer_id),
     participants: parts.map((p) => ({ name: name(p.user_id), role: p.role, answer: p.rsvp })),

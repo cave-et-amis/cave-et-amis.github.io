@@ -81,12 +81,12 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
     color: nullable(colorEnum),
     limit: nullable(int),
   }),
-  tool('get_event', 'Détails d’un événement auquel la personne participe : menu, participants, vins prévus, ses bouteilles disponibles et celles de ses amis ouvertes aux suggestions.', {
+  tool('get_event', 'Détails d’un événement auquel la personne participe : menu, participants, vins prévus, ses bouteilles disponibles et celles de ses amis ouvertes aux suggestions. Lieu, budget et description seulement si elle l’organise.', {
     event_id: str,
   }),
   tool(
     'get_group',
-    'Vie d’un groupe dont la personne est membre : membres, bouteilles visibles ou mises à disposition du groupe, goûts des membres (notes partagées), envies communes, soirées.',
+    'Vie d’un groupe dont la personne est membre : membres, bouteilles visibles ou mises à disposition du groupe, goûts des membres (notes sur 5 partagées), envies communes, soirées.',
     { group_id: str },
   ),
   tool('lookup_market_price', 'Recherche web du prix de marché actuel d’un vin de la cave (millésime et contenance exacts), avec sources. Coûteux : seulement si la personne demande un prix.', {
@@ -254,7 +254,7 @@ export class ToolBox {
         );
       case 'get_wine_details':
         if (!isUuid(i.wine_id)) return JSON.stringify({ error: 'wine_id invalide' });
-        return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year));
+        return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year, this.userId));
       case 'list_my_tastings':
         return JSON.stringify(await listTastings(this.user, this.userId, { query: text(i.query, 200), min_rating: intIn(i.min_rating, 1, 5), limit: intIn(i.limit, 1, 60) }));
       case 'search_friends_wines':
@@ -264,7 +264,7 @@ export class ToolBox {
         return JSON.stringify(await eventDetails(this.user, i.event_id, await this.data(), this.year, this.userId));
       case 'get_group':
         if (!isUuid(i.group_id)) return JSON.stringify({ error: 'group_id invalide' });
-        return JSON.stringify(await groupDetails(this.user, i.group_id));
+        return JSON.stringify(await groupDetails(this.user, i.group_id, this.userId));
       case 'lookup_market_price':
         return this.lookup(i);
       case 'app_help':
