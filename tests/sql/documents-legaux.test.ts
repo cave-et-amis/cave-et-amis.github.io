@@ -312,8 +312,14 @@ describe('durées de conservation (validées le 26/10/2026)', () => {
       [claire, `B${'a'.repeat(86)}`, 'a'.repeat(22)],
     );
 
+    // Aperçu en lecture seule (supabase/sql/conservation-apercu.sql), comme dans le SQL Editor.
+    const apercu = readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'conservation-apercu.sql'), 'utf8');
+    const preview = Object.fromEntries((await db.query<{ cle: string; a_effacer: number }>(apercu)).rows.map((r) => [r.cle, r.a_effacer]));
+
     await expectError(as(db, claire, `select retention_purge()`), /permission denied/);
     const res = await asService<{ r: Record<string, number> }>(db, `select retention_purge() as r`);
+    // L'aperçu n'avait rien effacé, et annonçait exactement ce que la purge efface.
+    for (const [key, n] of Object.entries(res[0].r)) expect(preview[key], key).toBe(n);
     expect(res[0].r).toMatchObject({
       conversations: 1,
       ai_usage: 1,

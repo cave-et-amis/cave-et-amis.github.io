@@ -1,14 +1,14 @@
 # Tests et limites
 
-Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **25 octobre 2026, tout vert**.
+Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **27 octobre 2026, tout vert**.
 
 | Étape | Résultat |
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 295 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation) | ✔ 295/295 |
-| Export de production + contrôle des secrets et du code local | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 39 parcours téléphone + 3 ordinateur | ✔ 42/42 |
+| Vitest : 381 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes) | ✔ 381/381 |
+| Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
+| Playwright (Microsoft Edge) sur l'export de production : 45 parcours téléphone + 3 ordinateur | ✔ 48/48 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le

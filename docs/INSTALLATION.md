@@ -108,6 +108,8 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 1. Cloudflare › Turnstile › « Add widget » : domaine `cave-et-amis.github.io`, mode « Managed » (Cocon a son propre widget).
 2. Clé de site (publique) dans `config.production.js` (`turnstileSiteKey`), puis `npm run build` et mise en ligne du site.
 3. Supabase › Authentication › Attack Protection : activer le CAPTCHA, fournisseur Turnstile, coller la clé secrète.
+4. Avec un compte de test : inscription, connexion, « mot de passe oublié », changement de mot de passe, puis suppression
+   du compte (le serveur revérifie le mot de passe sans jeton : à contrôler une fois en ligne).
 
 Retour arrière : désactiver dans Supabase, vider la clé de site, refaire l'export.
 
