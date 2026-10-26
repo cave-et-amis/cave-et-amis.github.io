@@ -70,10 +70,11 @@ Adresses (variables d'environnement des fonctions) :
 5. **Preuve de liaison** : la personne a prouvé contrôler les deux comptes (session Cave pour créer le code, session Nous
    pour le consommer). Aucune liaison automatique par e-mail.
 6. Un compte Cave ne se lie qu'à un compte Nous, et réciproquement (contraintes `unique`).
-7. **Avis de liaison** : chaque liaison réussie crée dans Cave une notification (type `nous_linked`, avec le prénom envoyé
-   par Nous, `nous_display_name`) : « Votre compte est relié à l'agenda Nous de {prénom}. Ce n'est pas vous ? Déliez-le
-   dans les Réglages. » Elle mène aux Réglages et part aussi en notification push si la personne l'a activée. Une liaison
-   faite à son insu se voit donc tout de suite.
+7. **Avis de liaison** : chaque liaison réussie crée dans Cave une notification (type `nous_linked`) : « Votre compte est
+   relié à un agenda Nous. Ce n'est pas vous ? Déliez-le dans les Réglages. » Elle mène aux Réglages et part aussi en
+   notification push si la personne l'a activée. Une liaison faite à son insu se voit donc tout de suite. Nous n'envoie
+   aujourd'hui aucun prénom dans `link.redeem` : si un jour `nous_display_name` est envoyé, l'avis dit « … relié à l'agenda
+   Nous de {prénom} » (ce serait un nouveau flux de données, à inscrire d'abord dans les deux politiques de confidentialité).
 
 **Délier** : depuis l'une ou l'autre application. Le côté qui délie supprime sa ligne et prévient l'autre (`link.revoked`).
 Les événements importés dans Nous sont alors **mis à la corbeille** de Nous (restaurables 30 jours, ensuite effacés par
@@ -104,7 +105,7 @@ la purge existante). Rien n'est modifié dans Cave.
   - **Nous** dans trois cas :
     - la personne n'a pas activé la connexion directe dans Nous (désactivée par défaut) ;
     - c'est un compte d'administration ;
-    - c'est un compte bloqué.
+    - le compte n'est pas actif (bloqué, suspendu ou en attente) ou n'a pas accès à l'agenda.
 - En cas d'échec, y compris `jump_disabled`, l'application ouvre simplement l'autre site (connexion normale), sans délier
   les comptes ni afficher d'erreur.
 
