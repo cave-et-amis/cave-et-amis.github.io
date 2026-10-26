@@ -6,6 +6,7 @@ import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink, pendingLink, startSession } from './domain/nous';
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
+import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
 import { LegalScreen } from './features/legal/LegalViews';
@@ -134,6 +135,7 @@ function Root({ api, local }: { api: Api; local: boolean }) {
   }, [api, userId]);
 
   if (session === undefined) return <Loading />;
+  // Ouvert par un lien venu de Nous : « Est-ce bien votre compte ? », avant même le code de double authentification.
   if (session && confirmLink)
     return (
       <LinkAccountScreen
@@ -142,16 +144,6 @@ function Root({ api, local }: { api: Api; local: boolean }) {
         onContinue={() => {
           pendingLink.set(false);
           setConfirmLink(false);
-        }}
-      />
-    );
-  if (session && recovery)
-    return (
-      <NewPasswordScreen
-        api={api}
-        onDone={() => {
-          setRecovery(false);
-          go('/', { replace: true });
         }}
       />
     );
@@ -190,7 +182,23 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     }
     return <AuthScreen key={authMode ?? 'auth'} api={api} local={local} inviteCode={invite ?? pendingInvite()} initialMode={authMode ?? undefined} />;
   }
-  return <SignedIn key={session.user.id} api={api} local={local} session={session} />;
+  // Double authentification activée : le code d'abord, avant même un nouveau mot de passe (le serveur exige alors une
+  // session vérifiée par le code pour le changer).
+  return (
+    <MfaGate key={session.user.id} api={api} session={session} fallback={<Loading text="Ouverture de votre cave…" />}>
+      {recovery ? (
+        <NewPasswordScreen
+          api={api}
+          onDone={() => {
+            setRecovery(false);
+            go('/', { replace: true });
+          }}
+        />
+      ) : (
+        <SignedIn api={api} local={local} session={session} />
+      )}
+    </MfaGate>
+  );
 }
 
 function SignedIn({ api, local, session }: { api: Api; local: boolean; session: Session }) {

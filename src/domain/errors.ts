@@ -50,7 +50,7 @@ const DB_MESSAGES: Record<string, string> = {
   legal_placeholders: 'Le document contient encore des emplacements « [À COMPLÉTER » ou « [À VALIDER » : complétez-les avant de publier.',
   legal_invalid: 'Document incomplet : type, titre et texte sont obligatoires (seules les conditions d’utilisation demandent une acceptation).',
   legal_immutable: 'Un document publié ne se modifie plus : publiez une nouvelle version.',
-  mfa_required: 'Validez d’abord votre code de double authentification (reconnectez-vous) pour publier.',
+  mfa_required: 'Cette action demande votre code de double authentification : déconnectez-vous, puis reconnectez-vous avec votre code.',
 };
 
 const AUTH_MESSAGES: Record<string, string> = {
@@ -68,6 +68,14 @@ const AUTH_MESSAGES: Record<string, string> = {
   session_not_found: 'Votre session a expiré. Reconnectez-vous.',
   refresh_token_not_found: 'Votre session a expiré. Reconnectez-vous.',
   captcha_failed: 'Le contrôle anti-robots n’a pas été validé. Réessayez dans un instant ; si cela continue, rechargez la page.',
+  // Double authentification.
+  mfa_verification_failed: 'Code incorrect : saisissez le code à 6 chiffres affiché en ce moment par votre application d’authentification.',
+  mfa_challenge_expired: 'Délai dépassé : saisissez le nouveau code affiché par votre application d’authentification.',
+  insufficient_aal: 'Cette action demande votre code de double authentification : déconnectez-vous, puis reconnectez-vous avec votre code.',
+  mfa_factor_not_found: 'La double authentification n’est plus active sur ce compte : rechargez la page.',
+  too_many_enrolled_mfa_factors: 'Trop d’activations commencées sur ce compte : rechargez la page, puis recommencez.',
+  mfa_totp_enroll_not_enabled: 'La double authentification par application n’est pas activée sur ce serveur (Supabase › Authentication › Multi-Factor).',
+  mfa_totp_verify_not_enabled: 'La double authentification par application n’est pas activée sur ce serveur (Supabase › Authentication › Multi-Factor).',
 };
 
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */

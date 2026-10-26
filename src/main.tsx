@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import '@fontsource-variable/fraunces';
 import '@fontsource-variable/source-sans-3';
 import './styles.css';
@@ -15,6 +15,8 @@ function boot() {
     root.render(<ConfigProblem problem={config.problem} />);
     return;
   }
+  // Vérification du mot de passe actuel (changement de mot de passe) : client créé une fois, qui ne garde aucune session.
+  let checker: SupabaseClient | null = null;
   const api = new Api(
     createClient(config.url, config.key, {
       auth: {
@@ -25,7 +27,13 @@ function boot() {
         storageKey: config.local ? 'cave-amis-local-auth' : 'cave-amis-auth',
       },
     }),
-    { captchaSiteKey: config.turnstileSiteKey },
+    {
+      captchaSiteKey: config.turnstileSiteKey,
+      checker: () =>
+        (checker ??= createClient(config.url, config.key, {
+          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'cave-amis-verification' },
+        })),
+    },
   );
   root.render(<App api={api} local={config.local} />);
 }
