@@ -50,6 +50,11 @@ export type FakeSupabaseOptions = {
   functions?: Record<string, (req: Request) => Promise<Response>>;
   /** Délai simulé (ms). */
   latency?: number;
+  /**
+   * Protection CAPTCHA simulée (tests) : jeton exigé comme chez Supabase (supabase/auth, verifyCaptcha), sauf pour un appel
+   * avec la clé « service ». Seule sa présence est vérifiée : aucun appel à Cloudflare.
+   */
+  captcha?: boolean;
 };
 
 function b64url(bytes: Uint8Array) {
@@ -489,8 +494,14 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
 
   async function handleAuth(path: string, url: URL, method: string, headers: Headers, body: Json) {
     // Pas de contrôle anti-robots en local : le jeton Turnstile éventuel (gotrue_meta_security.captcha_token) est accepté
-    // et ignoré, comme par un projet Supabase sans protection CAPTCHA.
+    // et ignoré, comme par un projet Supabase sans protection CAPTCHA. Avec l'option `captcha` (tests), il est exigé pour
+    // s'inscrire, se connecter par mot de passe ou recevoir un e-mail, sauf pour un appel du serveur avec sa clé.
+    const captchaToken = String((body.gotrue_meta_security as { captcha_token?: unknown } | undefined)?.captcha_token ?? '').trim();
     delete body.gotrue_meta_security;
+    const captchaRoute = ['signup', 'recover', 'otp', 'magiclink'].includes(path) || (path === 'token' && url.searchParams.get('grant_type') === 'password');
+    if (options.captcha && method === 'POST' && captchaRoute && !captchaToken && who(headers).kind !== 'service') {
+      return authError(400, 'captcha_failed', 'captcha protection: request disallowed (no captcha response)');
+    }
     if (path === 'signup' && method === 'POST') {
       const email = String(body.email ?? '')
         .trim()

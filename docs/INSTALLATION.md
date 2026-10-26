@@ -55,7 +55,9 @@ npx supabase functions deploy cave-api --no-verify-jwt --project-ref VOTRE_REFER
 3. Vérifiez que la **recherche web** est autorisée pour l'organisation (*Settings › Capabilities*) : elle sert aux prix de marché.
 4. Dans Supabase : **Edge Functions › Secrets › Add new secret** :
    - `ANTHROPIC_API_KEY` = la clé (collez-la **vous-même** ici ; ne la mettez jamais dans un fichier, un message ou le code) ;
-   - `ALLOWED_ORIGINS` = `https://votre-site.netlify.app` (facultatif, limite les appels à votre site).
+   - `CAVE_APP_URL` = l'adresse de votre site, si ce n'est pas `https://cave-et-amis.github.io` : par défaut, cave-api ne
+     répond qu'au site (CORS) ; un site ailleurs verrait tous ses appels refusés. `ALLOWED_ORIGINS` (facultatif) choisit
+     une ou plusieurs autres origines, séparées par des virgules.
 
 Sans clé, l'application fonctionne entièrement ; seul l'assistant indique « non configuré ».
 
@@ -71,7 +73,7 @@ npm run package:site
 ```
 
 3. Netlify › **Add new site › Deploy manually** › glissez `livraison/cave-et-amis-site.zip` ; renommez le site
-   (ex. `cave-et-amis-bruno`). Reportez l'adresse dans Supabase (étape 1.5) et dans `ALLOWED_ORIGINS`.
+   (ex. `cave-et-amis-bruno`). Reportez l'adresse dans Supabase (étape 1.5) et dans `CAVE_APP_URL` (étape 3).
 
 ## 5. Premier compte = administrateur
 

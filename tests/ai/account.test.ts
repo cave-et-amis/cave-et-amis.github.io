@@ -118,4 +118,30 @@ describe('suppression de compte', () => {
     expect((await env.db.query(`select 1 from events where id = $1`, [evId])).rows).toHaveLength(0);
     expect((await env.db.query(`select share_with_event, event_id from tastings where user_id = $1`, [claire.id])).rows).toEqual([{ share_with_event: false, event_id: null }]);
   });
+
+  it('protection CAPTCHA activée : le serveur vérifie le mot de passe sans jeton, 5 essais par quart d’heure au plus', async () => {
+    const env = await makeAiEnv({ captcha: true });
+    const claire = await env.signUp('Claire');
+    // Une connexion depuis le navigateur exige bien un jeton…
+    const direct = await env.client().auth.signInWithPassword({ email: claire.email, password: claire.password });
+    expect(direct.error?.code).toBe('captcha_failed');
+    // … mais pas la vérification faite par le serveur avec sa clé : mauvais mot de passe refusé, bon mot de passe accepté.
+    expect(await call(claire.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: 'pas-le-bon-1' })).toMatchObject({ ok: false, code: 'invalid_password' });
+    expect(await call(claire.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: claire.password })).toMatchObject({ ok: true, deleted: true });
+    expect((await env.db.query(`select 1 from auth.users where id = $1`, [claire.id])).rows).toHaveLength(0);
+    // Ses compteurs d'essais partent avec le compte.
+    expect((await env.db.query(`select 1 from rate_hits where subject = $1`, [claire.id])).rows).toHaveLength(0);
+
+    // Au 6e essai en un quart d'heure, même avec le bon mot de passe, rien n'est supprimé.
+    const marc = await env.signUp('Marc');
+    for (let i = 1; i <= 5; i++) {
+      expect(await call(marc.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: `pas-le-bon-${i}` })).toMatchObject({ ok: false, code: 'invalid_password' });
+    }
+    expect(await call(marc.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: marc.password })).toMatchObject({
+      ok: false,
+      code: 'password_rate_limited',
+      message: expect.stringMatching(/quart d’heure/),
+    });
+    expect((await env.db.query(`select 1 from auth.users where id = $1`, [marc.id])).rows).toHaveLength(1);
+  });
 });

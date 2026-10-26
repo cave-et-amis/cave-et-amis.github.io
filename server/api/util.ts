@@ -157,6 +157,8 @@ export const RATE_LIMITS = {
   off: { max: 30, seconds: 600 },
   // Envoi immédiat vers l'agenda Nous demandé par l'application (sinon la tâche planifiée s'en charge dans la minute).
   nous_flush: { max: 20, seconds: 600 },
+  // Mot de passe vérifié par le serveur (suppression du compte) : sans contrôle anti-robots, d'où peu d'essais.
+  password_check: { max: 5, seconds: 900 },
 } as const;
 
 /** Compte un appel de la personne ; false : limite atteinte (rien n'est compté). */

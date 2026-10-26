@@ -130,13 +130,20 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     return null;
   }
 
-  /** Vérifie le mot de passe d'une personne, par le serveur de connexion (sans rien garder). */
+  /**
+   * Vérifie le mot de passe d'une personne, par le serveur de connexion (sans rien garder). Avec la clé du serveur :
+   * Supabase n'exige alors pas de jeton anti-robots (supabase/auth, verifyCaptcha), que la protection CAPTCHA soit activée
+   * ou non ; le nombre d'essais est limité par personne (RATE_LIMITS.password_check). La session ouverte pour la
+   * vérification est aussitôt refermée.
+   */
   async function passwordOk(userId: string, password: string) {
     const { data, error } = await svc.auth.admin.getUserById(userId);
     if (error || !data?.user?.email) return false;
-    const check = createClient(env.supabaseUrl, env.publishableKey, opts);
+    const check = createClient(env.supabaseUrl, env.serviceKey, opts);
     const res = await check.auth.signInWithPassword({ email: data.user.email, password: password.slice(0, 200) });
-    return !res.error;
+    if (res.error) return false;
+    await check.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    return true;
   }
 
   async function profileCurrency(user: SupabaseClient, userId: string) {
@@ -330,7 +337,9 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       case 'delete_account': {
         if (body.confirm !== 'SUPPRIMER') throw new AiFailure('invalid');
         // Mot de passe redemandé : une session volée ou un appareil resté ouvert ne suffit pas pour supprimer le compte.
-        if (typeof body.password !== 'string' || !body.password || !(await passwordOk(userId, body.password))) throw new AiFailure('invalid_password');
+        if (typeof body.password !== 'string' || !body.password) throw new AiFailure('invalid_password');
+        if (!(await rateOk(svc, 'password_check', userId))) throw new AiFailure('password_rate_limited');
+        if (!(await passwordOk(userId, body.password))) throw new AiFailure('invalid_password');
         // 1. Contrôle de la session (la fonction ne supprime plus rien : voir 20261031000001_securite_priorite1.sql).
         const { error } = await user.rpc('prepare_account_deletion');
         if (error) throw new AiFailure('internal', sanitize(error.message));

@@ -6,10 +6,13 @@ export const TEST_URL = 'http://supabase.test';
 export const TEST_PUBLIC_KEY = 'local-publishable-key';
 export const TEST_SERVICE_KEY = 'local-service-key-tests';
 
-/** Base PostgreSQL neuve + clients Supabase officiels branchés sur le faux serveur (aucun réseau). */
-export async function makeEnv(functions: Record<string, (req: Request) => Promise<Response>> = {}) {
+/**
+ * Base PostgreSQL neuve + clients Supabase officiels branchés sur le faux serveur (aucun réseau).
+ * `captcha` : protection CAPTCHA simulée (les comptes de test sont alors créés avec un jeton).
+ */
+export async function makeEnv(functions: Record<string, (req: Request) => Promise<Response>> = {}, o: { captcha?: boolean } = {}) {
   const db = await createDb();
-  const fake = createFakeSupabase(db, { serviceKey: TEST_SERVICE_KEY, functions });
+  const fake = createFakeSupabase(db, { serviceKey: TEST_SERVICE_KEY, functions, captcha: o.captcha });
   let n = 0;
   const client = (): SupabaseClient =>
     createClient(TEST_URL, TEST_PUBLIC_KEY, {
@@ -25,7 +28,8 @@ export async function makeEnv(functions: Record<string, (req: Request) => Promis
   async function signUp(name: string, password = 'motdepasse-test') {
     const sb = client();
     const email = `${name.toLowerCase()}.${crypto.randomUUID().slice(0, 6)}@exemple.test`;
-    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { display_name: name } } });
+    const captcha = o.captcha ? { captchaToken: 'jeton-anti-robots-de-test' } : {};
+    const { data, error } = await sb.auth.signUp({ email, password, options: { data: { display_name: name }, ...captcha } });
     if (error) throw error;
     return { sb, id: data.user!.id, email, password };
   }

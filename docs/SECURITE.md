@@ -131,6 +131,9 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - Avec une clé Cloudflare Turnstile configurée, l'inscription, la connexion, « mot de passe oublié » et le changement de
   mot de passe exigent un jeton vérifié par Supabase ; le script de Cloudflare n'est chargé que sur ces écrans. Sans clé,
   rien ne change.
+- Suppression du compte : c'est le serveur qui revérifie le mot de passe, avec sa clé ; Supabase ne demande pas de jeton
+  pour un tel appel (code de supabase/auth, `verifyCaptcha`). D'où une limite : 5 essais par quart d'heure. À vérifier
+  en ligne avec un compte de test après l'activation de Turnstile.
 - La politique de sécurité du contenu n'autorise que le projet Supabase configuré (plus tout `*.supabase.co`), et
   Cloudflare seulement avec la clé ; `check-dist` refuse tout écart. Changer d'adresse ou ajouter la clé demande un nouvel
   export du site.
@@ -146,6 +149,30 @@ Contrat complet : `docs/INTEGRATION-NOUS.md`.
   voit tout de suite.
 - **Anti-rejeu** : l'empreinte SHA-256 de chaque signature acceptée est gardée 10 minutes (`eco_replay`) ; une requête
   rejouée est refusée (401 `replay`) ; si la vérification est impossible, la requête est refusée.
+
+## Limites et durcissements côté serveur
+
+- **Limites de fréquence**, par personne, sur une fenêtre glissante, comptées par la base (`rate_take`) : liens
+  d'invitation 30 par 24 heures (en plus des 20 liens actifs au plus) ; notification d'essai 5 par heure ; Open Food
+  Facts (photo officielle, indice du code-barres) 30 par 10 minutes ; envoi immédiat vers l'agenda Nous 20 par
+  10 minutes (au-delà, la tâche planifiée prend le relais dans la minute) ; mot de passe revérifié pour supprimer le
+  compte 5 par quart d'heure. Les compteurs ne gardent que l'action, le compte et l'heure.
+- **Appels depuis un navigateur (CORS)** : seul le site peut lire les réponses de cave-api (`CAVE_APP_URL`, sinon
+  `https://cave-et-amis.github.io`) ; `ALLOWED_ORIGINS` pour en choisir d'autres. Sans effet sur Nous et les tâches
+  planifiées.
+- **Taille des requêtes** : 200 Ko au plus pour l'application, 64 Ko pour Nous et les tâches planifiées, contrôlée avant
+  de tout lire ; une photo trop lourde est refusée sans appel à l'IA.
+- **Journal des erreurs techniques** : nettoyé par la base elle-même (`clean_error_detail`), quelle que soit la version de
+  cave-api : ni passage entre guillemets (souvent un texte saisi), ni clé, ni jeton, ni adresse e-mail ; 200 caractères
+  au plus.
+- **Cache partagé du scanner** (analyse 90 jours, prix 72 heures) : sa clé est l'empreinte de tout ce que l'IA reçoit pour
+  le vin, de son identité et de la devise ; une fiche retouchée ne peut pas fausser le résultat montré aux autres.
+- **Suppression d'un compte** : chez les autres, son prénom devient « Ancien membre » dans les notifications et l'activité
+  des groupes ; ses photos sont supprimées avec un nouvel essai, et ce qui reste est noté sans nom de fichier puis repris
+  par la purge mensuelle.
+- **Serveur local** : joignable seulement depuis le poste (127.0.0.1), sauf avec `--lan`.
+- **Export du site** (`check-dist`) : aucun secret dans aucun fichier texte (clés Supabase et Anthropic, clés privées PEM
+  ou JWK, jetons GitHub), en plus de la politique de sécurité du contenu.
 
 ## Sauvegardes
 
@@ -170,6 +197,7 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 | Demandes de contact ou d'accès refusées | 6 mois |
 | Analyses du scanner (avec leurs photos) et visites vides | 30 jours (réglage `scan_retention_days`), purgées chaque nuit même si la personne ne revient pas |
 | Appareils de notification en échec | 90 jours sans succès |
+| Compteurs des limites de fréquence | effacés après un jour (deux au plus), et avec le compte |
 | Photos qui ne servent plus | chaque mois : fichiers de plus de 30 jours qu'aucune fiche, dégustation, groupe, vin d'événement ou analyse ne cite, supprimés par le stockage (jamais par SQL) |
 | Preuves d'acceptation et consentements | durée du compte, puis 5 ans |
 | Comptes inactifs | rien d'automatique pour l'instant |

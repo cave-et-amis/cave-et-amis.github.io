@@ -6,12 +6,13 @@ import { makeEnv, TEST_PUBLIC_KEY, TEST_SERVICE_KEY, TEST_URL } from '../helpers
 /**
  * Environnement complet : base, faux Supabase, fonction serveur réelle, faux Anthropic (tests uniquement).
  * `serverFetch` : enveloppe les appels de la fonction serveur au faux Supabase (pour simuler une panne).
+ * `captcha` : protection CAPTCHA simulée par le faux Supabase.
  */
 export async function makeAiEnv(
-  o: { withKey?: boolean; webFetch?: typeof fetch; pushFetch?: typeof fetch; serverFetch?: (base: typeof fetch) => typeof fetch } = {},
+  o: { withKey?: boolean; webFetch?: typeof fetch; pushFetch?: typeof fetch; serverFetch?: (base: typeof fetch) => typeof fetch; captcha?: boolean } = {},
 ) {
   const functions: Record<string, (req: Request) => Promise<Response>> = {};
-  const env = await makeEnv(functions);
+  const env = await makeEnv(functions, { captcha: o.captcha });
   const anthropic = createAnthropicMock();
   const handler = createApiHandler(
     {
