@@ -1,7 +1,7 @@
 /** État partagé de l'application connectée : données, personne connectée, actions avec gestion des erreurs. */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Api, Snapshot } from './api';
-import type { Cellar, CellarLink, Location, Lot, Profile, Relation, Wine } from '../domain/types';
+import type { Cellar, CellarLink, Location, Lot, PersonName, Profile, Relation, Wine } from '../domain/types';
 import { errorCode, toMessage } from '../domain/errors';
 import { deName } from '../domain/format';
 import { useToast } from '../ui/kit';
@@ -15,8 +15,8 @@ export type StoreValue = {
   email: string;
   snapshot: Snapshot;
   me: Profile;
-  /** Personnes en relation, amis et simples contacts (profils) : on peut les inviter à un groupe, un événement, une cave. */
-  friends: Profile[];
+  /** Personnes en relation, amis et simples contacts (prénoms) : on peut les inviter à un groupe, un événement, une cave. */
+  friends: PersonName[];
   /** Qui voit la cave de qui, pour une personne en relation. */
   relation: (id: string | null | undefined) => Relation | undefined;
   /** « Ami » : au moins une cave ouverte, dans un sens ou dans l'autre ; sinon simple contact. */
@@ -66,8 +66,8 @@ export function StoreProvider({
 
   const friends = useMemo(() => {
     const ids = new Set(snapshot.friendships.map((f) => (f.user_a === userId ? f.user_b : f.user_a)));
-    return snapshot.profiles.filter((p) => ids.has(p.id));
-  }, [snapshot.friendships, snapshot.profiles, userId]);
+    return snapshot.people.filter((p) => ids.has(p.id));
+  }, [snapshot.friendships, snapshot.people, userId]);
 
   const profileName = useCallback(
     (id: string | null | undefined) => {
@@ -76,12 +76,12 @@ export function StoreProvider({
       // Les personnes d'une cave partagée sont nommées même si elles ne sont (plus) dans mes amis.
       const link = snapshot.cellarLinks.find((l) => l.user_id === id || l.owner_id === id);
       return (
-        snapshot.profiles.find((p) => p.id === id)?.display_name ??
+        snapshot.people.find((p) => p.id === id)?.display_name ??
         (link ? (link.user_id === id ? link.user_name : link.owner_name) : undefined) ??
         'Un ancien contact'
       );
     },
-    [snapshot.profiles, snapshot.cellarLinks, userId],
+    [snapshot.people, snapshot.cellarLinks, userId],
   );
 
   const lotsByWine = useMemo(() => {

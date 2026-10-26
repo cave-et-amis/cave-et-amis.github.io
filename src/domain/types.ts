@@ -21,6 +21,8 @@ export type Profile = {
   show_shared_wines: boolean;
   created_at: string;
 };
+/** Une autre personne telle que je la vois (contact, participant d'un même événement) : rien d'autre que son prénom. */
+export type PersonName = { id: string; display_name: string };
 
 /**
  * Demande en attente, reçue (« in ») ou envoyée (« out »). open_cellar : la personne qui demande ouvre aussi sa cave
