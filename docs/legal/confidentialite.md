@@ -78,7 +78,7 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 
 ### L'agenda Nous (facultatif)
 
-- Au moment de la liaison : votre prénom et votre adresse e-mail (pour préremplir votre compte Nous), puis vos identifiants dans les deux applications. Nous envoie le prénom de votre compte Nous : il s'affiche dans les Réglages et dans l'avis de liaison ajouté à vos notifications (« Votre compte est relié à l'agenda Nous de… »).
+- Au moment de la liaison : votre prénom et votre adresse e-mail (pour préremplir votre compte Nous), puis vos identifiants dans les deux applications. Un avis s'ajoute alors à vos notifications (« Votre compte est relié à un agenda Nous. Ce n'est pas vous ? Déliez-le dans les Réglages. »).
 - Votre choix d'ouvrir ou non Cave & Amis depuis Nous sans mot de passe (désactivé au départ), gardé avec la liaison.
 - Ensuite, pour chaque événement auquel vous participez : type, titre, état, dates, lieu, description, thème, prénom de l'organisateur, prénoms et réponses de tous les participants, vins prévus (nom, producteur, millésime, couleur, quantité, état, prénom du propriétaire) et lien vers l'événement. Jamais votre budget, vos prix ni votre stock. En retour, Nous envoie votre réponse (oui, peut-être, non).
 - Nous est l'agenda de l'application Cocon, qui a le même responsable de traitement.
