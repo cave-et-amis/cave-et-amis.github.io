@@ -6,7 +6,7 @@
  * le navigateur). Sans ce secret ou sans l'adresse de Nous, l'intégration est simplement désactivée.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AiFailure, isUuid, sanitize, type ApiEnv } from './util.ts';
+import { AiFailure, isUuid, rateOk, sanitize, type ApiEnv } from './util.ts';
 
 /** Écart maximal accepté entre l'horodatage d'une requête signée et l'heure du serveur. */
 export const ECO_WINDOW_MS = 5 * 60_000;
@@ -139,6 +139,12 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
     return { sent, failed };
   }
 
+  /** Envoi immédiat demandé depuis l'application : nombre limité par personne ; au-delà, la tâche planifiée s'en charge. */
+  async function nudge(userId: string, limit: number) {
+    if (enabled() && !(await rateOk(svc, 'nous_flush', userId).catch(() => false))) return { sent: 0, failed: 0, later: true };
+    return flush(limit);
+  }
+
   // ───────────── Actions de la personne connectée ─────────────
 
   async function handleUser(action: string, body: Record<string, unknown>, user: SupabaseClient, userId: string): Promise<Record<string, unknown>> {
@@ -161,18 +167,18 @@ export function createNous(env: ApiEnv, svc: SupabaseClient, fetchImpl: typeof f
         const { error } = await user.rpc('nous_unlink');
         if (error) throw new AiFailure(sqlCode(error) ?? 'internal', sanitize(error.message));
         // Nous est prévenu tout de suite (sinon par la tâche planifiée).
-        await flush(20).catch(() => undefined);
+        await nudge(userId, 20).catch(() => undefined);
         return { unlinked: true };
       }
       case 'nous_set_sync': {
         const { error } = await user.rpc('nous_set_sync', { p_enabled: body.enabled === true });
         if (error) throw new AiFailure(sqlCode(error) ?? 'internal', sanitize(error.message));
-        await flush(50).catch(() => undefined);
+        await nudge(userId, 50).catch(() => undefined);
         return { sync_enabled: body.enabled === true };
       }
       // Appelé par l'application juste après une modification d'événement : l'agenda Nous est à jour sans attendre le cron.
       case 'nous_flush':
-        return flush(20);
+        return nudge(userId, 20);
       case 'nous_jump': {
         const link = await linkOf(userId);
         if (!link) throw new AiFailure('not_linked');

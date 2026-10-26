@@ -48,10 +48,14 @@ export function webSearchTool(model: string, maxUses: number, blockedDomains?: s
     : { type: 'web_search_20250305' as const, name: 'web_search' as const, max_uses: maxUses, user_location: userLocation, ...blocked };
 }
 
+/** Adresse officielle de l'API, seule utilisée en ligne. */
+export const ANTHROPIC_API_URL = 'https://api.anthropic.com';
+
 export function makeClient(env: ApiEnv, fetchImpl?: typeof fetch) {
   return new Anthropic({
     apiKey: env.anthropicKey,
-    baseURL: env.anthropicBaseUrl,
+    // Toujours explicite : sans elle, la bibliothèque lirait ANTHROPIC_BASE_URL dans l'environnement du serveur.
+    baseURL: env.anthropicBaseUrl ?? ANTHROPIC_API_URL,
     // Aucune nouvelle tentative automatique : un appel relancé pourrait être facturé deux fois pour une seule enveloppe.
     maxRetries: 0,
     timeout: 90_000,
@@ -59,22 +63,29 @@ export function makeClient(env: ApiEnv, fetchImpl?: typeof fetch) {
   });
 }
 
+/** Détail d'une erreur de l'API pour le journal : statut, type et message du service (jamais la requête envoyée). */
+function apiDetail(e: InstanceType<typeof Anthropic.APIError>) {
+  const body = (e.error ?? {}) as { error?: { type?: unknown; message?: unknown } };
+  const parts = [`Erreur ${e.status ?? '?'}`, body.error?.type, body.error?.message].filter((p): p is string | number => typeof p === 'string' || typeof p === 'number');
+  return sanitize(parts.join(' : '));
+}
+
 /** Erreur de l'API Anthropic → code applicatif (sans jamais recopier de secret). */
 export function mapAnthropicError(e: unknown): AiFailure {
   if (e instanceof AiFailure) return e;
   if (e instanceof Anthropic.AuthenticationError) return new AiFailure('invalid_key', 'Clé API refusée (401)');
-  if (e instanceof Anthropic.PermissionDeniedError) return new AiFailure('invalid_key', `Accès refusé (403) : ${sanitize(e.message)}`);
-  if (e instanceof Anthropic.NotFoundError) return new AiFailure('model_not_found', sanitize(e.message));
+  if (e instanceof Anthropic.PermissionDeniedError) return new AiFailure('invalid_key', apiDetail(e));
+  if (e instanceof Anthropic.NotFoundError) return new AiFailure('model_not_found', apiDetail(e));
   if (e instanceof Anthropic.RateLimitError) return new AiFailure('upstream_rate_limited', 'Limite de débit Anthropic (429)');
   if (e instanceof Anthropic.BadRequestError) {
-    if (/web.search/i.test(e.message)) return new AiFailure('web_search_unavailable', sanitize(e.message));
-    return new AiFailure('bad_request', sanitize(e.message));
+    if (/web.search/i.test(e.message)) return new AiFailure('web_search_unavailable', apiDetail(e));
+    return new AiFailure('bad_request', apiDetail(e));
   }
   if (e instanceof Anthropic.APIConnectionTimeoutError) return new AiFailure('service_unavailable', 'Délai dépassé');
   if (e instanceof Anthropic.APIConnectionError) return new AiFailure('service_unavailable', 'Connexion impossible');
   if (e instanceof Anthropic.APIError) {
     if ((e.status ?? 0) >= 500) return new AiFailure('service_unavailable', `Erreur ${e.status} du service`);
-    return new AiFailure('bad_request', `Erreur ${e.status} : ${sanitize(e.message)}`);
+    return new AiFailure('bad_request', apiDetail(e));
   }
   return new AiFailure('internal', sanitize((e as Error)?.message ?? e));
 }

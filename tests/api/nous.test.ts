@@ -277,3 +277,20 @@ describe('liaison et synchronisation', () => {
     expect(env.sent.at(-1)).toMatchObject({ action: 'event.upsert', event: { place: 'Ailleurs' } });
   });
 });
+
+describe('envoi immédiat demandé par l’application (audit, F4)', () => {
+  it('20 par 10 minutes et par personne ; au-delà, la tâche planifiée prend le relais', async () => {
+    const env = await makeNousEnv();
+    const { bruno, claire, eventId } = await friendsWithEvent(env);
+    await linkClaire(env, claire);
+    for (let i = 0; i < 20; i++) expect(await call(bruno.sb, { action: 'nous_flush' })).toMatchObject({ ok: true, failed: 0 });
+    const count = env.sent.length;
+    await bruno.sb.from('events').update({ place: 'Ailleurs' }).eq('id', eventId);
+    expect(await call(bruno.sb, { action: 'nous_flush' })).toMatchObject({ ok: true, sent: 0, failed: 0, later: true });
+    expect(env.sent.length).toBe(count);
+    // La tâche planifiée, elle, n'est pas limitée.
+    const token = (await env.db.query<{ cron_token: string }>(`select cron_token from nous_config where id = 1`)).rows[0].cron_token;
+    expect(await env.cron(token)).toMatchObject({ status: 200, ok: true, sent: 1 });
+    expect(env.sent.at(-1)).toMatchObject({ action: 'event.upsert', event: { place: 'Ailleurs' } });
+  });
+});

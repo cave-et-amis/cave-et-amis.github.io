@@ -65,7 +65,9 @@ npm run local -- --demo
 
 Ouvrez <http://localhost:5173>. Comptes de **démonstration** (données fictives, uniquement dans la base locale `.local/`) :
 `alex@demo.local`, `camille@demo.local`, `sam@demo.local`, mot de passe `demo-cave-2026`. Sans `--demo`, la base locale
-démarre vide. Depuis un téléphone sur le même Wi-Fi : l'adresse « Network » affichée.
+démarre vide. Le serveur local n'est joignable que depuis ce poste. Depuis un téléphone sur le même Wi-Fi :
+`npm run local -- --demo --lan`, puis l'adresse « Network » affichée (réseau de confiance seulement : les comptes locaux
+ne sont pas protégés comme en ligne).
 
 L'assistant fonctionne en local **si** la variable d'environnement `ANTHROPIC_API_KEY` est définie dans votre session Windows
 (elle reste côté serveur local) ; sinon il s'affiche « non configuré » et tout le reste fonctionne.
@@ -74,7 +76,7 @@ L'assistant fonctionne en local **si** la variable d'environnement `ANTHROPIC_AP
 
 | Commande | Rôle |
 | --- | --- |
-| `npm run local` | Serveur local tout-en-un (base PostgreSQL PGlite, comptes, photos, fonction serveur) + interface. Options : `--demo`, `--reset` |
+| `npm run local` | Serveur local tout-en-un (base PostgreSQL PGlite, comptes, photos, fonction serveur) + interface. Options : `--demo`, `--reset`, `--lan` (réseau local) |
 | `npm run build` | Export de production dans `dist/` (+ `config.production.js`), contrôle des secrets et du code local |
 | `npm run build:function` | Regroupe la fonction serveur dans `supabase/functions/cave-api/index.ts` (à déployer sur Supabase) |
 | `npm run package:site` | Export + archive `livraison/cave-et-amis-site.zip` pour Netlify |

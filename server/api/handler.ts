@@ -22,8 +22,8 @@ import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpir
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { wineKey } from '../../src/domain/scan.ts';
 import type { ScanAssessment, ScanMarket, ScanWine } from '../../src/domain/types.ts';
-import { ASSESS_CACHE_DAYS, assessWine, emptyAssessment, emptyMarket, PRICE_CACHE_HOURS, searchMarket } from './scanAssess.ts';
-import { AiFailure, corsHeaders, isUuid, json, sanitize, type ApiEnv } from './util.ts';
+import { ASSESS_CACHE_DAYS, assessWine, emptyAssessment, emptyMarket, PRICE_CACHE_HOURS, scanCacheKey, searchMarket } from './scanAssess.ts';
+import { AiFailure, corsHeaders, isUuid, json, rateOk, readCapped, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
 
 export type ApiDeps = {
@@ -39,6 +39,9 @@ export type ApiDeps = {
   pushFetch?: typeof fetch;
   now?: () => Date;
 };
+
+/** Taille maximale du corps d'une requête de l'application (les photos passent par le stockage, jamais par ici). */
+export const MAX_BODY_BYTES = 200_000;
 
 const TECHNICAL = new Set(['invalid_key', 'service_unavailable', 'upstream_rate_limited', 'bad_request', 'internal', 'model_not_found', 'price_unknown', 'web_search_unavailable']);
 
@@ -109,6 +112,24 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
   }
 
+  /**
+   * Supprime les fichiers du dossier de photos d'une personne, en vérifiant chaque résultat. Renvoie le nombre de fichiers
+   * restants (0 : dossier vide), ou null si le stockage n'a pas répondu.
+   */
+  async function removeFolder(userId: string): Promise<number | null> {
+    for (let round = 0; round < 20; round++) {
+      const { data: files, error } = await svc.storage.from('photos').list(userId, { limit: 1000 });
+      if (error) return null;
+      // Un sous-dossier n'a pas d'identifiant : il est laissé à la purge mensuelle des photos qui ne servent plus.
+      const names = (files ?? []).filter((f) => f.id).map((f) => `${userId}/${f.name}`);
+      if (!names.length) return 0;
+      // Refus, ou rien d'effacé : inutile d'insister ici.
+      const { data: removed, error: removeError } = await svc.storage.from('photos').remove(names);
+      if (removeError || !removed?.length) return names.length;
+    }
+    return null;
+  }
+
   /** Vérifie le mot de passe d'une personne, par le serveur de connexion (sans rien garder). */
   async function passwordOk(userId: string, password: string) {
     const { data, error } = await svc.auth.admin.getUserById(userId);
@@ -132,6 +153,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       case 'push_subscribe':
         return push.subscribe(userId, body);
       case 'push_test':
+        if (!(await rateOk(svc, 'push_test', userId))) throw new AiFailure('push_test_rate_limited');
         return push.test(userId);
       case 'status': {
         const { data, error } = await user.rpc('my_ai_status');
@@ -206,8 +228,10 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           const { data: quota } = await svc.rpc('scan_quota', { p_user: userId });
           const q = quota as { used: number; limit: number } | null;
           if (q && q.used >= q.limit) throw new AiFailure('scan_quota');
-          // Indice facultatif : le produit Open Food Facts du code-barres (sans coût ; ignoré s'il ne répond pas).
-          const off = typed ? await offProduct(webFetch, typed).catch(() => null) : null;
+          // Indice facultatif : le produit Open Food Facts du code-barres (sans coût ; ignoré s'il ne répond pas, ou si la
+          // personne a atteint sa limite d'appels à Open Food Facts).
+          const offAllowed = typed ? await rateOk(svc, 'off', userId).catch(() => false) : false;
+          const off = typed && offAllowed ? await offProduct(webFetch, typed).catch(() => null) : null;
           const hint = off ? sanitize(`code-barres ${typed} — produit « ${off.product_name ?? ''} »${off.brands ? `, marque « ${Array.isArray(off.brands) ? off.brands.join(', ') : off.brands} »` : ''}`, 300) : null;
           const maxTokens = Math.min(s.max_output_tokens * 2, 6000);
           result = await metered(
@@ -254,8 +278,9 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         const key = wineKey(scan.wine);
         const searchOff = !s.web_search_enabled || s.max_web_searches <= 0;
         const estimate = (m: Meter) => m.estimate({ chars: 8_000, webSearches: s.max_web_searches, maxTokens: Math.min(s.max_output_tokens * 2, 6000) });
-        // Cache du serveur : l'analyse d'un vin vaut 90 jours, un relevé de prix 72 heures (même vin, même devise).
-        const cacheKey = action === 'scan_quality' ? `assess:v1:${key}` : `price:v1:${key}:${scan.currency}`;
+        // Cache du serveur, commun à tous : l'analyse d'un vin vaut 90 jours, un relevé de prix 72 heures. Sa clé couvre tout
+        // ce que l'IA reçoit (même description du vin, même devise) : une fiche retouchée ne fausse pas le résultat des autres.
+        const cacheKey = action === 'scan_quality' ? await scanCacheKey('assess', scan.wine) : await scanCacheKey('price', scan.wine, scan.currency);
         const { data: cached } = await svc.from('scan_cache').select('value').eq('key', cacheKey).gt('expires_at', t.toISOString()).maybeSingle();
         const hit = (cached as { value: ScanAssessment | ScanMarket } | null)?.value ?? null;
         const remember = async (value: ScanAssessment | ScanMarket, ms: number) => {
@@ -290,11 +315,13 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         return { market, from_cache: Boolean(hit) };
       }
 
-      // Photo officielle (Open Food Facts) : sans IA, sans coût.
+      // Photo officielle (Open Food Facts) : sans IA, sans coût ; nombre d'appels limité par personne.
       case 'photo_search':
+        if (!(await rateOk(svc, 'off', userId))) throw new AiFailure('photo_rate_limited');
         return { candidates: await searchPhotos(webFetch, body) };
 
       case 'photo_import':
+        if (!(await rateOk(svc, 'off', userId))) throw new AiFailure('photo_rate_limited');
         return importPhoto(webFetch, user, userId, body.code);
 
       case 'admin_test':
@@ -304,19 +331,26 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         if (body.confirm !== 'SUPPRIMER') throw new AiFailure('invalid');
         // Mot de passe redemandé : une session volée ou un appareil resté ouvert ne suffit pas pour supprimer le compte.
         if (typeof body.password !== 'string' || !body.password || !(await passwordOk(userId, body.password))) throw new AiFailure('invalid_password');
-        // 1. Libère les réservations et supprime lots, vins et caves (sinon la cascade bute sur « cave non vide »).
+        // 1. Contrôle de la session (la fonction ne supprime plus rien : voir 20261031000001_securite_priorite1.sql).
         const { error } = await user.rpc('prepare_account_deletion');
         if (error) throw new AiFailure('internal', sanitize(error.message));
-        // 2. Supprime le compte (profil, carnet, conversations… en cascade).
+        // 2. Supprime le compte, tout ou rien : le nettoyage (réservations, lots, vins, caves, prénom chez les autres) a lieu
+        //    dans la même transaction, puis profil, carnet, conversations… en cascade.
         const del = await svc.auth.admin.deleteUser(userId);
         if (del.error) throw new AiFailure('internal', sanitize(del.error.message));
         // 3. Seulement ensuite : toutes les photos du dossier de la personne, même celles qui ne sont plus reliées à rien.
-        for (let i = 0; i < 20; i++) {
-          const { data: files } = await svc.storage.from('photos').list(userId, { limit: 1000 });
-          const names = (files ?? []).map((f) => `${userId}/${f.name}`);
-          if (!names.length) break;
-          await svc.storage.from('photos').remove(names);
-          if (names.length < 1000) break;
+        //    Résultat vérifié, un nouvel essai en cas d'échec. Ce qui reste est noté dans le journal technique (sans nom de
+        //    fichier ni identifiant) et sera effacé par la purge mensuelle des photos qui ne servent plus. Le compte est
+        //    bien supprimé : la réponse ne change pas.
+        let left = await removeFolder(userId).catch(() => null);
+        if (left !== 0) left = await removeFolder(userId).catch(() => null);
+        if (left !== 0) {
+          const detail = left === null ? 'Stockage injoignable : photos laissées à la purge mensuelle' : `${left} photo(s) laissée(s) à la purge mensuelle`;
+          try {
+            await svc.rpc('ai_log_error', { p_user: null, p_action: 'delete_account', p_code: 'photos_left', p_detail: detail, p_model: null });
+          } catch {
+            // Journal indisponible : la purge mensuelle reste le filet de sécurité.
+          }
         }
         return { deleted: true };
       }
@@ -364,8 +398,9 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
 
   /** Requêtes sans session : venues du serveur Nous (signées) ou de la tâche planifiée (jeton du cron). */
   async function serveMachine(req: Request, cors: Record<string, string>): Promise<Response> {
-    const text = await req.text();
-    if (text.length > ECO_MAX_BODY) return json({ ok: false, code: 'invalid' }, 413, cors);
+    const bytes = await readCapped(req.body, ECO_MAX_BODY, req.headers.get('content-length'));
+    if (!bytes) return json({ ok: false, code: 'invalid' }, 413, cors);
+    const text = new TextDecoder().decode(bytes);
     let body: Record<string, unknown>;
     try {
       body = JSON.parse(text || '{}') as Record<string, unknown>;
@@ -409,8 +444,10 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
 
     let body: Record<string, unknown>;
     try {
-      const text = await req.text();
-      if (text.length > 200_000) return json({ ok: false, code: 'message_too_long', message: AI_MESSAGES.message_too_long }, 413, cors);
+      // Taille contrôlée avant de tout lire : annoncée (Content-Length), puis pendant la lecture.
+      const bytes = await readCapped(req.body, MAX_BODY_BYTES, req.headers.get('content-length'));
+      if (!bytes) return json({ ok: false, code: 'message_too_long', message: AI_MESSAGES.message_too_long }, 413, cors);
+      const text = new TextDecoder().decode(bytes);
       body = JSON.parse(text || '{}') as Record<string, unknown>;
     } catch {
       return json({ ok: false, code: 'invalid', message: AI_MESSAGES.invalid }, 400, cors);

@@ -9,7 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { fold } from '../../src/domain/wine.ts';
 import { mediaType } from './label.ts';
-import { AiFailure, sanitize } from './util.ts';
+import { AiFailure, readCapped, sanitize } from './util.ts';
 
 const OFF = 'https://world.openfoodfacts.org';
 const SEARCH = 'https://search.openfoodfacts.org/search';
@@ -125,9 +125,13 @@ export async function importPhoto(fetchImpl: typeof fetch, user: SupabaseClient,
   for (const url of [small.replace(/\.\d+\.jpg$/, '.full.jpg'), small]) {
     try {
       const res = await fetchImpl(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(15_000) });
-      if (!res.ok) continue;
-      const b = new Uint8Array(await res.arrayBuffer());
-      if (b.byteLength > 0 && b.byteLength <= MAX_BYTES && mediaType(b)) {
+      if (!res.ok) {
+        await res.body?.cancel().catch(() => undefined);
+        continue;
+      }
+      // Taille contrôlée avant de tout lire : annoncée, puis pendant la lecture.
+      const b = await readCapped(res.body, MAX_BYTES, res.headers.get('content-length'));
+      if (b && b.byteLength > 0 && mediaType(b)) {
         bytes = b;
         break;
       }

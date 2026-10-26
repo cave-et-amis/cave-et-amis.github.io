@@ -200,10 +200,10 @@ export function PrivacyPage() {
         </p>
         <p className="small">
           <strong>Supprimer votre compte</strong> efface votre profil, vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et
-          invitations, ainsi que les événements que vous organisez (pour tous leurs participants). Restent chez les autres : votre prénom dans leurs
-          notifications et dans l’activité de leurs groupes, et les envies que vous avez proposées dans un groupe (sans votre nom). Les journaux d’usage de
-          l’assistant sont gardés sans votre identifiant jusqu’à la fin de leur durée. La preuve que vous aviez accepté les conditions d’utilisation est
-          gardée 5 ans, puis effacée. Si votre agenda Nous est relié, vos événements y sont mis à la corbeille.
+          invitations, ainsi que les événements que vous organisez (pour tous leurs participants). Chez les autres, votre prénom est remplacé par
+          « Ancien membre » dans leurs notifications et dans l’activité de leurs groupes ; les envies que vous avez proposées dans un groupe restent, sans
+          votre nom. Les journaux d’usage de l’assistant sont gardés sans votre identifiant jusqu’à la fin de leur durée. La preuve que vous aviez
+          accepté les conditions d’utilisation est gardée 5 ans, puis effacée. Si votre agenda Nous est relié, vos événements y sont mis à la corbeille.
         </p>
         <Button variant="danger-ghost" icon={<Trash2 />} onClick={() => setDeleting(true)}>
           Supprimer mon compte

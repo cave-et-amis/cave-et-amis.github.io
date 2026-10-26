@@ -19,6 +19,8 @@ const DB_MESSAGES: Record<string, string> = {
   already_reversed: 'Ce mouvement a déjà été annulé.',
   cannot_reverse: 'Une annulation ne peut pas être annulée : faites plutôt une correction de quantité.',
   too_many_invites: 'Vous avez déjà 20 liens d’invitation actifs : révoquez-en avant d’en créer d’autres.',
+  invite_rate_limited:
+    'Vous avez créé beaucoup de liens d’invitation ces dernières 24 heures : réessayez plus tard, ou partagez à nouveau un lien déjà créé (Mes invitations).',
   invite_invalid: 'Ce code d’invitation n’existe pas. Vérifiez qu’il a été bien recopié.',
   invite_used: 'Cette invitation a déjà servi. Demandez un nouveau lien à votre ami.',
   invite_expired: 'Cette invitation a expiré. Demandez un nouveau lien à votre ami.',
@@ -89,6 +91,8 @@ export const AI_MESSAGES: Record<string, string> = {
   image_too_large: 'La photo est trop lourde. Reprenez-la ou choisissez-en une autre.',
   image_invalid: 'Cette photo n’a pas pu être lue. Essayez une photo au format JPEG ou PNG.',
   photo_service_unavailable: 'Open Food Facts ne répond pas pour le moment. Réessayez plus tard, ou gardez votre propre photo.',
+  photo_rate_limited: 'Beaucoup de recherches de photos en peu de temps : réessayez dans quelques minutes, ou gardez votre propre photo.',
+  push_test_rate_limited: 'Vous avez déjà envoyé plusieurs notifications d’essai : réessayez dans une heure.',
   scan_quota: 'Vous avez atteint votre nombre d’analyses de bouteilles pour aujourd’hui. Vous pouvez saisir le vin à la main ; le reste de l’application fonctionne normalement.',
   scan_unconfirmed: 'Vérifiez et confirmez d’abord la bouteille : Lia n’analyse que le vin que vous avez confirmé.',
   refused: 'L’assistant n’a pas pu répondre à cette demande. Reformulez-la.',

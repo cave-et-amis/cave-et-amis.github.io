@@ -1,6 +1,7 @@
 /**
  * Durées de conservation (validées le 26/10/2026), appliquées par les tâches planifiées (supabase/sql/conservation.sql) :
- * chaque nuit, la purge de la base (retention_purge) puis les analyses du scanner arrivées à échéance, avec leurs photos ;
+ * chaque nuit, la purge de la base (retention_purge) puis les analyses du scanner arrivées à échéance, avec leurs photos,
+ * et les compteurs des limites de fréquence (rate_purge) ;
  * chaque mois, les photos de plus de 30 jours que plus rien ne cite. Les photos passent par le stockage (jamais par SQL,
  * qui laisserait les fichiers en place).
  */
@@ -44,7 +45,10 @@ export async function purgeRetention(svc: SupabaseClient, now: Date) {
   // Après les analyses : les visites devenues vides peuvent partir avec la purge de la base.
   const { data, error } = await svc.rpc('retention_purge');
   if (error) throw new AiFailure('internal', sanitize(error.message));
-  return { scans, ...((data ?? {}) as Record<string, number>) };
+  // Compteurs des limites de fréquence : un jour.
+  const { data: rateHits, error: rateError } = await svc.rpc('rate_purge');
+  if (rateError) throw new AiFailure('internal', sanitize(rateError.message));
+  return { scans, ...((data ?? {}) as Record<string, number>), rate_hits: Number(rateHits ?? 0) };
 }
 
 /** Purge mensuelle : photos de plus de 30 jours qu'aucune fiche, dégustation, groupe, vin d'événement ou analyse ne cite. */

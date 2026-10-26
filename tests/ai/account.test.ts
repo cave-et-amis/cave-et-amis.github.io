@@ -46,11 +46,56 @@ describe('suppression de compte', () => {
     expect((await env.db.query(`select name from storage.objects where name like $1`, [`${claire.id}/%`])).rows).toHaveLength(0);
     expect((await env.db.query(`select name from storage_local.blobs where name like $1`, [`${claire.id}/%`])).rows).toHaveLength(0);
 
+    // Chez Bruno, la notification reste, avec « Ancien membre » à la place du prénom de Claire (audit, R5).
+    const { data: notes } = await bruno.sb.from('notifications').select('kind, actor_name').eq('kind', 'invite_joined');
+    expect(notes).toEqual([{ kind: 'invite_joined', actor_name: 'Ancien membre' }]);
+
     // La bouteille de Bruno suggérée par Claire reste prévue et réservée.
     const rows = (await env.db.query<{ status: string; proposed_by: string | null }>(`select status, proposed_by from event_wines where owner_id = $1`, [bruno.id])).rows;
     expect(rows).toEqual([{ status: 'confirmed', proposed_by: null }]);
     const stock = (await env.db.query<{ reserved: number }>(`select reserved from lots where id = $1`, [(brunoLot as { id: string }).id])).rows[0];
     expect(stock.reserved).toBe(2);
+  });
+
+  it('photos : suppression vérifiée, un nouvel essai ; ce qui reste est noté sans nom de fichier, le compte est bien supprimé (audit, R5)', async () => {
+    // Le stockage refuse les `failures` prochaines suppressions de fichiers.
+    let failures = 0;
+    const serverFetch = (base: typeof fetch) =>
+      (async (input: RequestInfo | URL, init?: RequestInit) => {
+        const req = new Request(input as RequestInfo, init);
+        if (req.method === 'DELETE' && new URL(req.url).pathname === '/storage/v1/object/photos' && failures > 0) {
+          failures -= 1;
+          return Response.json({ statusCode: '500', error: 'panne', message: 'Stockage en panne' }, { status: 500 });
+        }
+        return base(req);
+      }) as typeof fetch;
+    const env = await makeAiEnv({ serverFetch });
+    const files = (id: string) => env.db.query<{ name: string }>(`select name from storage.objects where name like $1`, [`${id}/%`]).then((r) => r.rows.map((x) => x.name));
+    const errors = () => env.db.query(`select user_id, action, code, detail from ai_errors`).then((r) => r.rows);
+    const withPhoto = async (name: string) => {
+      const who = await env.signUp(name);
+      const up = await who.sb.storage.from('photos').upload(`${who.id}/etiquette.jpg`, new Blob([TINY_JPEG], { type: 'image/jpeg' }), { contentType: 'image/jpeg' });
+      expect(up.error).toBeNull();
+      return who;
+    };
+
+    // Une panne passagère : le nouvel essai suffit, rien n'est noté.
+    const claire = await withPhoto('Claire');
+    failures = 1;
+    expect(await call(claire.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: claire.password })).toMatchObject({ ok: true, deleted: true });
+    expect(await files(claire.id)).toEqual([]);
+    expect(await errors()).toEqual([]);
+
+    // Une panne durable : le compte est bien supprimé (même réponse) ; la photo restante est notée dans le journal technique,
+    // sans nom de fichier ni identifiant, et la purge mensuelle des photos qui ne servent plus la retrouve.
+    const marc = await withPhoto('Marc');
+    failures = 99;
+    expect(await call(marc.sb, { action: 'delete_account', confirm: 'SUPPRIMER', password: marc.password })).toMatchObject({ ok: true, deleted: true });
+    expect((await env.db.query(`select 1 from auth.users where id = $1`, [marc.id])).rows).toHaveLength(0);
+    expect(await errors()).toEqual([{ user_id: null, action: 'delete_account', code: 'photos_left', detail: '1 photo(s) laissée(s) à la purge mensuelle' }]);
+    expect(await files(marc.id)).toEqual([`${marc.id}/etiquette.jpg`]);
+    await env.db.query(`update storage.objects set created_at = now() - interval '40 days' where name like $1`, [`${marc.id}/%`]);
+    expect((await env.db.query<{ name: string }>(`select name from retention_orphan_photos(100)`)).rows.map((r) => r.name)).toEqual([`${marc.id}/etiquette.jpg`]);
   });
 
   it('organisateur dont une invitée a partagé une note avec l’événement : suppression complète, la note reste à l’invitée (audit, S1)', async () => {

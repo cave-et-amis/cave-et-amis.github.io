@@ -68,7 +68,8 @@ Aucun identifiant de votre compte n'accompagne ces demandes. Vos conversations (
 
 ### Le suivi de l'assistant
 
-- Pour chaque demande à l'assistant : son type, le modèle utilisé, son état, son coût, la quantité de texte traitée et la date, jamais son contenu. Pour les erreurs techniques : le type de demande, un code et un détail technique, jamais vos messages.
+- Pour chaque demande à l'assistant : son type, le modèle utilisé, son état, son coût, la quantité de texte traitée et la date, jamais son contenu. Pour les erreurs techniques : le type de demande, un code et un court détail technique (200 caractères au plus, sans texte saisi, clé ni adresse e-mail), jamais vos messages.
+- Pour quelques actions sans IA (création d'un lien d'invitation, notification d'essai, recherche ou import d'une photo officielle, envoi immédiat vers l'agenda Nous) : l'heure de chaque appel, avec l'identifiant de votre compte, pour en limiter le nombre.
 - À quoi elles servent : appliquer les limites d'utilisation, maîtriser les coûts, réparer les pannes, éviter les abus.
 - Base légale : l'intérêt légitime de l'éditeur.
 
@@ -140,6 +141,7 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 - **Compte, caves, vins, carnet, contacts, groupes, événements** : tant que le compte existe.
 - **Conversations avec Lia** : 12 mois après le dernier message (ou plus tôt si vous les supprimez).
 - **Suivi de l'assistant** : 13 mois ; **erreurs techniques** : 3 mois.
+- **Compteurs des limites d'utilisation** (heure de quelques actions sans IA) : 2 jours au plus.
 - **Relevés de prix** : 24 mois.
 - **Liens d'invitation expirés ou annulés** : 90 jours.
 - **Demandes de contact ou d'accès refusées** : 6 mois.
@@ -154,8 +156,9 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 ### Quand vous supprimez votre compte
 
 - Sont supprimés : votre profil, vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et invitations, et les événements que vous organisez (pour tous leurs participants).
-- Restent chez les autres : votre prénom dans leurs notifications et dans l'activité de leurs groupes, et les envies que vous avez proposées dans un groupe, sans votre nom.
-- Le suivi de l'assistant est gardé sans votre identifiant jusqu'à la fin de sa durée. Les preuves de vos choix sont gardées 5 ans, puis effacées.
+- Les photos de votre dossier sont effacées tout de suite. Si le stockage ne répond pas à ce moment-là, celles qui restent sont effacées ensuite avec les photos qui ne servent plus (chaque mois).
+- Chez les autres, votre prénom est remplacé par « Ancien membre » : dans leurs notifications, et dans l'activité de leurs groupes (vos actions, et celles qui vous nomment sous votre prénom actuel). Les envies que vous avez proposées dans un groupe restent, sans votre nom.
+- Le suivi de l'assistant est gardé sans votre identifiant jusqu'à la fin de sa durée ; les compteurs des limites d'utilisation sont effacés. Les preuves de vos choix sont gardées 5 ans, puis effacées.
 - Si votre agenda Nous est relié, vos événements y sont mis à la corbeille.
 - Une sauvegarde faite avant la suppression peut encore contenir vos données, jusqu'à son effacement.
 

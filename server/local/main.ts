@@ -7,7 +7,9 @@
  *    sur ce poste ; sinon il s'affiche « non configuré » (aucune réponse simulée).
  *
  * Options : --demo (comptes et données de démonstration, clairement marqués), --reset (repart de zéro),
- *           --data <dossier> (emplacement de la base), --port <port>.
+ *           --data <dossier> (emplacement de la base), --port <port>,
+ *           --lan (accessible depuis les autres appareils du réseau local, par exemple un téléphone sur le même Wi-Fi ;
+ *           sans cette option, seulement depuis ce poste : 127.0.0.1).
  */
 import { PGlite } from '@electric-sql/pglite';
 import { createServer } from 'node:http';
@@ -27,6 +29,8 @@ const option = (name: string, fallback: string) => {
 
 const root = join(import.meta.dirname, '..', '..');
 const PORT = Number(option('port', process.env.LOCAL_API_PORT ?? '54321'));
+// Jetons locaux non signés et vraie clé Anthropic possible : le réseau seulement sur demande explicite.
+const HOST = flag('lan') ? '0.0.0.0' : '127.0.0.1';
 const dataDir = join(root, option('data', '.local/pgdata'));
 export const LOCAL_PUBLISHABLE_KEY = 'local-publishable-key';
 const serviceKey = `local-service-${crypto.randomUUID()}`;
@@ -93,9 +97,12 @@ functions['cave-api'] = createApiHandler(
     publishableKey: LOCAL_PUBLISHABLE_KEY,
     serviceKey,
     anthropicKey: process.env.ANTHROPIC_API_KEY?.trim() || undefined,
+    // Tests d'interface : faux serveur Anthropic (jamais lu en ligne : voir readEnv).
     anthropicBaseUrl: process.env.ANTHROPIC_BASE_URL?.trim() || undefined,
     // Tests d'interface : faux service de notifications (jamais en ligne).
     pushTestOrigin: process.env.PUSH_TEST_ORIGIN?.trim() || undefined,
+    // Comme le reste de ce serveur : toutes les origines (Vite, aperçu de l'export, téléphone avec --lan).
+    allowedOrigins: ['*'],
   },
   { fetch: fake.fetch },
 );
@@ -164,8 +171,13 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, HOST, () => {
   console.log(`Serveur local Cave & Amis : http://127.0.0.1:${PORT} (base : ${dataDir})`);
+  console.log(
+    flag('lan')
+      ? 'Accessible depuis les autres appareils du réseau local (option --lan) : à n’utiliser que sur un réseau de confiance.'
+      : 'Accessible seulement depuis ce poste (option --lan pour un téléphone sur le même Wi-Fi).',
+  );
   console.log(
     process.env.ANTHROPIC_API_KEY
       ? 'Assistant : clé ANTHROPIC_API_KEY trouvée dans l’environnement de ce poste (elle reste côté serveur).'
