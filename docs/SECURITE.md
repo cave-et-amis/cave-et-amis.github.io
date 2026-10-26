@@ -152,6 +152,10 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 - **Lire** : votre cave, votre carnet, les vins partagés dans les caves qui vous sont ouvertes (masques, exceptions et niveau
   de détail respectés ; rien d'un simple contact), les groupes et les événements auxquels vous participez — toujours avec vos
   droits. Seules les informations utiles sont envoyées au modèle.
+- **Données des autres** : leur prénom et des informations simples (vin, millésime, couleur, note sur 5, quantité visible,
+  statut, réponse) ; jamais leurs textes (notes, commentaires, plat, note d'une envie ou d'un vin proposé), ni e-mail ni
+  identifiant de compte ; le lieu, le budget et la description d'un événement seulement pour son organisateur. Exception : une
+  cave gérée à plusieurs est lue comme la sienne (fiches, notes et prix compris).
 - **Proposer** : une sortie de stock, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour
   un événement, une note de dégustation, l'enregistrement d'un relevé de prix. Le serveur vérifie la proposition et rédige
   lui-même le libellé ; **rien n'est modifié** tant que vous n'avez pas appuyé sur « Confirmer ».
