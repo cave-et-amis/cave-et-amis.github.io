@@ -105,6 +105,8 @@ test('prix de marché : seules les offres issues de la recherche sont retenues, 
   const dialog = bruno.getByRole('dialog', { name: 'Prix de marché actuel' });
   await expect(dialog.getByText(/61,5/).first()).toBeVisible();
   await expect(dialog.getByRole('link', { name: /Caviste exemple/ })).toBeVisible();
+  // Le domaine réel est affiché à côté du nom trouvé par la recherche (audit, F3).
+  await expect(dialog.locator('.link-host')).toContainText('caviste.example');
   await expect(dialog.getByText('Inventée')).toHaveCount(0);
   await expect(dialog.getByText(/consulté le/)).toBeVisible();
   await dialog.getByRole('button', { name: 'Enregistrer ce relevé' }).click();

@@ -11,6 +11,7 @@ import { dateLong, money, moneyRange, parseNumber } from '../../domain/format';
 import { latestPrices } from '../../domain/valuation';
 import { label, PRICE_KINDS, VOLUMES, volumeLabel, wineTitle } from '../../domain/wine';
 import { Button, Field, InlineLoading, Notice, Sheet, useConfirm } from '../../ui/kit';
+import { SafeLink } from '../../ui/markdown';
 import { useAiStatus } from './LabelScan';
 
 type CheckResult = {
@@ -31,10 +32,10 @@ function Sources({ sources }: { sources: PriceSource[] }) {
     <ul style={{ margin: '6px 0 0', paddingLeft: 18 }} className="small">
       {sources.map((s) => (
         <li key={s.url}>
-          <a href={s.url} target="_blank" rel="noopener noreferrer">
-            {s.seller || s.title || new URL(s.url).hostname}
+          {/* Nom trouvé par la recherche : le domaine réel est affiché s'il ne le montre pas. */}
+          <SafeLink href={s.url} label={s.seller || s.title || new URL(s.url).hostname}>
             <ExternalLink aria-hidden style={{ width: 13, height: 13, marginLeft: 3, verticalAlign: -1 }} />
-          </a>
+          </SafeLink>
           {s.price !== undefined && s.currency ? ` — ${money(s.price, s.currency)}` : ''}
         </li>
       ))}

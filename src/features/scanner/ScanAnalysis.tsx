@@ -13,6 +13,7 @@ import { tasteFit } from '../../domain/taste';
 import type { Scan, ScanAssessment, ScanMarket, SourcedText } from '../../domain/types';
 import { wineTitle } from '../../domain/wine';
 import { Advanced, Button, Field, InlineLoading, Notice, Origin, Pill, useToast } from '../../ui/kit';
+import { SafeLink } from '../../ui/markdown';
 import { useAiStatus } from '../cellar/LabelScan';
 
 const TONE: Record<Verdict, string> = { excellent: 'success', good: 'success', fair: 'gold', poor: 'danger', insufficient: '' };
@@ -343,9 +344,11 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
               <ul className="scan-offers">
                 {market.offers.map((o) => (
                   <li key={o.url}>
-                    <a href={o.url} target="_blank" rel="noopener noreferrer">
-                      {o.seller} <ExternalLink aria-hidden style={{ width: 14, height: 14, verticalAlign: '-2px' }} />
-                    </a>{' '}
+                    {/* Nom du vendeur trouvé par la recherche : le domaine réel est affiché s'il ne le montre pas. */}
+                    <SafeLink href={o.url} label={o.seller}>
+                      {' '}
+                      <ExternalLink aria-hidden style={{ width: 14, height: 14, verticalAlign: '-2px' }} />
+                    </SafeLink>{' '}
                     <strong>{money(o.price, o.currency)}</strong>
                     <span className="small muted">
                       {o.shipping !== null ? ` · livraison ${money(o.shipping, o.currency)}` : ''}
@@ -454,9 +457,7 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
                 <ul className="scan-list small">
                   {assessment.sources.map((s) => (
                     <li key={s.url}>
-                      <a href={s.url} target="_blank" rel="noopener noreferrer">
-                        {s.title || host(s.url)}
-                      </a>
+                      <SafeLink href={s.url} label={s.title || host(s.url)} />
                       {s.page_age ? ` · ${s.page_age}` : ''}
                     </li>
                   ))}

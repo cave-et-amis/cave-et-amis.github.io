@@ -6,7 +6,7 @@ double authentification de l'administrateur, durcissements du serveur. Rien de t
 étapes ci-dessous n'ont pas été faites, chacune avec votre accord.
 
 **L'ordre compte** : la base d'abord, puis cave-api, puis le site, dans la même séance (environ 45 minutes). Entre la
-migration du profil (étape 3) et le nouveau site (étape 5), l'ancien site affiche « Un ancien contact » à la place des
+migration du profil (étape 3) et le nouveau site (étape 6), l'ancien site affiche « Un ancien contact » à la place des
 prénoms de vos contacts : ne faites pas de pause entre les deux.
 
 ## Avant de commencer
@@ -30,7 +30,8 @@ npx.cmd -y supabase@2 login
 powershell -ExecutionPolicy Bypass -File scripts\sauvegarde.ps1
 ```
 
-Le script relit et vérifie la sauvegarde. Notez le dossier affiché : c'est votre point de retour.
+Le script demande un mot de passe de chiffrement (voir docs/INSTALLATION.md, « Sauvegardes »), puis relit et vérifie la
+sauvegarde. Notez le dossier affiché : c'est votre point de retour.
 
 ## 2. Code sur GitHub
 
