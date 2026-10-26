@@ -174,8 +174,10 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
               <strong>Votre sommelier personnel</strong>
             </div>
             <p className="small">
-              Il connaît votre cave, votre carnet et vos événements (avec vos droits), mais ne modifie rien sans votre confirmation. Il distingue vos données,
-              les repères généraux et ses propres estimations. Les prix de marché ne sont donnés qu’avec des sources.
+              Il connaît votre cave, votre carnet et vos événements (avec vos droits), mais ne modifie rien sans votre confirmation. Des autres personnes, il ne
+              reçoit que le prénom et des informations simples (vins, notes sur 5, réponses) : jamais leurs commentaires, ni le lieu, le budget ou la description
+              d’un événement qu’elles organisent. Il distingue vos données, les repères généraux et ses propres estimations. Les prix de marché ne sont donnés
+              qu’avec des sources.
             </p>
           </div>
           {!context && (
