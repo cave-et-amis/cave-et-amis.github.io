@@ -116,6 +116,25 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - **Déconnecter tous mes appareils** (Réglages) : retire les notifications de tous les appareils et ferme toutes les
   sessions ; un autre appareil est déconnecté dès que l'application y est rouverte, au plus tard quand son jeton expire (1 h).
 
+## Double authentification de l'administrateur
+
+- Code à 6 chiffres d'une application d'authentification (TOTP, gratuit chez Supabase), activé dans Réglages ›
+  « Double authentification » (proposé à l'administrateur) ; le QR code est calculé dans le navigateur.
+- Une fois activé, le code est demandé à chaque connexion, et la base exige une session vérifiée par le code (aal2) pour
+  l'administration de l'assistant et la publication des documents légaux.
+- Téléphone perdu : dans Supabase › SQL Editor,
+  `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '…');` puis reconnexion avec le
+  seul mot de passe, et nouvelle activation.
+
+## Contrôle anti-robots (CAPTCHA) et politique de sécurité du contenu
+
+- Avec une clé Cloudflare Turnstile configurée, l'inscription, la connexion, « mot de passe oublié » et le changement de
+  mot de passe exigent un jeton vérifié par Supabase ; le script de Cloudflare n'est chargé que sur ces écrans. Sans clé,
+  rien ne change.
+- La politique de sécurité du contenu n'autorise que le projet Supabase configuré (plus tout `*.supabase.co`), et
+  Cloudflare seulement avec la clé ; `check-dist` refuse tout écart. Changer d'adresse ou ajouter la clé demande un nouvel
+  export du site.
+
 ## Liaison avec l'agenda Nous (Cocon)
 
 Contrat complet : `docs/INTEGRATION-NOUS.md`.

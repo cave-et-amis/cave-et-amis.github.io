@@ -101,6 +101,19 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Documents légaux : complétez et faites valider les projets de `docs/legal/` (voir son `LISEZMOI.md`), puis publiez-les
   depuis **Administration › Documents légaux**. Rien n'est demandé aux personnes tant qu'aucun document n'est publié.
 
+## Contrôle anti-robots (Cloudflare Turnstile, gratuit)
+
+1. Cloudflare › Turnstile › « Add widget » : domaine `cave-et-amis.github.io`, mode « Managed » (Cocon a son propre widget).
+2. Clé de site (publique) dans `config.production.js` (`turnstileSiteKey`), puis `npm run build` et mise en ligne du site.
+3. Supabase › Authentication › Attack Protection : activer le CAPTCHA, fournisseur Turnstile, coller la clé secrète.
+
+Retour arrière : désactiver dans Supabase, vider la clé de site, refaire l'export.
+
+## Double authentification
+
+- La migration `20261101000005_double_authentification.sql` exige le code pour l'administration une fois qu'il est activé.
+- Supabase › Authentication › Multi-Factor : TOTP activé (réglage par défaut).
+
 ## Sauvegardes (chaque mois, et avant chaque mise à jour importante)
 
 L'offre gratuite de Supabase ne sauvegarde pas la base : la sauvegarde se fait depuis votre PC, chiffrée.
