@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, MonitorSmartphone, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
@@ -261,6 +261,21 @@ export function SettingsPage() {
         }}
       >
         Se déconnecter
+      </Button>
+      <Button
+        variant="secondary"
+        icon={<MonitorSmartphone />}
+        onClick={async () => {
+          const ok = await confirm({
+            title: 'Déconnecter tous vos appareils ?',
+            message:
+              'Téléphone, tablette, ordinateur : vos sessions se ferment partout, celle-ci comprise, et plus aucun appareil ne reçoit vos notifications. Sur un autre appareil, la session se ferme dès que l’application y est rouverte (au plus tard au bout d’une heure).',
+            confirmLabel: 'Tout déconnecter',
+          });
+          if (ok) await run(() => api.signOutEverywhere(), { success: 'Tous vos appareils sont déconnectés.', reload: false });
+        }}
+      >
+        Déconnecter tous mes appareils
       </Button>
       <Button variant="danger-ghost" icon={<Trash2 />} onClick={() => setDeleting(true)}>
         Supprimer mon compte

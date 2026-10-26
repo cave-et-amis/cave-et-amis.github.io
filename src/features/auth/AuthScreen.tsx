@@ -1,8 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import type { Session } from '@supabase/supabase-js';
 import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
 import { AppError, toMessage } from '../../domain/errors';
+import { deName } from '../../domain/format';
 import { MIN_AGE, type LegalDoc } from '../../domain/legal';
+import { pendingLink } from '../../domain/nous';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import { Button, Check, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
 import { go } from '../../ui/router';
@@ -363,6 +366,62 @@ export function NewPasswordScreen({ api, onDone }: { api: Api; onDone: () => voi
             Enregistrer
           </Button>
         </form>
+      </div>
+    </main>
+  );
+}
+
+/**
+ * Connexion par un lien venu de l'agenda Nous : avant d'entrer, la personne vérifie que c'est bien son compte (un lien
+ * transmis par quelqu'un d'autre ouvre le compte de cette personne). « Ce n'est pas mon compte » déconnecte aussitôt.
+ */
+export function LinkAccountScreen({ api, session, onContinue }: { api: Api; session: Session; onContinue: () => void }) {
+  const meta = session.user.user_metadata as { display_name?: string } | undefined;
+  const [name, setName] = useState(meta?.display_name?.trim() || null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    api.displayName(session.user.id).then(
+      (n) => {
+        if (alive && n) setName(n);
+      },
+      () => undefined,
+    );
+    return () => {
+      alive = false;
+    };
+  }, [api, session.user.id]);
+  const email = session.user.email ?? '';
+  return (
+    <main className="auth">
+      <div className="auth-card">
+        <Brand />
+        <div className="card stack">
+          <h2 className="title-font" style={{ fontSize: '1.25rem' }}>
+            Est-ce bien votre compte ?
+          </h2>
+          <p>Vous êtes connecté au compte {name ? `${deName(name)} (${email})` : email}.</p>
+          <p className="small muted">Ce lien de connexion vient de l’agenda Nous. S’il vous a été transmis par quelqu’un d’autre, choisissez « Ce n’est pas mon compte ».</p>
+          <Button block size="lg" disabled={busy} onClick={onContinue}>
+            Continuer
+          </Button>
+          <Button
+            block
+            variant="secondary"
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              await api.signOut();
+              // Session restée ouverte (réseau) : la question reste posée.
+              if (await api.getSession()) {
+                pendingLink.set(true);
+                setBusy(false);
+              }
+            }}
+          >
+            Ce n’est pas mon compte
+          </Button>
+        </div>
       </div>
     </main>
   );

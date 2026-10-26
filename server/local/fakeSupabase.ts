@@ -9,8 +9,19 @@
 import type { PGlite, Transaction } from '@electric-sql/pglite';
 
 type Json = Record<string, unknown>;
-export type Claims = { sub: string; email: string; exp: number; role: 'authenticated'; aud: 'authenticated'; session_id: string };
+export type Claims = {
+  sub: string;
+  email: string;
+  exp: number;
+  role: 'authenticated';
+  aud: 'authenticated';
+  session_id: string;
+  /** Ouverture de la session (propre au serveur local) : sert aux déconnexions « partout ». */
+  session_start?: number;
+};
 type Who = { kind: 'anon' } | { kind: 'user'; claims: Claims } | { kind: 'service' };
+/** Une session : gardée d'un renouvellement à l'autre, comme sur Supabase. */
+type LocalSession = { id: string; start: number };
 
 const IDENT = /^[a-z_][a-z0-9_]*$/;
 const TOKEN_LIFETIME = 3600;
@@ -55,7 +66,13 @@ function storageError(status: number, error: string, message: string) {
   return respond(status, { statusCode: String(status), error, message });
 }
 
-export function makeAccessToken(user: { id: string; email: string }) {
+// Instant d'ouverture d'une session (ms), strictement croissant : une connexion qui suit une déconnexion « partout »,
+// même dans la même milliseconde, n'est jamais prise pour une session d'avant.
+let lastStart = 0;
+const stamp = () => (lastStart = Math.max(Date.now(), lastStart + 1));
+const newSession = (): LocalSession => ({ id: crypto.randomUUID(), start: stamp() });
+
+export function makeAccessToken(user: { id: string; email: string }, session: LocalSession = newSession()) {
   const now = Math.floor(Date.now() / 1000);
   const claims: Claims = {
     sub: user.id,
@@ -63,19 +80,20 @@ export function makeAccessToken(user: { id: string; email: string }) {
     exp: now + TOKEN_LIFETIME,
     role: 'authenticated',
     aud: 'authenticated',
-    session_id: crypto.randomUUID(),
+    session_id: session.id,
+    session_start: session.start,
   };
   return { token: `${b64urlText(JSON.stringify({ alg: 'none', typ: 'JWT' }))}.${b64urlText(JSON.stringify(claims))}.local`, claims };
 }
 
-function makeSession(user: Json) {
-  const { token, claims } = makeAccessToken({ id: String(user.id), email: String(user.email) });
+function makeSession(user: Json, session: LocalSession = newSession()) {
+  const { token, claims } = makeAccessToken({ id: String(user.id), email: String(user.email) }, session);
   return {
     access_token: token,
     token_type: 'bearer',
     expires_in: TOKEN_LIFETIME,
     expires_at: claims.exp,
-    refresh_token: `local-refresh.${b64urlText(String(user.id))}.${crypto.randomUUID()}`,
+    refresh_token: `local-refresh.${b64urlText(String(user.id))}.${session.id}.${session.start}`,
     user,
   };
 }
@@ -299,6 +317,17 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     return res.rows[0]?.body ?? null;
   }
 
+  // Sessions fermées par une déconnexion (gardées en mémoire : un redémarrage du serveur local les oublie). Comme sur
+  // Supabase, une session fermée ne se renouvelle plus et le service de connexion la refuse ; l'API de données accepte
+  // encore le jeton d'accès déjà délivré, jusqu'à son expiration (une heure au plus).
+  //   « local » : cette session ; « global » : toutes celles de la personne ouvertes jusque-là ; « others » : toutes sauf celle-ci.
+  const endedSessions = new Set<string>();
+  const cutoffs = new Map<string, { at: number; keep: string | null }>();
+  const sessionEnded = (userId: string, s: LocalSession) => {
+    const cut = cutoffs.get(userId);
+    return endedSessions.has(s.id) || Boolean(cut && s.start < cut.at && s.id !== cut.keep);
+  };
+
   const magicTokens = new Map<string, string>();
   const findUser = async (where: string, value: string) =>
     (
@@ -342,11 +371,13 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
         return respond(200, makeSession(userJson(res.rows[0])));
       }
       if (grant === 'refresh_token') {
+        // « local-refresh.<compte>.<session>.<ouverture> » (sans ouverture : jeton d'une version précédente du serveur local).
         const token = String(body.refresh_token ?? '');
-        const m = /^local-refresh\.([^.]+)\./.exec(token);
+        const m = /^local-refresh\.([^.]+)\.([^.]+)(?:\.(\d+))?$/.exec(token);
         const user = m ? await findUser('id::text = $1', unb64urlText(m[1])) : undefined;
-        if (!user) return authError(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
-        return respond(200, makeSession(userJson(user)));
+        const session = m ? { id: m[2], start: Number(m[3] ?? 0) } : null;
+        if (!user || !session || sessionEnded(user.id, session)) return authError(400, 'refresh_token_not_found', 'Invalid Refresh Token: Refresh Token Not Found');
+        return respond(200, makeSession(userJson(user), session));
       }
       return authError(400, 'validation_failed', 'unsupported_grant_type');
     }
@@ -361,6 +392,9 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     }
 
     const w = who(headers);
+    if (w.kind === 'user' && sessionEnded(w.claims.sub, { id: w.claims.session_id, start: w.claims.session_start ?? 0 })) {
+      return authError(403, 'session_not_found', 'Session from session_id claim in JWT does not exist');
+    }
     if (path === 'admin/generate_link' && method === 'POST') {
       if (w.kind !== 'service') return authError(403, 'not_admin', 'User not allowed');
       const user = await findUser('email = $1', String(body.email ?? '').toLowerCase());
@@ -401,7 +435,14 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       }
       return respond(200, userJson(user));
     }
-    if (path === 'logout') return respond(204);
+    if (path === 'logout') {
+      if (w.kind !== 'user') return authError(401, 'no_authorization', 'This endpoint requires a valid Bearer token');
+      const scope = url.searchParams.get('scope') ?? 'global';
+      if (scope === 'local') endedSessions.add(w.claims.session_id);
+      else if (scope === 'global' || scope === 'others') cutoffs.set(w.claims.sub, { at: stamp(), keep: scope === 'others' ? w.claims.session_id : null });
+      else return authError(400, 'validation_failed', 'Parameter scope must be one of global, local, others');
+      return respond(204);
+    }
     // Pas d'envoi d'e-mails en local : la demande est acceptée (comme Supabase, sans dire si le compte existe).
     if (path === 'recover') return respond(200, {});
     return authError(404, 'not_found', `Auth : ${path} non pris en charge en local`);
