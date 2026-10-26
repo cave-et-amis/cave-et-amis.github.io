@@ -129,3 +129,5 @@ photos. Les fichiers des photos ne sont pas copiés. Les données ne sont jamais
   digits** (la même règle que l'application), « Require current password when updating » **activé**. Les mots de passe
   existants restent valables ; seuls les nouveaux suivent la règle.
 - **URL Configuration** : ne garder dans « Redirect URLs » que l'adresse du site en service.
+- **Durée des jetons d'accès** (JWT expiry, 3 600 s par défaut) : plus elle est courte, plus « Déconnecter tous mes
+  appareils » agit vite sur un appareil resté ouvert.

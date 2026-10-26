@@ -105,6 +105,17 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - **Déconnexion** : en plus de la session, le code d'invitation en attente, les préférences de confort (budget du scanner,
   état des propositions de Lia) et le brouillon du scanner sont effacés de l'appareil.
 
+## Protections du site
+
+- **Cadre** : l'application refuse de démarrer dans le cadre (iframe) d'un autre site et propose de s'ouvrir dans son propre
+  onglet (GitHub Pages ne permet pas l'en-tête qui l'interdirait).
+- **Connexion par un lien venu de Nous** : « Vous êtes connecté au compte de … » s'affiche avant d'entrer, avec « Ce n'est pas
+  mon compte » ; la question revient tant qu'elle reste sans réponse. Une session déjà ouverte n'est jamais remplacée.
+- **Liens** des réponses de Lia et des documents légaux : le domaine réel est affiché, un texte trompeur est signalé ; dans
+  l'assistant, « Ouvrir le site … ? » est demandé avant d'ouvrir.
+- **Déconnecter tous mes appareils** (Réglages) : retire les notifications de tous les appareils et ferme toutes les
+  sessions ; un autre appareil est déconnecté dès que l'application y est rouverte, au plus tard quand son jeton expire (1 h).
+
 ## Liaison avec l'agenda Nous (Cocon)
 
 Contrat complet : `docs/INTEGRATION-NOUS.md`.
