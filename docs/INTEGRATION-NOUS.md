@@ -34,6 +34,11 @@
   - `x-eco-timestamp` : horodatage Unix en millisecondes ;
   - `x-eco-signature` : `hex(HMAC-SHA256(ECOSYSTEM_SECRET, "<timestamp>.<corps brut>"))`.
 - Le destinataire refuse si la signature est fausse (comparaison à temps constant) ou si l'horodatage s'écarte de plus de **5 minutes**.
+- **Anti-rejeu** : une signature déjà reçue est refusée (HTTP 401, `{"ok": false, "code": "replay"}`), même si elle est
+  encore dans sa fenêtre de validité. Côté Cave, `cave-api` garde l'empreinte SHA-256 de chaque signature acceptée
+  (table `eco_replay`, réservée au serveur), 10 minutes après l'horodatage de la requête. Une nouvelle tentative doit donc
+  être **signée à nouveau** (nouvel horodatage). Si cette vérification est impossible, la requête est refusée (HTTP 503,
+  `internal`). Les tâches planifiées (`x-cron-token`) ne sont pas concernées.
 - Chaque action vérifie que la paire `(cave_user_id, nous_user_id)` existe dans **sa propre** table de liaison
   (sauf `link.peek` / `link.redeem`, protégés par le code à usage unique).
 - Corps JSON, `{"action": "...", ...}`, 64 Ko au plus. Réponse : `{"ok": true, ...}` ou `{"ok": false, "code": "..."}`.
@@ -65,6 +70,10 @@ Adresses (variables d'environnement des fonctions) :
 5. **Preuve de liaison** : la personne a prouvé contrôler les deux comptes (session Cave pour créer le code, session Nous
    pour le consommer). Aucune liaison automatique par e-mail.
 6. Un compte Cave ne se lie qu'à un compte Nous, et réciproquement (contraintes `unique`).
+7. **Avis de liaison** : chaque liaison réussie crée dans Cave une notification (type `nous_linked`, avec le prénom envoyé
+   par Nous, `nous_display_name`) : « Votre compte est relié à l'agenda Nous de {prénom}. Ce n'est pas vous ? Déliez-le
+   dans les Réglages. » Elle mène aux Réglages et part aussi en notification push si la personne l'a activée. Une liaison
+   faite à son insu se voit donc tout de suite.
 
 **Délier** : depuis l'une ou l'autre application. Le côté qui délie supprime sa ligne et prévient l'autre (`link.revoked`).
 Les événements importés dans Nous sont alors **mis à la corbeille** de Nous (restaurables 30 jours, ensuite effacés par
@@ -82,10 +91,17 @@ la purge existante). Rien n'est modifié dans Cave.
 - Le navigateur ouvre `<APP_URL>?auth=link&token_hash=<…>&next=<chemin>` ; l'application appelle
   `auth.verifyOtp({type: 'magiclink', token_hash})` puis retire ces paramètres de l'adresse.
 - Si la personne a activé la double authentification dans Nous, Nous lui demande ensuite son code (niveau aal2), comme d'habitude.
-- Nous peut refuser avec `{ ok: false, code: 'jump_disabled' }` dans trois cas :
-  - la personne n'a pas activé la connexion directe dans Nous (désactivée par défaut) ;
-  - c'est un compte d'administration ;
-  - c'est un compte bloqué.
+- Chaque côté peut refuser `jump.token` avec `{ ok: false, code: 'jump_disabled' }` (et `not_linked` si la paire n'est pas liée) :
+  - **Cave** dans deux cas, vérifiés à chaque demande (`nous_jump_check`) :
+    - la personne n'a pas activé « Ouvrir Cave & Amis depuis Nous sans mot de passe » (Cave › Réglages › « Agenda Nous ») :
+      option **désactivée par défaut**, y compris pour les liaisons antérieures, et remise à « désactivée » à chaque
+      nouvelle liaison (colonne `nous_links.allow_jump`, modifiable seulement par la personne, fonction
+      `nous_set_allow_jump`) ;
+    - c'est le compte administrateur (`profiles.is_admin`) : l'option ne lui est pas proposée et la base la refuse ;
+  - **Nous** dans trois cas :
+    - la personne n'a pas activé la connexion directe dans Nous (désactivée par défaut) ;
+    - c'est un compte d'administration ;
+    - c'est un compte bloqué.
 - En cas d'échec, y compris `jump_disabled`, l'application ouvre simplement l'autre site (connexion normale), sans délier
   les comptes ni afficher d'erreur.
 
@@ -176,3 +192,6 @@ seulement). Réponse `{ok: true, rsvp}` ou `{ok: false, code: "event_not_planned
 - Côté Cave : retirer `NOUS_FUNCTION_URL` (plus aucun envoi ; la file se remplit sans effet) ; la tâche cron peut être
   supprimée avec `select cron.unschedule('cave-nous-sync');`.
 - Les migrations n'altèrent aucune donnée existante ; des scripts `*_rollback.sql` suppriment uniquement les objets ajoutés.
+- Liaison durcie côté Cave (`20261101000002_liaison_nous_durcie.sql`) : redéployer d'abord l'ancienne `cave-api`, puis
+  exécuter `supabase/sql/retour-20261101000002.sql` (les avis de liaison et l'anti-rejeu disparaissent ; le choix
+  « sans mot de passe » de chacun est gardé, sans effet). L'ancienne version accorde de nouveau `jump.token` à toute paire liée.

@@ -40,7 +40,9 @@ export type AppNotification = {
     | 'cellar_joined'
     | 'invite_joined'
     | 'cellar_opened'
-    | 'cellar_access_request';
+    | 'cellar_access_request'
+    /** Compte relié à un agenda Nous (actor_name : prénom du compte Nous). */
+    | 'nous_linked';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;

@@ -113,13 +113,33 @@ describe('identification du serveur (VAPID, RFC 8292)', () => {
 
 describe('texte des notifications', () => {
   it('chaque type a son texte et un lien interne ; un type inconnu reste lisible', () => {
-    const kinds = ['friend_request', 'friend_accepted', 'event_invite', 'group_invite', 'group_joined', 'cellar_invite', 'cellar_joined', 'invite_joined', 'cellar_opened', 'cellar_access_request'];
+    const kinds = [
+      'friend_request',
+      'friend_accepted',
+      'event_invite',
+      'group_invite',
+      'group_joined',
+      'cellar_invite',
+      'cellar_joined',
+      'invite_joined',
+      'cellar_opened',
+      'cellar_access_request',
+      'nous_linked',
+    ];
     for (const kind of kinds) {
       const t = notificationText({ kind, actor_id: '00000000-0000-0000-0000-000000000001', actor_name: 'Claire', ref_id: '00000000-0000-0000-0000-000000000002' });
       expect(t.text, kind).toContain('Claire');
       expect(t.href, kind).toMatch(/^#\/[a-z]/);
     }
     expect(notificationText({ kind: 'friend_request', actor_name: null, ref_id: null }).text).toBe('Quelqu’un souhaite être en contact avec vous');
+    // Avis de liaison : le prénom vient du compte Nous ; sans prénom, la phrase reste juste.
+    expect(notificationText({ kind: 'nous_linked', actor_name: 'Claire', ref_id: null })).toEqual({
+      text: 'Votre compte est relié à l’agenda Nous de Claire. Ce n’est pas vous ? Déliez-le dans les Réglages.',
+      href: '#/reglages',
+    });
+    expect(notificationText({ kind: 'nous_linked', actor_name: null, ref_id: null }).text).toBe(
+      'Votre compte est relié à un agenda Nous. Ce n’est pas vous ? Déliez-le dans les Réglages.',
+    );
     expect(notificationText({ kind: 'nouveau_type', actor_name: 'Claire', ref_id: null })).toEqual({ text: 'Vous avez une nouvelle notification', href: '#/notifications' });
   });
 });

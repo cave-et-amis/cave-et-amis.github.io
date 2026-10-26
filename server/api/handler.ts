@@ -4,8 +4,8 @@
  * Toutes les actions exigent une session valide. Les données sont lues avec les droits de la personne
  * connectée ; la clé « service » ne sert qu'à la comptabilité (quotas, budget, erreurs) et à l'enregistrement
  * des conversations et des relevés de prix de cette même personne.
- * Exceptions, sans session : les requêtes signées du serveur Nous et les tâches planifiées (envoi vers Nous, notifications
- * push, durées de conservation), qui présentent le jeton de nous_config.
+ * Exceptions, sans session : les requêtes signées du serveur Nous (chaque signature ne sert qu'une fois) et les tâches
+ * planifiées (envoi vers Nous, notifications push, durées de conservation), qui présentent le jeton de nous_config.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AI_MESSAGES } from '../../src/domain/errors.ts';
@@ -382,9 +382,15 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       return json({ ok: false, code: 'forbidden' }, 403, cors);
     }
     if (!env.ecosystemSecret) return json({ ok: false, code: 'integration_disabled' }, 503, cors);
-    if (!(await ecoVerify(env.ecosystemSecret, text, req.headers.get('x-eco-timestamp'), req.headers.get('x-eco-signature'), now().getTime()))) {
+    const timestamp = req.headers.get('x-eco-timestamp');
+    const signature = req.headers.get('x-eco-signature');
+    if (!(await ecoVerify(env.ecosystemSecret, text, timestamp, signature, now().getTime()))) {
       return json({ ok: false, code: 'bad_signature' }, 401, cors);
     }
+    // Anti-rejeu : une requête signée ne sert qu'une fois. Si la vérification est impossible, la requête est refusée.
+    const fresh = await nous.firstUse(signature!, timestamp!).catch(() => null);
+    if (fresh === null) return json({ ok: false, code: 'internal' }, 503, cors);
+    if (!fresh) return json({ ok: false, code: 'replay' }, 401, cors);
     try {
       return json({ ok: true, ...(await nous.handleSigned(body)) }, 200, cors);
     } catch (e) {

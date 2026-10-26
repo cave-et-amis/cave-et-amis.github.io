@@ -1,18 +1,21 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { createApiHandler } from '../../server/api/handler.ts';
 import { ecoSign, ecoVerify, ECO_WINDOW_MS } from '../../server/api/nous.ts';
 import { readEnv } from '../../server/api/util.ts';
 import { call } from '../ai/setup.ts';
 import { makeEnv, TEST_PUBLIC_KEY, TEST_SERVICE_KEY, TEST_URL } from '../helpers/env.ts';
+import { createPushService, makeDevice } from '../helpers/push.ts';
 
 const SECRET = 'secret-partage-de-test-0123456789abcdef';
 const NOUS_URL = 'https://nous.test/functions/v1/cave-sync';
 const NOUS_USER = '20000000-0000-4000-8000-000000000001';
+const NOUS_BRUNO = '20000000-0000-4000-8000-000000000002';
 
 type Sent = { action: string; [k: string]: unknown };
 
 /** Environnement : base, faux Supabase, fonction cave-api réelle, faux serveur Nous qui vérifie les signatures. */
-async function makeNousEnv(o: { secret?: string; nousReply?: (b: Sent) => Record<string, unknown> } = {}) {
+async function makeNousEnv(o: { secret?: string; nousReply?: (b: Sent) => Record<string, unknown>; pushFetch?: typeof fetch } = {}) {
   const functions: Record<string, (req: Request) => Promise<Response>> = {};
   const env = await makeEnv(functions);
   const sent: Sent[] = [];
@@ -37,13 +40,16 @@ async function makeNousEnv(o: { secret?: string; nousReply?: (b: Sent) => Record
       nousAppUrl: 'https://cocon.test/',
       caveAppUrl: 'https://cave.test/',
     },
-    { fetch: env.fake.fetch, nousFetch },
+    { fetch: env.fake.fetch, nousFetch, pushFetch: o.pushFetch },
   );
   functions['cave-api'] = handler;
+  // Horodatage toujours nouveau : deux requêtes identiques ne portent la même signature que si « at » est imposé.
+  let last = 0;
+  const stamp = () => (last = Math.max(Date.now(), last + 1));
   /** Requête signée comme le ferait le serveur Nous. */
   async function fromNous(payload: Record<string, unknown>, opts: { secret?: string; at?: number; tamper?: boolean } = {}) {
     const body = JSON.stringify(payload);
-    const headers = await ecoSign(opts.secret ?? SECRET, body, opts.at ?? Date.now());
+    const headers = await ecoSign(opts.secret ?? SECRET, body, opts.at ?? stamp());
     const res = await handler(
       new Request('http://supabase.test/functions/v1/cave-api', {
         method: 'POST',
@@ -57,17 +63,18 @@ async function makeNousEnv(o: { secret?: string; nousReply?: (b: Sent) => Record
       code?: string;
     };
   }
-  async function cron(token: string) {
+  async function cron(token: string, action = 'nous_flush') {
     const res = await handler(
       new Request('http://supabase.test/functions/v1/cave-api', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-cron-token': token },
-        body: JSON.stringify({ action: 'nous_flush' }),
+        body: JSON.stringify({ action }),
       }),
     );
     return { status: res.status, ...((await res.json()) as Record<string, unknown>) };
   }
-  return { ...env, handler, sent, fromNous, cron };
+  const cronToken = async () => (await env.db.query<{ t: string }>(`select cron_token as t from nous_config`)).rows[0].t;
+  return { ...env, handler, sent, fromNous, cron, cronToken };
 }
 
 async function friendsWithEvent(env: Awaited<ReturnType<typeof makeNousEnv>>) {
@@ -84,13 +91,18 @@ async function friendsWithEvent(env: Awaited<ReturnType<typeof makeNousEnv>>) {
   return { bruno, claire, eventId: (ev as { id: string }).id, startsAt };
 }
 
-/** Liaison complète : code créé par Claire dans Cave & Amis, consommé par le serveur Nous. */
-async function linkClaire(env: Awaited<ReturnType<typeof makeNousEnv>>, claire: { sb: Parameters<typeof call>[0] }) {
+/** Liaison complète : code créé dans Cave & Amis (par Claire, par défaut), consommé par le serveur Nous. */
+async function linkClaire(
+  env: Awaited<ReturnType<typeof makeNousEnv>>,
+  claire: { sb: Parameters<typeof call>[0] },
+  nousUser = NOUS_USER,
+  nousName = 'Claire (Nous)',
+) {
   const start = await call(claire.sb, { action: 'nous_link_start' });
   expect(start).toMatchObject({ ok: true });
   const code = new URL(String(start.url)).searchParams.get('cave_link')!;
   expect(String(start.url)).toMatch(/^https:\/\/cocon\.test\/\?cave_link=[0-9a-f]{32}$/);
-  return { code, redeem: await env.fromNous({ action: 'link.redeem', code, nous_user_id: NOUS_USER, nous_display_name: 'Claire (Nous)' }) };
+  return { code, redeem: await env.fromNous({ action: 'link.redeem', code, nous_user_id: nousUser, nous_display_name: nousName }) };
 }
 
 describe('signature des échanges', () => {
@@ -214,10 +226,11 @@ describe('liaison et synchronisation', () => {
     expect(await env.cron(token)).toMatchObject({ status: 200, ok: true, sent: 1 });
   });
 
-  it('connexion directe dans les deux sens, seulement pour une paire liée', async () => {
+  it('connexion directe dans les deux sens, seulement pour une paire liée ; depuis Nous, seulement une fois activée', async () => {
     const env = await makeNousEnv();
     const { claire, eventId } = await friendsWithEvent(env);
     expect(await call(claire.sb, { action: 'nous_jump' })).toMatchObject({ ok: false, code: 'not_linked' });
+    expect(await call(claire.sb, { action: 'nous_set_jump', enabled: true })).toMatchObject({ ok: false, code: 'not_linked' });
     await linkClaire(env, claire);
 
     // Cave & Amis → Nous : l'adresse porte le jeton fourni par Nous.
@@ -230,9 +243,16 @@ describe('liaison et synchronisation', () => {
     const bad = await call(claire.sb, { action: 'nous_jump', next: 'https://ailleurs.test' });
     expect(new URL(String(bad.url)).searchParams.get('next')).toBeNull();
 
-    // Nous → Cave & Amis : jeton de lien magique, utilisable une seule fois.
-    expect(await env.fromNous({ action: 'jump.token', cave_user_id: claire.id, nous_user_id: '20000000-0000-4000-8000-000000000999' })).toMatchObject({ ok: false, code: 'not_linked' });
-    const tok = await env.fromNous({ action: 'jump.token', cave_user_id: claire.id, nous_user_id: NOUS_USER });
+    // Nous → Cave & Amis : refusée par défaut (« jump_disabled », le code que Nous renvoie dans l'autre sens).
+    const jumpToken = { action: 'jump.token', cave_user_id: claire.id, nous_user_id: NOUS_USER };
+    expect(await env.fromNous({ ...jumpToken, nous_user_id: '20000000-0000-4000-8000-000000000999' })).toMatchObject({ ok: false, code: 'not_linked' });
+    expect(await call(claire.sb, { action: 'nous_status' })).toMatchObject({ ok: true, link: { allow_jump: false } });
+    expect(await env.fromNous(jumpToken)).toMatchObject({ status: 200, ok: false, code: 'jump_disabled' });
+
+    // Activée par Claire : jeton de lien magique, utilisable une seule fois.
+    expect(await call(claire.sb, { action: 'nous_set_jump', enabled: true })).toMatchObject({ ok: true, allow_jump: true });
+    expect(await call(claire.sb, { action: 'nous_status' })).toMatchObject({ ok: true, link: { allow_jump: true, sync_enabled: true } });
+    const tok = await env.fromNous(jumpToken);
     expect(tok).toMatchObject({ ok: true });
     const fresh = env.client();
     const { data, error } = await fresh.auth.verifyOtp({ type: 'magiclink', token_hash: String(tok.token_hash) });
@@ -242,6 +262,54 @@ describe('liaison et synchronisation', () => {
     expect(seen).toEqual([{ id: eventId }]);
     const again = await env.client().auth.verifyOtp({ type: 'magiclink', token_hash: String(tok.token_hash) });
     expect(again.error).not.toBeNull();
+
+    // Désactivée de nouveau : refusée ; une nouvelle liaison repart désactivée.
+    expect(await call(claire.sb, { action: 'nous_set_jump', enabled: false })).toMatchObject({ ok: true, allow_jump: false });
+    expect(await env.fromNous(jumpToken)).toMatchObject({ ok: false, code: 'jump_disabled' });
+    await call(claire.sb, { action: 'nous_set_jump', enabled: true });
+    await call(claire.sb, { action: 'nous_unlink' });
+    await linkClaire(env, claire);
+    expect(await call(claire.sb, { action: 'nous_status' })).toMatchObject({ link: { allow_jump: false } });
+    expect(await env.fromNous(jumpToken)).toMatchObject({ ok: false, code: 'jump_disabled' });
+  });
+
+  it('compte administrateur : jamais de connexion directe depuis Nous, même forcée dans la base', async () => {
+    const env = await makeNousEnv();
+    const { bruno } = await friendsWithEvent(env);
+    // Le premier compte créé est administrateur.
+    expect((await env.db.query(`select is_admin from profiles where id = $1`, [bruno.id])).rows).toEqual([{ is_admin: true }]);
+    expect((await linkClaire(env, bruno, NOUS_BRUNO, 'Bruno (Nous)')).redeem).toMatchObject({ ok: true, cave_user_id: bruno.id });
+    expect(await call(bruno.sb, { action: 'nous_set_jump', enabled: true })).toMatchObject({ ok: false, code: 'forbidden' });
+    expect(await call(bruno.sb, { action: 'nous_status' })).toMatchObject({ ok: true, link: { allow_jump: false } });
+    const jumpToken = { action: 'jump.token', cave_user_id: bruno.id, nous_user_id: NOUS_BRUNO };
+    expect(await env.fromNous(jumpToken)).toMatchObject({ ok: false, code: 'jump_disabled' });
+    // Même si l'option était activée (compte devenu administrateur ensuite, modification directe) : refusée.
+    await env.db.query(`update nous_links set allow_jump = true where user_id = $1`, [bruno.id]);
+    const res = await env.fromNous(jumpToken);
+    expect(res).toMatchObject({ ok: false, code: 'jump_disabled' });
+    expect(res.token_hash).toBeUndefined();
+    // La désactiver reste possible.
+    expect(await call(bruno.sb, { action: 'nous_set_jump', enabled: false })).toMatchObject({ ok: true, allow_jump: false });
+  });
+
+  it('avis après chaque liaison : dans l’application, et sur l’appareil de la personne', async () => {
+    const service = createPushService();
+    const env = await makeNousEnv({ pushFetch: service.fetch });
+    const { claire } = await friendsWithEvent(env);
+    const phone = await makeDevice('https://fcm.googleapis.com/fcm/send/telephone-de-claire');
+    expect(await call(claire.sb, { action: 'push_subscribe', endpoint: phone.endpoint, p256dh: phone.p256dh, auth: phone.auth, label: 'iPhone' })).toMatchObject({
+      ok: true,
+    });
+    await linkClaire(env, claire);
+    const { data } = await claire.sb.from('notifications').select('kind, actor_id, actor_name, read_at');
+    expect(data).toContainEqual({ kind: 'nous_linked', actor_id: null, actor_name: 'Claire (Nous)', read_at: null });
+    expect(await env.cron(await env.cronToken(), 'push_flush')).toMatchObject({ status: 200, ok: true, claimed: 1, sent: 1 });
+    expect(service.received.map((r) => r.url)).toEqual([phone.endpoint]);
+    expect(JSON.parse(await phone.decrypt(service.received[0].body))).toMatchObject({
+      title: 'Cave & Amis',
+      body: 'Votre compte est relié à l’agenda Nous de Claire (Nous). Ce n’est pas vous ? Déliez-le dans les Réglages.',
+      url: '#/reglages',
+    });
   });
 
   it('connexion directe refusée par Nous (« jump_disabled ») : simple échec, la liaison reste', async () => {
@@ -275,5 +343,43 @@ describe('liaison et synchronisation', () => {
     expect(env.sent.length).toBe(count);
     expect(await call(claire.sb, { action: 'nous_set_sync', enabled: true })).toMatchObject({ ok: true, sync_enabled: true });
     expect(env.sent.at(-1)).toMatchObject({ action: 'event.upsert', event: { place: 'Ailleurs' } });
+  });
+});
+
+describe('anti-rejeu des requêtes signées venues de Nous', () => {
+  it('la même requête signée envoyée deux fois : la seconde est refusée, sans effet ; signée à nouveau, elle passe', async () => {
+    const env = await makeNousEnv();
+    const { claire, eventId } = await friendsWithEvent(env);
+    await linkClaire(env, claire);
+    const rsvp = { action: 'rsvp', cave_user_id: claire.id, nous_user_id: NOUS_USER, event_id: eventId, rsvp: 'yes' };
+    const at = Date.now();
+    expect(await env.fromNous(rsvp, { at })).toMatchObject({ status: 200, ok: true, rsvp: 'yes' });
+    // Claire change d'avis dans Cave & Amis ; la requête d'origine, rejouée telle quelle, ne change rien.
+    expect((await claire.sb.rpc('respond_event', { p_event: eventId, p_rsvp: 'no' })).error).toBeNull();
+    expect(await env.fromNous(rsvp, { at })).toMatchObject({ status: 401, ok: false, code: 'replay' });
+    const rsvpOf = async () => (await claire.sb.from('event_participants').select('rsvp').eq('event_id', eventId).eq('user_id', claire.id).single()).data;
+    expect(await rsvpOf()).toEqual({ rsvp: 'no' });
+    // Nouvelle tentative de Nous, signée à nouveau : acceptée.
+    expect(await env.fromNous(rsvp)).toMatchObject({ status: 200, ok: true, rsvp: 'yes' });
+    expect(await rsvpOf()).toEqual({ rsvp: 'yes' });
+    // Seule l'empreinte de la signature est gardée.
+    const signature = (await ecoSign(SECRET, JSON.stringify(rsvp), at))['x-eco-signature'];
+    const kept = (await env.db.query<{ h: string }>(`select signature_sha256 as h from eco_replay`)).rows.map((r) => r.h);
+    expect(kept).toContain(createHash('sha256').update(signature).digest('hex'));
+    expect(kept).not.toContain(signature);
+    // Une signature fausse ne laisse aucune trace.
+    const before = kept.length;
+    expect(await env.fromNous(rsvp, { secret: 'mauvais-secret-0123456789abcdef0123' })).toMatchObject({ status: 401, code: 'bad_signature' });
+    expect((await env.db.query(`select 1 from eco_replay`)).rows).toHaveLength(before);
+  });
+
+  it('les tâches planifiées ne sont pas concernées ; sans anti-rejeu possible, les requêtes de Nous sont refusées', async () => {
+    const env = await makeNousEnv();
+    const token = await env.cronToken();
+    expect(await env.cron(token)).toMatchObject({ status: 200, ok: true });
+    expect(await env.cron(token)).toMatchObject({ status: 200, ok: true });
+    expect((await env.db.query(`select 1 from eco_replay`)).rows).toHaveLength(0);
+    await env.db.exec(`drop function public.eco_replay_claim(text, timestamptz)`);
+    expect(await env.fromNous({ action: 'link.peek', code: 'a'.repeat(32) })).toMatchObject({ status: 503, ok: false, code: 'internal' });
   });
 });

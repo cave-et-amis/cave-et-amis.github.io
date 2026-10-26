@@ -1,9 +1,9 @@
 /**
  * Notifications : demandes (contact, accès à ma cave), invitations (événement, groupe, cave à gérer à plusieurs), lien
- * d'invitation utilisé, cave ouverte. Marquées lues à l'ouverture.
+ * d'invitation utilisé, cave ouverte, compte relié à un agenda Nous. Marquées lues à l'ouverture.
  */
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Bell, CalendarHeart, CalendarPlus, Eye, KeyRound, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
+import { Bell, CalendarHeart, CalendarPlus, Eye, KeyRound, Link2, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
@@ -23,6 +23,7 @@ const ICONS: Record<NotificationKind, ReactNode> = {
   invite_joined: <Sparkles />,
   cellar_opened: <KeyRound />,
   cellar_access_request: <Eye />,
+  nous_linked: <Link2 />,
 };
 
 function describe(n: AppNotification): { text: string; href: string; icon: ReactNode } {
@@ -47,7 +48,8 @@ export function NotificationsPage() {
       <>
         <PushOffer />
         <EmptyState icon="🔔" title="Aucune notification">
-          Vous serez prévenu ici des demandes, des invitations à un événement, à un groupe ou à gérer une cave à plusieurs, et des caves qui vous sont ouvertes.
+          Vous serez prévenu ici des demandes, des invitations à un événement, à un groupe ou à gérer une cave à plusieurs, des caves qui vous sont ouvertes
+          et de chaque liaison de votre compte avec un agenda Nous.
         </EmptyState>
       </>
     );

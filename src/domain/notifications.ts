@@ -32,6 +32,12 @@ export function notificationText(n: Source): { text: string; href: string } {
       return { text: `${who} vous a ouvert sa cave`, href: person };
     case 'cellar_access_request':
       return { text: `${who} demande à voir votre cave`, href: '#/amis?onglet=invitations' };
+    // Avis de sécurité après chaque liaison (prénom du compte Nous).
+    case 'nous_linked':
+      return {
+        text: `Votre compte est relié à ${n.actor_name ? `l’agenda Nous de ${n.actor_name}` : 'un agenda Nous'}. Ce n’est pas vous ? Déliez-le dans les Réglages.`,
+        href: '#/reglages',
+      };
     default:
       return { text: 'Vous avez une nouvelle notification', href: '#/notifications' };
   }

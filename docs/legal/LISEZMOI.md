@@ -9,6 +9,8 @@ Ces quatre textes sont des **projets**, préparés après l'audit de sécurité 
 
 Ils décrivent Cave & Amis **après la mise en ligne de la priorité 2** de l'audit : documents et preuves, « Confidentialité et mes données », export complet, durées de conservation appliquées chaque nuit (supabase/sql/conservation.sql), information sur Lia et Anthropic, effacement des données de confort à la déconnexion. Ne les publiez pas avant : ils annonceraient des protections pas encore en place.
 
+Ils décrivent aussi la liaison avec l'agenda Nous durcie (migration `20261101000002_liaison_nous_durcie.sql` : ouverture depuis Nous sans mot de passe en option, désactivée au départ ; avis après chaque liaison) : mettez-la en ligne avant de les publier.
+
 ## Ce qu'il faut compléter
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.
