@@ -94,6 +94,12 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Notifications push (une seule fois) : après la migration `20261030000001_notifications_push.sql` et le déploiement de
   cave-api, exécutez `supabase/sql/push-envoi.sql` dans le SQL Editor (envoi dès qu'une notification est créée, et
   nouvelles tentatives chaque minute). Aucune clé à créer : celles du serveur se créent seules au premier usage.
+- Durées de conservation (une seule fois, avec l'accord du responsable : chaque purge est définitive) : après la migration
+  `20261101000001_documents_legaux.sql` et le déploiement de cave-api, exécutez `supabase/sql/conservation.sql` (purge
+  chaque nuit, photos qui ne servent plus chaque mois). Faites-le **avant** de mettre en ligne l'interface, qui annonce
+  ces durées.
+- Documents légaux : complétez et faites valider les projets de `docs/legal/` (voir son `LISEZMOI.md`), puis publiez-les
+  depuis **Administration › Documents légaux**. Rien n'est demandé aux personnes tant qu'aucun document n'est publié.
 
 ## Réglages de connexion recommandés (Supabase › Authentication)
 

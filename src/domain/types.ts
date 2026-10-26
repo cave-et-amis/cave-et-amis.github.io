@@ -225,6 +225,8 @@ export type Preferences = {
   tour?: TourState;
   /** Astuces de première visite déjà vues (identifiants de page). */
   tips?: string[];
+  /** Date à laquelle l'information sur Lia et Anthropic a été lue (affichée une fois). */
+  ai_notice?: string;
 };
 export type TourState = { status: 'active' | 'done' | 'skipped'; step: number };
 

@@ -4,7 +4,8 @@
  * Toutes les actions exigent une session valide. Les données sont lues avec les droits de la personne
  * connectée ; la clé « service » ne sert qu'à la comptabilité (quotas, budget, erreurs) et à l'enregistrement
  * des conversations et des relevés de prix de cette même personne.
- * Exceptions, sans session : les requêtes signées du serveur Nous et la tâche planifiée d'envoi vers Nous (nous.ts).
+ * Exceptions, sans session : les requêtes signées du serveur Nous et les tâches planifiées (envoi vers Nous, notifications
+ * push, durées de conservation), qui présentent le jeton de nous_config.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { AI_MESSAGES } from '../../src/domain/errors.ts';
@@ -16,6 +17,7 @@ import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
 import { createPush } from './push.ts';
 
 import { lookupPrice } from './price.ts';
+import { purgeOrphanPhotos, purgeRetention } from './retention.ts';
 import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpired, type ScanResult } from './scan.ts';
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { wineKey } from '../../src/domain/scan.ts';
@@ -375,6 +377,8 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       if (!(await nous.cronTokenOk(cron))) return json({ ok: false, code: 'forbidden' }, 403, cors);
       if (body.action === 'nous_flush') return json({ ok: true, ...(await nous.flush(100)) }, 200, cors);
       if (body.action === 'push_flush') return json({ ok: true, ...(await push.flush(100)) }, 200, cors);
+      if (body.action === 'retention_purge') return json({ ok: true, ...(await purgeRetention(svc, now())) }, 200, cors);
+      if (body.action === 'photos_purge') return json({ ok: true, ...(await purgeOrphanPhotos(svc)) }, 200, cors);
       return json({ ok: false, code: 'forbidden' }, 403, cors);
     }
     if (!env.ecosystemSecret) return json({ ok: false, code: 'integration_disabled' }, 503, cors);

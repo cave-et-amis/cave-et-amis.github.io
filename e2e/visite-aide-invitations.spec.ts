@@ -8,7 +8,7 @@
  * Fichier nommé pour passer après parcours.spec.ts (le premier compte créé de la série devient administrateur).
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { email, goto, inviteCode, PASSWORD, shot, signUp, skipWelcome, toast } from './helpers';
+import { confirmAge, email, goto, inviteCode, PASSWORD, shot, signUp, skipWelcome, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -266,6 +266,7 @@ test('lien « voir ma cave » limité à une sélection : sans compte, découvri
   await theo.getByLabel('Votre prénom').fill('Theo');
   await theo.getByLabel('Adresse e-mail').fill(email('Theo'));
   await theo.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
+  await confirmAge(theo);
   await theo.getByRole('button', { name: 'Créer mon compte' }).click();
   await expect(theo.getByRole('heading', { name: 'Ines vous invite à voir sa cave sur Cave & Amis' })).toBeVisible();
   await theo.getByRole('button', { name: 'Accepter' }).click();

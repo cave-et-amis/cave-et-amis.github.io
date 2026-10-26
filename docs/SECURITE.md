@@ -12,7 +12,7 @@
 | Photos | oui | si elles illustrent un lot qu'elle voit | non | si elles illustrent un vin de l'événement ou une note partagée | non |
 | Dégustations | oui | non | non | seulement si partagées avec l'événement | non |
 | Prix de marché, relevés, liste d'envies | oui | non | non | non | non |
-| Conversations avec l'assistant | oui | non | non | non | **non, y compris l'administrateur** |
+| Conversations avec l'assistant | oui | non | non | non | **non, ni l'administrateur dans l'application** (l'exploitant du projet Supabase y a techniquement accès ; Anthropic reçoit ce qu'il faut pour chaque réponse) |
 
 - Tout est appliqué **dans la base** (RLS sur toutes les tables, fonctions `security definer` contrôlées, politiques du stockage).
   Le navigateur ne peut pas contourner ces règles ; l'assistant non plus : il lit avec le jeton de la personne.
@@ -67,6 +67,59 @@
   n'est envoyé par Cave & Amis.
 - **Préférences** (visite guidée, astuces) : chacun ne modifie que les siennes, par une fonction qui fusionne un petit objet
   (2 000 octets au plus) sans écraser les autres réglages.
+
+## Documents légaux, preuves et vos données
+
+Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `20261101000001_documents_legaux`.
+
+- **Documents** (`legal_documents`) : conditions d'utilisation, politique de confidentialité, mentions légales, cookies.
+  Publiés par l'administrateur seulement (`admin_legal_publish`), jamais modifiés ni supprimés ensuite (déclencheur) ;
+  numéro de version et empreinte SHA-256 du texte calculés par la base. Un texte qui contient encore « [À COMPLÉTER » ou
+  « [À VALIDER » est refusé. Les premières conditions d'utilisation demandent toujours une acceptation de tous ; seules les
+  conditions peuvent en demander une. Dès que l'administrateur a activé une double authentification, la publication exige
+  une session vérifiée par le code (niveau aal2). Les projets sont dans `docs/legal/` (à compléter et à faire valider).
+- **Preuves et consentements** (`legal_acceptances`, `user_consents`) : ajout seul, aucune adresse IP ni information sur
+  l'appareil. Pas de clé étrangère vers le compte : à sa suppression, un déclencheur note la date (`account_deleted_at`) et
+  les lignes sont effacées 5 ans plus tard ; seule la purge peut les effacer. Aucun accès direct aux tables : tout passe par
+  les fonctions communes (`legal_current`, lisible sans compte ; `legal_pending`, `legal_accept`, `consent_set`,
+  `my_legal_history`, `admin_legal_stats`, sans nom).
+- **Inscription** : case jamais cochée d'avance (« J'ai 18 ans ou plus et j'accepte les conditions d'utilisation ») ; les
+  versions des conditions et de la politique présentées passent dans les métadonnées de l'inscription et sont notées par le
+  déclencheur de création du profil.
+- **Comptes existants** : fenêtre à la connexion tant que les conditions ne sont pas acceptées. Refuser ne supprime rien :
+  l'application reste fermée, sauf télécharger ses données, supprimer son compte ou se déconnecter, et la fenêtre revient à
+  la connexion suivante (le silence ne vaut pas acceptation). Ce blocage est fait par l'application : les règles d'accès aux
+  données, elles, ne changent pas. Une nouvelle politique, ou une nouvelle version mineure des conditions, s'affiche en
+  simple bandeau (« J'ai lu » = prise de connaissance, jamais un consentement).
+- **Consentements de Cave** : « apparaître dans la recherche d'amis » (chaque changement de `profiles.discoverable` est
+  noté) et « agenda Nous » (la liaison et la déliaison sont notées, sauf pendant la suppression du compte).
+- **Export complet** (`export_my_data`) : tout ce que la base garde sur la personne ; pour les autres, seulement ce que
+  l'application lui montre déjà (prénom, rôle, réponse). Jamais de secret : ni code ou empreinte d'invitation, ni clé ou
+  adresse de notification (seulement le nom du service), ni mot de passe. Les photos de son dossier sont ajoutées par
+  l'application, dans une archive ZIP calculée sur l'appareil.
+- **Lia et Anthropic** : à la première utilisation de l'assistant, du scanner ou de la lecture d'étiquette, un encadré
+  explique ce qui est transmis à Anthropic (une fois par compte).
+- **Déconnexion** : en plus de la session, le code d'invitation en attente, les préférences de confort (budget du scanner,
+  état des propositions de Lia) et le brouillon du scanner sont effacés de l'appareil.
+
+## Durées de conservation
+
+Validées le 26/10/2026, appliquées par la fonction `retention_purge` (chaque nuit) et par cave-api, appelée par deux tâches
+planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque purge est définitive).
+
+| Données | Durée |
+| --- | --- |
+| Compte, caves, carnet, contacts, groupes, événements | tant que le compte existe |
+| Conversations avec Lia | 12 mois après le dernier message |
+| Journaux d'usage de l'IA / erreurs techniques | 13 mois / 3 mois |
+| Relevés de prix | 24 mois |
+| Liens d'invitation expirés ou révoqués | 90 jours (code et note « Pour qui ? » partent avec la ligne) |
+| Demandes de contact ou d'accès refusées | 6 mois |
+| Analyses du scanner (avec leurs photos) et visites vides | 30 jours (réglage `scan_retention_days`), purgées chaque nuit même si la personne ne revient pas |
+| Appareils de notification en échec | 90 jours sans succès |
+| Photos qui ne servent plus | chaque mois : fichiers de plus de 30 jours qu'aucune fiche, dégustation, groupe, vin d'événement ou analyse ne cite, supprimés par le stockage (jamais par SQL) |
+| Preuves d'acceptation et consentements | durée du compte, puis 5 ans |
+| Comptes inactifs | rien d'automatique pour l'instant |
 
 ## Stocks et réservations
 

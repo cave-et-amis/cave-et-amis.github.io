@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Compass, Download, Eye, KeyRound, Lightbulb, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
-import { toMessage } from '../../domain/errors';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
 import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
+import { LegalLinks } from '../legal/LegalViews';
 import { useTour } from '../tour/Tour';
 import { PushSettings } from '../push/PushSettings';
+import { DeleteAccountSheet } from './DeleteAccountSheet';
 import { NousSection } from './NousSection';
 
 const CURRENCIES = ['EUR', 'CHF', 'USD', 'GBP', 'CAD'];
@@ -146,11 +147,11 @@ export function SettingsPage() {
           </span>
           <ChevronRight aria-hidden />
         </a>
-        <a className="row" href="#/cave">
-          <Download aria-hidden style={{ color: 'var(--primary)' }} />
+        <a className="row" href="#/reglages/confidentialite">
+          <LockKeyhole aria-hidden style={{ color: 'var(--primary)' }} />
           <span className="row-main">
-            <span className="row-title">Exporter mes données</span>
-            <span className="row-sub">Ma cave (inventaire) et mon carnet : boutons « Exporter » en bas de chaque liste</span>
+            <span className="row-title">Confidentialité et mes données</span>
+            <span className="row-sub">Télécharger toutes mes données, mes choix, documents acceptés, durées de conservation</span>
           </span>
           <ChevronRight aria-hidden />
         </a>
@@ -159,7 +160,7 @@ export function SettingsPage() {
             <Shield aria-hidden style={{ color: 'var(--gold-ink)' }} />
             <span className="row-main">
               <span className="row-title">Administration</span>
-              <span className="row-sub">Assistant IA : clé, modèle, quotas, budget, consommation</span>
+              <span className="row-sub">Documents légaux ; assistant IA : clé, modèle, quotas, budget, consommation</span>
             </span>
             <ChevronRight aria-hidden />
           </a>
@@ -182,7 +183,10 @@ export function SettingsPage() {
         ) : (
           <Notice tone="warn">État de l’assistant inconnu (serveur injoignable).</Notice>
         )}
-        <p className="small faint">Vos conversations avec l’assistant sont privées : ni vos amis ni l’administrateur ne peuvent les lire.</p>
+        <p className="small faint">
+          Vos conversations avec l’assistant ne sont montrées ni à vos amis ni dans l’écran d’administration. Pour vous répondre, Lia les transmet à Claude,
+          l’intelligence artificielle de la société Anthropic (États-Unis) ; elles sont effacées 12 mois après le dernier message.
+        </p>
       </section>
 
       <PushSettings />
@@ -262,6 +266,7 @@ export function SettingsPage() {
         Supprimer mon compte
       </Button>
       <p className="small faint center">Cave &amp; Amis — votre cave, vos amis, la bonne bouteille au bon moment.</p>
+      <LegalLinks />
 
       {password && <PasswordSheet onClose={() => setPassword(false)} />}
       {deleting && (
@@ -314,57 +319,6 @@ function PasswordSheet({ onClose }: { onClose: () => void }) {
         <Field label="Nouveau mot de passe" htmlFor="pw-new" hint={PASSWORD_HINT} error={problem ?? undefined}>
           <input id="pw-new" className="input" type="password" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
         </Field>
-      </div>
-    </Sheet>
-  );
-}
-
-function DeleteAccountSheet({ onClose, onDeleted }: { onClose: () => void; onDeleted: () => Promise<void> }) {
-  const { api } = useStore();
-  const [typed, setTyped] = useState('');
-  const [password, setPassword] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  return (
-    <Sheet
-      open
-      onClose={onClose}
-      title="Supprimer mon compte"
-      footer={
-        <Button
-          variant="danger"
-          loading={busy}
-          disabled={typed !== 'SUPPRIMER' || !password}
-          onClick={async () => {
-            setBusy(true);
-            setError(null);
-            try {
-              const res = await api.ai('delete_account', { confirm: 'SUPPRIMER', password });
-              if (!res.ok) throw new Error(res.message);
-              await onDeleted();
-            } catch (e) {
-              setError((e as Error).message || toMessage(e));
-            } finally {
-              setBusy(false);
-            }
-          }}
-        >
-          Supprimer définitivement
-        </Button>
-      }
-    >
-      <div className="form">
-        <Notice tone="danger">
-          Vos caves, vins, dégustations, photos et conversations seront supprimés définitivement. Les événements que vous organisez seront supprimés pour tous ;
-          vos bouteilles réservées ailleurs seront libérées.
-        </Notice>
-        <Field label="Tapez SUPPRIMER pour confirmer" htmlFor="del-confirm">
-          <input id="del-confirm" className="input" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
-        </Field>
-        <Field label="Votre mot de passe" htmlFor="del-password" hint="Redemandé pour vérifier que c’est bien vous.">
-          <input id="del-password" className="input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </Field>
-        {error && <Notice tone="danger">{error}</Notice>}
       </div>
     </Sheet>
   );

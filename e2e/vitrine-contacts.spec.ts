@@ -5,7 +5,7 @@
  * Fichier nommé pour passer après parcours.spec.ts (le premier compte créé devient administrateur).
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { email, goto, inviteCode, PASSWORD, shot, signUp, skipWelcome, toast } from './helpers';
+import { confirmAge, email, goto, inviteCode, PASSWORD, shot, signUp, skipWelcome, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -56,6 +56,7 @@ test('vitrine d’un lien d’événement : inscription, puis arrivée directe s
   await omar.getByLabel('Votre prénom').fill('Omar');
   await omar.getByLabel('Adresse e-mail').fill(email('Omar'));
   await omar.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
+  await confirmAge(omar);
   await omar.getByRole('button', { name: 'Créer mon compte' }).click();
 
   // Arrivée directe sur l'événement, invitation acceptée.

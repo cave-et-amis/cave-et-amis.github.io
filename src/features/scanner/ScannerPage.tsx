@@ -15,6 +15,7 @@ import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
 import { barcodeSupported, detectBarcode, photoHash } from './capture';
 import { clearDraft, loadDraft, saveDraft } from './draft';
+import { AiNotice } from '../legal/AiNotice';
 
 type Slot = { blob: Blob; url: string; hash: string };
 
@@ -205,6 +206,7 @@ export function ScannerPage() {
         <h2>Scanner avant d’acheter</h2>
         <p>Photographiez la bouteille en rayon : Lia identifie le vin et relève le prix affiché. Vous vérifiez avant tout enregistrement.</p>
       </section>
+      <AiNotice />
 
       {visitId && (
         <Notice tone="gold">

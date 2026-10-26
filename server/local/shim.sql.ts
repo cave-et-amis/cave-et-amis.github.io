@@ -26,8 +26,22 @@ $f$;
 create or replace function auth.role() returns text language sql stable as $f$
   select nullif(current_setting('request.jwt.claim.role', true), '')
 $f$;
+create or replace function auth.jwt() returns jsonb language sql stable as $f$
+  select coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb
+$f$;
+-- Codes de double authentification (TOTP) : seul l'état « vérifié » sert à la base.
+create table if not exists auth.mfa_factors (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users (id) on delete cascade,
+  friendly_name text,
+  factor_type text not null default 'totp',
+  status text not null default 'unverified',
+  secret text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
 grant usage on schema auth to anon, authenticated, service_role;
-grant execute on function auth.uid(), auth.role() to anon, authenticated, service_role;
+grant execute on function auth.uid(), auth.role(), auth.jwt() to anon, authenticated, service_role;
 grant select on auth.users to service_role;
 
 create schema if not exists storage;

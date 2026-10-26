@@ -82,7 +82,12 @@ la purge existante). Rien n'est modifié dans Cave.
 - Le navigateur ouvre `<APP_URL>?auth=link&token_hash=<…>&next=<chemin>` ; l'application appelle
   `auth.verifyOtp({type: 'magiclink', token_hash})` puis retire ces paramètres de l'adresse.
 - Si la personne a activé la double authentification dans Nous, Nous lui demande ensuite son code (niveau aal2), comme d'habitude.
-- En cas d'échec, l'application ouvre simplement l'autre site (connexion normale).
+- Nous peut refuser avec `{ ok: false, code: 'jump_disabled' }` dans trois cas :
+  - la personne n'a pas activé la connexion directe dans Nous (désactivée par défaut) ;
+  - c'est un compte d'administration ;
+  - c'est un compte bloqué.
+- En cas d'échec, y compris `jump_disabled`, l'application ouvre simplement l'autre site (connexion normale), sans délier
+  les comptes ni afficher d'erreur.
 
 ## 5. Synchronisation Cave → Nous
 

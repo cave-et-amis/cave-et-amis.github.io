@@ -37,6 +37,13 @@ export async function skipWelcome(page: Page) {
   });
 }
 
+/** Case de l'inscription (âge minimum, et conditions d'utilisation quand elles sont publiées), jamais cochée d'avance. */
+export async function confirmAge(page: Page) {
+  const box = page.getByRole('checkbox', { name: /J’ai 18 ans ou plus/ });
+  await expect(box).not.toBeChecked();
+  await box.check();
+}
+
 /** Création de compte ; « welcome » : garder l'accueil et la visite guidée (parcours qui les testent). */
 export async function signUp(page: Page, name: string, path = '/', { welcome = false } = {}) {
   if (!welcome) await skipWelcome(page);
@@ -47,6 +54,7 @@ export async function signUp(page: Page, name: string, path = '/', { welcome = f
   await page.getByLabel('Votre prénom').fill(name);
   await page.getByLabel('Adresse e-mail').fill(email(name));
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
+  await confirmAge(page);
   await page.getByRole('button', { name: 'Créer mon compte' }).click();
 }
 

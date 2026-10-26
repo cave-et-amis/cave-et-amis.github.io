@@ -2390,3 +2390,42 @@ details.help-topic:not([open]) > summary::after {
 .cmp-facts dd {
   margin: 0;
 }
+/* Documents légaux : texte, zone de lecture de la fenêtre d'acceptation, liens de bas de page. */
+.legal-doc h3,
+.legal-doc h4,
+.legal-doc h5 {
+  font-family: var(--font-title);
+  margin: 18px 0 6px;
+  line-height: 1.25;
+}
+.legal-doc h3 {
+  font-size: 1.15rem;
+}
+.legal-doc h4 {
+  font-size: 1.02rem;
+}
+.legal-doc h5 {
+  font-size: 0.95rem;
+}
+.legal-doc p,
+.legal-doc li {
+  line-height: 1.5;
+}
+.legal-scroll {
+  max-height: 46vh;
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 14px;
+  margin: 8px 0 4px;
+}
+.legal-links a {
+  color: var(--ink-2);
+}

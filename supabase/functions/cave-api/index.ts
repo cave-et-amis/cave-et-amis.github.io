@@ -833,11 +833,23 @@ var HELP_TOPICS = [
 			"carnet",
 			"reglages"
 		],
-		keywords: "exporter export tableur excel csv sauvegarde donnees",
-		steps: ["Ma cave › « Exporter ces vins (tableur) ».", "Mon carnet › « Exporter mon carnet (tableur) »."],
+		keywords: "exporter export telecharger tableur excel csv sauvegarde donnees archive zip photos copie",
+		steps: ["Pour un tableur : Ma cave › « Exporter ces vins (tableur) » ; Mon carnet › « Exporter mon carnet (tableur) ».", "Toutes vos données et vos photos : Réglages › « Confidentialité et mes données » › « Télécharger toutes mes données » (archive ZIP)."],
 		link: {
 			label: "Ouvrir ma cave",
 			path: "/cave"
+		}
+	},
+	{
+		id: "mes-donnees",
+		title: "Confidentialité et mes données",
+		question: "Comment supprimer mon compte ou voir ce qui est gardé ?",
+		pages: ["reglages"],
+		keywords: "confidentialite rgpd vie privee supprimer compte effacer donnees personnelles conditions politique conservation consentement",
+		steps: ["Réglages › « Confidentialité et mes données » : vos choix, les documents acceptés, les durées de conservation.", "Le bas de la page explique ce que devient chaque donnée, puis « Supprimer mon compte » (votre mot de passe est redemandé)."],
+		link: {
+			label: "Ouvrir Confidentialité et mes données",
+			path: "/reglages/confidentialite"
 		}
 	},
 	{
@@ -3615,6 +3627,50 @@ function createPush(o) {
 	};
 }
 //#endregion
+//#region server/api/retention.ts
+var SCAN_BATCH = 200;
+var REMOVE_BATCH = 100;
+async function removePhotos(svc, paths) {
+	for (let i = 0; i < paths.length; i += REMOVE_BATCH) {
+		const { error } = await svc.storage.from("photos").remove(paths.slice(i, i + REMOVE_BATCH));
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+	}
+}
+/** Analyses du scanner arrivées à échéance, de toutes les personnes (la purge au retour de la personne ne suffit pas). */
+async function purgeExpiredScans(svc, now) {
+	let total = 0;
+	for (let round = 0; round < 25; round++) {
+		const { data, error } = await svc.from("scans").select("id, user_id, photos").lt("expires_at", now.toISOString()).limit(SCAN_BATCH);
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+		const rows = data ?? [];
+		if (!rows.length) break;
+		await removePhotos(svc, rows.flatMap((r) => (r.photos ?? []).map((p) => p.path).filter((p) => typeof p === "string" && p.startsWith(`${r.user_id}/`))));
+		const { error: delError } = await svc.from("scans").delete().in("id", rows.map((r) => r.id));
+		if (delError) throw new AiFailure("internal", sanitize(delError.message));
+		total += rows.length;
+		if (rows.length < SCAN_BATCH) break;
+	}
+	return total;
+}
+/** Purge de chaque nuit. Renvoie le nombre de lignes effacées par catégorie (jamais leur contenu). */
+async function purgeRetention(svc, now) {
+	const scans = await purgeExpiredScans(svc, now);
+	const { data, error } = await svc.rpc("retention_purge");
+	if (error) throw new AiFailure("internal", sanitize(error.message));
+	return {
+		scans,
+		...data ?? {}
+	};
+}
+/** Purge mensuelle : photos de plus de 30 jours qu'aucune fiche, dégustation, groupe, vin d'événement ou analyse ne cite. */
+async function purgeOrphanPhotos(svc) {
+	const { data, error } = await svc.rpc("retention_orphan_photos", { p_limit: 2e3 });
+	if (error) throw new AiFailure("internal", sanitize(error.message));
+	const names = (data ?? []).map((r) => typeof r === "string" ? r : r?.name).filter((n) => typeof n === "string" && n.includes("/"));
+	await removePhotos(svc, names);
+	return { photos: names.length };
+}
+//#endregion
 //#region server/api/scan.ts
 var PHOTO_ROLES = [
 	"front",
@@ -4393,7 +4449,8 @@ async function searchMarket(meter, wine, currency, key, now) {
 * Toutes les actions exigent une session valide. Les données sont lues avec les droits de la personne
 * connectée ; la clé « service » ne sert qu'à la comptabilité (quotas, budget, erreurs) et à l'enregistrement
 * des conversations et des relevés de prix de cette même personne.
-* Exceptions, sans session : les requêtes signées du serveur Nous et la tâche planifiée d'envoi vers Nous (nous.ts).
+* Exceptions, sans session : les requêtes signées du serveur Nous et les tâches planifiées (envoi vers Nous, notifications
+* push, durées de conservation), qui présentent le jeton de nous_config.
 */
 var TECHNICAL = /* @__PURE__ */ new Set([
 	"invalid_key",
@@ -4823,6 +4880,14 @@ function createApiHandler(env, deps = {}) {
 			if (body.action === "push_flush") return json({
 				ok: true,
 				...await push.flush(100)
+			}, 200, cors);
+			if (body.action === "retention_purge") return json({
+				ok: true,
+				...await purgeRetention(svc, now())
+			}, 200, cors);
+			if (body.action === "photos_purge") return json({
+				ok: true,
+				...await purgeOrphanPhotos(svc)
 			}, 200, cors);
 			return json({
 				ok: false,

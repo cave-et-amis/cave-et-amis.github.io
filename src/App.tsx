@@ -3,9 +3,12 @@ import type { Session } from '@supabase/supabase-js';
 import type { Api, Snapshot } from './data/api';
 import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
+import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink } from './domain/nous';
 import { AuthScreen, DiscoverScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
+import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
+import { LegalScreen } from './features/legal/LegalViews';
 import { Shell } from './ui/Shell';
 import { Button, ConfirmProvider, ToastProvider } from './ui/kit';
 import { go, routeQuery, useRoute } from './ui/router';
@@ -99,6 +102,9 @@ function Root({ api, local }: { api: Api; local: boolean }) {
       />
     );
   if (!session) {
+    // Documents légaux : lisibles avant l'inscription.
+    const legal = /^\/legal\/([a-z]+)/.exec(route)?.[1];
+    if (isLegalKind(legal)) return <LegalScreen api={api} kind={legal} />;
     // « Découvrir l'application » sans compte : en visiteur, ou depuis la page d'un lien d'invitation (code gardé).
     if (route.startsWith('/decouvrir')) {
       const code = /^[A-Za-z0-9-]{6,24}$/.exec(routeQuery(route).get('code') ?? '')?.[0] ?? null;
@@ -136,8 +142,11 @@ function Root({ api, local }: { api: Api; local: boolean }) {
 function SignedIn({ api, local, session }: { api: Api; local: boolean; session: Session }) {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Documents à accepter ou à lire (null : pas encore vérifié).
+  const [pending, setPending] = useState<LegalPending[] | null>(null);
   const inflight = useRef<Promise<void> | null>(null);
   const again = useRef(false);
+  const refreshLegal = useCallback(async () => setPending(await loadPending(api)), [api]);
 
   const reload = useCallback(async () => {
     if (inflight.current) {
@@ -162,7 +171,7 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
 
   const start = useCallback(async () => {
     try {
-      await reload();
+      await Promise.all([reload(), refreshLegal()]);
       // Lien d'invitation ouvert avant la connexion : on y revient (venant de la vitrine, un lien de groupe ou
       // d'événement est accepté aussitôt, et l'on arrive directement dessus).
       const code = pendingInvite();
@@ -175,13 +184,13 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
     } catch (e) {
       setError(toMessage(e));
     }
-  }, [reload]);
+  }, [reload, refreshLegal]);
 
   useEffect(() => {
     void start();
   }, [start]);
 
-  if (!snapshot) {
+  if (!snapshot || pending === null) {
     if (!error) return <Loading text="Ouverture de votre cave…" />;
     return (
       <main className="auth">
@@ -199,9 +208,11 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
     );
   }
 
+  // Conditions d'utilisation à accepter : rien d'autre tant qu'elles ne le sont pas (sauf export, suppression, déconnexion).
+  const terms = pending.find((p) => p.mode === 'acceptation');
   return (
     <StoreProvider api={api} local={local} userId={session.user.id} email={session.user.email ?? ''} snapshot={snapshot} reload={reload}>
-      <Shell />
+      <LegalProvider value={{ pending, refresh: refreshLegal }}>{terms ? <TermsGate item={terms} /> : <Shell />}</LegalProvider>
     </StoreProvider>
   );
 }

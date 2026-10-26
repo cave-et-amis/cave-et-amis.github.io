@@ -49,6 +49,8 @@ import type {
   WishItem,
 } from '../domain/types';
 import { AppError } from '../domain/errors';
+import type { LegalDoc, LegalHistory, LegalKind, LegalPending, LegalStats } from '../domain/legal';
+import { clearDeviceData } from './deviceData';
 import { thisDeviceEndpoint, type DeviceSubscription } from './pushDevice';
 import { AI_MESSAGES } from '../domain/errors';
 
@@ -144,8 +146,12 @@ export class Api {
     if (error) throw error;
   }
 
-  async signUp(name: string, email: string, password: string) {
-    const { data, error } = await this.sb.auth.signUp({ email: email.trim(), password, options: { data: { display_name: name.trim() } } });
+  /** `legal` : versions des conditions acceptées et de la politique présentée, notées par la base avec le compte. */
+  async signUp(name: string, email: string, password: string, legal: { cgu_version?: number; confidentialite_version?: number } = {}) {
+    const meta: Record<string, string> = { display_name: name.trim() };
+    if (legal.cgu_version) meta.cgu_version = String(legal.cgu_version);
+    if (legal.confidentialite_version) meta.confidentialite_version = String(legal.confidentialite_version);
+    const { data, error } = await this.sb.auth.signUp({ email: email.trim(), password, options: { data: meta } });
     if (error) throw error;
     return { needsConfirmation: !data.session };
   }
@@ -155,6 +161,8 @@ export class Api {
     const endpoint = await thisDeviceEndpoint();
     if (endpoint) await this.sb.rpc('remove_push_endpoint', { p_endpoint: endpoint }).then(() => undefined, () => undefined);
     await this.sb.auth.signOut({ scope: 'local' });
+    // Préférences de confort, code d'invitation, brouillon du scanner : rien ne reste pour la personne suivante.
+    await clearDeviceData();
   }
 
   async resetPassword(email: string) {
@@ -770,6 +778,39 @@ export class Api {
   }
   async deleteConversation(id: string) {
     must(await this.sb.from('ai_conversations').delete().eq('id', id));
+  }
+
+  // ───────────── Documents légaux, consentements, export de mes données ─────────────
+
+  /** Dernière version publiée de chaque document (lisible sans compte). */
+  async legalCurrent() {
+    return (must(await this.sb.rpc('legal_current')) ?? []) as LegalDoc[];
+  }
+  async legalPending() {
+    return (must(await this.sb.rpc('legal_pending')) ?? []) as LegalPending[];
+  }
+  async legalAccept(documentId: string, action: 'acceptation' | 'prise_de_connaissance', context: 'inscription' | 'connexion' | 'reglages') {
+    must(await this.sb.rpc('legal_accept', { p_document: documentId, p_action: action, p_context: context }));
+  }
+  async myLegalHistory() {
+    return must(await this.sb.rpc('my_legal_history')) as LegalHistory;
+  }
+  /** Toutes mes données (format « cave-export-v1 ») ; `photos` : les fichiers de mon dossier, à télécharger à part. */
+  async exportMyData() {
+    return must(await this.sb.rpc('export_my_data')) as Record<string, unknown> & { photos: string[] };
+  }
+  async photoBlob(path: string) {
+    const { data, error } = await this.sb.storage.from('photos').download(path);
+    if (error || !data) throw error ?? new Error('not_found');
+    return data;
+  }
+  async adminLegalPublish(kind: LegalKind, title: string, content: string, summary: string, requiresAcceptance: boolean) {
+    return must(
+      await this.sb.rpc('admin_legal_publish', { p_kind: kind, p_title: title, p_content: content, p_summary: summary, p_requires_acceptance: requiresAcceptance }),
+    ) as string;
+  }
+  async adminLegalStats() {
+    return (must(await this.sb.rpc('admin_legal_stats')) ?? []) as LegalStats[];
   }
 
   // ───────────── Administration ─────────────

@@ -15,6 +15,7 @@ import { Button, EmptyState, InlineLoading, Notice, useConfirm } from '../../ui/
 import { go, routeQuery } from '../../ui/router';
 import { useAiStatus } from '../cellar/LabelScan';
 import { HelpTopicItem, useHelpPerms } from '../help/HelpSheet';
+import { AiNotice } from '../legal/AiNotice';
 
 type Action =
   // Accès direct à un écran prévu par une fiche d'aide (navigation seulement).
@@ -164,6 +165,7 @@ export function AssistantPage({ conversationId }: { conversationId: string | nul
       )}
       {!unavailable && ai.status && ai.status.month_pct >= 80 && <Notice tone="gold">Vous approchez de votre limite mensuelle d’utilisation de l’assistant.</Notice>}
 
+      <AiNotice />
       {!conversationId && (
         <>
           <div className="card gold stack-sm">

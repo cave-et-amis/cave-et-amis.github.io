@@ -11,6 +11,7 @@ import { toMessage } from '../../domain/errors';
 import type { Wine } from '../../domain/types';
 import { useActions } from '../../ui/Shell';
 import { Button, InlineLoading, Notice, Sheet } from '../../ui/kit';
+import { AiNotice } from '../legal/AiNotice';
 
 type LabelResult = {
   is_wine_label: boolean;
@@ -182,6 +183,7 @@ export function LabelScanSheet({ onClose }: { onClose: () => void }) {
         )}
         {phase === 'pick' && (
           <>
+            {!ai.unavailable && <AiNotice />}
             <p className="muted">Cadrez l’étiquette bien à plat, sans reflet. L’assistant propose les informations ; vous les vérifiez avant d’enregistrer.</p>
             {ai.unavailable && <Notice tone="warn">{ai.unavailable} La photo sera jointe à la fiche, que vous remplirez à la main.</Notice>}
             {pickButtons}

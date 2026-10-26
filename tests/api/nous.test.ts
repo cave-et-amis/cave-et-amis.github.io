@@ -244,6 +244,25 @@ describe('liaison et synchronisation', () => {
     expect(again.error).not.toBeNull();
   });
 
+  it('connexion directe refusée par Nous (« jump_disabled ») : simple échec, la liaison reste', async () => {
+    let jump: Record<string, unknown> = { ok: false, code: 'jump_disabled' };
+    const env = await makeNousEnv({ nousReply: (b) => (b.action === 'jump.token' ? jump : { ok: true, applied: true }) });
+    const { claire } = await friendsWithEvent(env);
+    await linkClaire(env, claire);
+    // Pas de jeton : l'application ouvre alors simplement le site de Nous (openNous).
+    const res = await call(claire.sb, { action: 'nous_jump', next: '#/agenda' });
+    expect(res).toMatchObject({ ok: false, code: 'nous_unavailable' });
+    expect(res.url).toBeUndefined();
+    expect(env.sent.at(-1)).toMatchObject({ action: 'jump.token', cave_user_id: claire.id, nous_user_id: NOUS_USER });
+    // Ni déliaison, ni annonce de déliaison à Nous, ni erreur au journal de l'administrateur.
+    expect(await call(claire.sb, { action: 'nous_status' })).toMatchObject({ ok: true, link: { nous_display_name: 'Claire (Nous)' } });
+    expect((await env.db.query(`select 1 from nous_outbox where op = 'unlink'`)).rows).toHaveLength(0);
+    expect((await env.db.query(`select 1 from ai_errors`)).rows).toHaveLength(0);
+    // Connexion directe réactivée dans Nous : elle refonctionne.
+    jump = { ok: true, token_hash: 'jeton-nous' };
+    expect(await call(claire.sb, { action: 'nous_jump' })).toMatchObject({ ok: true });
+  });
+
   it('suspendre la synchronisation, puis la reprendre', async () => {
     const env = await makeNousEnv();
     const { bruno, claire, eventId } = await friendsWithEvent(env);

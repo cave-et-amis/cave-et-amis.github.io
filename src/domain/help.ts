@@ -355,9 +355,24 @@ export const HELP_TOPICS: HelpTopic[] = [
     title: 'Exporter mes données',
     question: 'Comment exporter ma cave ?',
     pages: ['cave', 'carnet', 'reglages'],
-    keywords: 'exporter export tableur excel csv sauvegarde donnees',
-    steps: ['Ma cave › « Exporter ces vins (tableur) ».', 'Mon carnet › « Exporter mon carnet (tableur) ».'],
+    keywords: 'exporter export telecharger tableur excel csv sauvegarde donnees archive zip photos copie',
+    steps: [
+      'Pour un tableur : Ma cave › « Exporter ces vins (tableur) » ; Mon carnet › « Exporter mon carnet (tableur) ».',
+      'Toutes vos données et vos photos : Réglages › « Confidentialité et mes données » › « Télécharger toutes mes données » (archive ZIP).',
+    ],
     link: { label: 'Ouvrir ma cave', path: '/cave' },
+  },
+  {
+    id: 'mes-donnees',
+    title: 'Confidentialité et mes données',
+    question: 'Comment supprimer mon compte ou voir ce qui est gardé ?',
+    pages: ['reglages'],
+    keywords: 'confidentialite rgpd vie privee supprimer compte effacer donnees personnelles conditions politique conservation consentement',
+    steps: [
+      'Réglages › « Confidentialité et mes données » : vos choix, les documents acceptés, les durées de conservation.',
+      'Le bas de la page explique ce que devient chaque donnée, puis « Supprimer mon compte » (votre mot de passe est redemandé).',
+    ],
+    link: { label: 'Ouvrir Confidentialité et mes données', path: '/reglages/confidentialite' },
   },
   {
     id: 'notifications',

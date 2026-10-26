@@ -47,6 +47,10 @@ const DB_MESSAGES: Record<string, string> = {
   lot_missing: 'Le lot de cette bouteille n’existe plus.',
   price_unverified: 'Ce relevé n’a pas pu être vérifié : il ne peut pas servir de prix de marché.',
   invalid_source: 'Le lien de la source doit commencer par http:// ou https://.',
+  legal_placeholders: 'Le document contient encore des emplacements « [À COMPLÉTER » ou « [À VALIDER » : complétez-les avant de publier.',
+  legal_invalid: 'Document incomplet : type, titre et texte sont obligatoires (seules les conditions d’utilisation demandent une acceptation).',
+  legal_immutable: 'Un document publié ne se modifie plus : publiez une nouvelle version.',
+  mfa_required: 'Validez d’abord votre code de double authentification (reconnectez-vous) pour publier.',
 };
 
 const AUTH_MESSAGES: Record<string, string> = {

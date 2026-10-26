@@ -2,10 +2,12 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
 import { AppError, toMessage } from '../../domain/errors';
+import { MIN_AGE, type LegalDoc } from '../../domain/legal';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
-import { Button, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
+import { Button, Check, Field, InlineLoading, Notice, Segmented } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { inviteHeadline } from '../friends/invite';
+import { LegalLinks, LegalSheet, useLegalDocs } from '../legal/LegalViews';
 import { Discover } from './Discover';
 
 type Mode = 'login' | 'signup' | 'forgot';
@@ -168,6 +170,12 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InviteInfo | null>(null);
+  // Inscription : âge minimum et conditions d'utilisation (case jamais cochée d'avance), versions notées avec le compte.
+  const legal = useLegalDocs(api);
+  const cgu = legal.byKind('cgu');
+  const policy = legal.byKind('confidentialite');
+  const [accepted, setAccepted] = useState(false);
+  const [reading, setReading] = useState<LegalDoc | null>(null);
 
   useEffect(() => {
     if (!inviteCode) return;
@@ -188,14 +196,24 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
         if (!name.trim()) throw new Error('name');
         const problem = passwordProblem(password);
         if (problem) throw new AppError(problem, 'weak_password');
-        const { needsConfirmation } = await api.signUp(name, email, password);
+        if (!accepted) throw new Error('terms');
+        const { needsConfirmation } = await api.signUp(name, email, password, { cgu_version: cgu?.version, confidentialite_version: policy?.version });
         if (needsConfirmation) setInfo('Compte créé. Ouvrez le lien reçu par e-mail pour confirmer votre adresse, puis connectez-vous.');
       } else {
         await api.resetPassword(email);
         setInfo('Si un compte existe avec cette adresse, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe.');
       }
     } catch (err) {
-      setError((err as Error).message === 'name' ? 'Indiquez votre prénom : il sera visible par vos amis.' : toMessage(err));
+      const m = (err as Error).message;
+      setError(
+        m === 'name'
+          ? 'Indiquez votre prénom : il sera visible par vos amis.'
+          : m === 'terms'
+            ? cgu
+              ? `Cochez la case : l’application est réservée aux personnes de ${MIN_AGE} ans ou plus qui acceptent les conditions d’utilisation.`
+              : `Cochez la case : l’application est réservée aux personnes de ${MIN_AGE} ans ou plus.`
+            : toMessage(err),
+      );
     } finally {
       setBusy(false);
     }
@@ -241,6 +259,36 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
                 <PasswordInput id="password" value={password} onChange={setPassword} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} />
               </Field>
             )}
+            {mode === 'signup' && (
+              <div className="stack-sm">
+                <Check
+                  checked={accepted}
+                  onChange={setAccepted}
+                  label={cgu ? `J’ai ${MIN_AGE} ans ou plus et j’accepte les conditions d’utilisation` : `J’ai ${MIN_AGE} ans ou plus`}
+                />
+                {(cgu || policy) && (
+                  <p className="small muted">
+                    {cgu && (
+                      <>
+                        <button type="button" className="link-btn" onClick={() => setReading(cgu)}>
+                          Lire les conditions d’utilisation
+                        </button>
+                        {policy ? ' · ' : ''}
+                      </>
+                    )}
+                    {policy && (
+                      <>
+                        Vos données sont traitées comme indiqué dans la{' '}
+                        <button type="button" className="link-btn" onClick={() => setReading(policy)}>
+                          politique de confidentialité
+                        </button>
+                        .
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+            )}
             {error && (
               <p className="field error" role="alert" style={{ color: 'var(--danger)', fontWeight: 650 }}>
                 {error}
@@ -272,7 +320,9 @@ export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; 
           Découvrir l’application sans compte
         </Button>
         <p className="small faint center">Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>
+        <LegalLinks />
       </div>
+      {reading && <LegalSheet doc={reading} onClose={() => setReading(null)} />}
     </main>
   );
 }

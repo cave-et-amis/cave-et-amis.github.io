@@ -28,6 +28,11 @@ import { SettingsPage } from '../features/settings/SettingsPage';
 import { CellarsPage } from '../features/settings/CellarsPage';
 import { WhoSeesPage } from '../features/settings/WhoSeesPage';
 import { AdminPage } from '../features/admin/AdminPage';
+import { LegalAdmin } from '../features/admin/LegalAdmin';
+import { LegalNotice } from '../features/legal/LegalGate';
+import { LegalPage } from '../features/legal/LegalViews';
+import { PrivacyPage } from '../features/legal/PrivacyPage';
+import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
 import { ScannerPage } from '../features/scanner/ScannerPage';
 import { ScanPage } from '../features/scanner/ScanPage';
 import { ScanHistory } from '../features/scanner/ScanHistory';
@@ -220,6 +225,10 @@ function ShellInner() {
         title = 'Qui voit ma cave';
         back = '/reglages';
         page = <WhoSeesPage />;
+      } else if (seg[1] === 'confidentialite') {
+        title = 'Confidentialité et mes données';
+        back = '/reglages';
+        page = <PrivacyPage />;
       } else {
         title = 'Réglages';
         page = <SettingsPage />;
@@ -246,7 +255,21 @@ function ShellInner() {
     case 'admin':
       title = 'Administration';
       back = '/reglages';
-      page = me.is_admin ? <AdminPage /> : <EmptyState icon="🔒" title="Espace réservé à l’administrateur" />;
+      page = me.is_admin ? (
+        <>
+          <LegalAdmin />
+          <AdminPage />
+        </>
+      ) : (
+        <EmptyState icon="🔒" title="Espace réservé à l’administrateur" />
+      );
+      break;
+    case 'legal':
+      if (isLegalKind(seg[1])) {
+        title = LEGAL_TITLES[seg[1]];
+        back = '/reglages/confidentialite';
+        page = <LegalPage api={store.api} kind={seg[1]} />;
+      } else page = <EmptyState icon="🧭" title="Page introuvable" action={<Button onClick={() => go('/')}>Revenir à l’accueil</Button>} />;
       break;
     default:
       page = (
@@ -330,9 +353,10 @@ function ShellInner() {
         </header>
         <main className="page" id="contenu">
           {seg[0] === undefined && <ResumeTour />}
+          <LegalNotice />
           {page}
         </main>
-        {!['assistant', 'admin', 'reglages', 'scanner'].includes(seg[0] ?? '') && (
+        {!['assistant', 'admin', 'reglages', 'scanner', 'legal'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
             <Plus aria-hidden />
             Ajouter
