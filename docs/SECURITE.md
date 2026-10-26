@@ -67,6 +67,9 @@
   n'est envoyé par Cave & Amis.
 - **Préférences** (visite guidée, astuces) : chacun ne modifie que les siennes, par une fonction qui fusionne un petit objet
   (2 000 octets au plus) sans écraser les autres réglages.
+- **Profil** : chacun lit et modifie tout son profil ; les autres n'en voient que le prénom, par `profile_names()` (soi, ses
+  contacts, les participants d'un même événement ; les groupes et la recherche d'amis passent par leurs propres fonctions).
+  Migration `20261101000003_profil_limite`.
 
 ## Documents légaux, preuves et vos données
 
@@ -199,8 +202,8 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 - L'adéquation à vos goûts est calculée **dans l'application** (`src/domain/taste.ts`) à partir de vos seules données, déjà
   chargées avec vos droits : vos lots, vos dégustations, vos envies, vos favoris. Les dégustations et caves des autres
   personnes ne sont jamais prises en compte, et rien de tout cela n'est envoyé à l'IA.
-- Le budget est enregistré **sur l'analyse** (privée, RLS), et non dans les préférences du profil, que vos contacts peuvent
-  lire. Un budget habituel est seulement gardé sur l'appareil (stockage local du navigateur).
+- Le budget est enregistré **sur l'analyse** (privée, RLS), et non dans les préférences du profil. Un budget habituel est
+  seulement gardé sur l'appareil (stockage local du navigateur).
 
 ### Comparer plusieurs bouteilles (lot 3d)
 
