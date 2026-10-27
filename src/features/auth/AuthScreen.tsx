@@ -167,13 +167,26 @@ export function DiscoverScreen({ onChoose, onBack }: { onChoose: (mode: 'signup'
   );
 }
 
-export function AuthScreen({ api, local, inviteCode, initialMode }: { api: Api; local: boolean; inviteCode: string | null; initialMode?: 'signup' | 'login' }) {
+/** `notice` : message à afficher d'emblée (par exemple un lien « mot de passe oublié » qui n'est plus valable). */
+export function AuthScreen({
+  api,
+  local,
+  inviteCode,
+  initialMode,
+  notice,
+}: {
+  api: Api;
+  local: boolean;
+  inviteCode: string | null;
+  initialMode?: Mode;
+  notice?: string | null;
+}) {
   const [mode, setMode] = useState<Mode>(initialMode ?? (inviteCode ? 'signup' : 'login'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(notice ?? null);
   const [info, setInfo] = useState<string | null>(null);
   const [invitation, setInvitation] = useState<InviteInfo | null>(null);
   // Inscription : âge minimum et conditions d'utilisation (case jamais cochée d'avance), versions notées avec le compte.

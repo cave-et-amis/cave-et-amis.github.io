@@ -173,6 +173,12 @@ export class Api {
     return error ? null : data.session;
   }
 
+  /** Lien « mot de passe oublié » : ouvre une session de récupération ; null si le lien n'est plus valable. */
+  async verifyRecovery(tokenHash: string): Promise<Session | null> {
+    const { data, error } = await this.sb.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash });
+    return error ? null : data.session;
+  }
+
   /** Prénom affiché du compte connecté (null s'il n'a pas pu être lu). */
   async displayName(userId: string): Promise<string | null> {
     const { data } = await this.sb.from('profiles').select('display_name').eq('id', userId).maybeSingle();

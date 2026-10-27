@@ -370,6 +370,8 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
   };
 
   const magicTokens = new Map<string, string>();
+  const recoveryTokens = new Map<string, string>();
+  const lastRecovery = new Map<string, string>();
   const findUser = async (where: string, value: string) =>
     (
       await db.query<UserRow>(
@@ -557,13 +559,16 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       return authError(400, 'validation_failed', 'unsupported_grant_type');
     }
 
-    // Lien magique (connexion directe depuis Nous) : jeton à usage unique, gardé en mémoire.
+    // Lien magique (connexion directe depuis Nous) ou lien « mot de passe oublié » : jeton à usage unique, gardé en
+    // mémoire, valable seulement pour son type.
     if (path === 'verify' && method === 'POST') {
-      const userId = magicTokens.get(String(body.token_hash ?? ''));
+      const hash = String(body.token_hash ?? '');
+      const type = body.type === 'recovery' ? 'recovery' : 'magiclink';
+      const userId = type === 'recovery' ? recoveryTokens.get(hash) : magicTokens.get(hash);
       const user = userId ? await findUser('id = $1', userId) : undefined;
       if (!user) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
-      magicTokens.delete(String(body.token_hash));
-      return respond(200, makeSession(await userOut(user), openSession(user.id, 'magiclink')));
+      (type === 'recovery' ? recoveryTokens : magicTokens).delete(hash);
+      return respond(200, makeSession(await userOut(user), openSession(user.id, type)));
     }
 
     const w = who(headers);
@@ -624,8 +629,18 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       if (scope !== 'others') sessions.delete(w.claims.session_id);
       return respond(204);
     }
-    // Pas d'envoi d'e-mails en local : la demande est acceptée (comme Supabase, sans dire si le compte existe).
-    if (path === 'recover') return respond(200, {});
+    // Pas d'envoi d'e-mails en local : la demande est acceptée (comme Supabase, sans dire si le compte existe). Le jeton
+    // du lien est gardé pour les tests (lastRecoveryToken) ; comme chez Supabase, seul le dernier demandé est valable.
+    if (path === 'recover') {
+      const user = await findUser('email = $1', String(body.email ?? '').trim().toLowerCase());
+      if (user) {
+        for (const [h, id] of recoveryTokens) if (id === user.id) recoveryTokens.delete(h);
+        const hashed = Array.from(crypto.getRandomValues(new Uint8Array(28)), (b) => b.toString(16).padStart(2, '0')).join('');
+        recoveryTokens.set(hashed, user.id);
+        lastRecovery.set(user.email.toLowerCase(), hashed);
+      }
+      return respond(200, {});
+    }
     return authError(404, 'not_found', `Auth : ${path} non pris en charge en local`);
   }
 
@@ -959,5 +974,7 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     return handle(req);
   }) as typeof fetch;
 
-  return { handle, fetch: fetchFn, signingSecret };
+  /** Jeton du dernier lien « mot de passe oublié » envoyé à cette adresse (l'e-mail simulé, pour les tests). */
+  const lastRecoveryToken = (email: string) => lastRecovery.get(email.trim().toLowerCase()) ?? null;
+  return { handle, fetch: fetchFn, signingSecret, lastRecoveryToken };
 }

@@ -32,6 +32,18 @@ test('dans le cadre d’un autre site, l’application ne démarre pas et propos
   await expect(frame.getByLabel('Adresse e-mail')).toHaveCount(0);
 });
 
+test('lien « mot de passe oublié » déjà utilisé ou expiré : expliqué, avec le formulaire pour en redemander un', async ({ browser, baseURL }) => {
+  const phone = await newPhone(browser);
+  // Adresse renvoyée par Supabase pour un lien périmé ; puis un lien de l'application dont le jeton n'existe pas.
+  await phone.goto(`${baseURL}/?error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired#error=access_denied&error_code=otp_expired&sb=`);
+  await expect(phone.getByRole('heading', { name: 'Mot de passe oublié' })).toBeVisible();
+  await expect(phone.getByText(/Ce lien n’est plus valable/)).toBeVisible();
+  await expect(phone).not.toHaveURL(/error_code|otp_expired/);
+  await phone.goto(`${baseURL}/?auth=recovery&token_hash=${'0f'.repeat(28)}`);
+  await expect(phone.getByText(/Ce lien n’est plus valable/)).toBeVisible();
+  await expect(phone).not.toHaveURL(/token_hash/);
+});
+
 test('déconnecter tous mes appareils : cet appareil puis un autre téléphone sont déconnectés', async ({ browser }) => {
   const phone = await newPhone(browser);
   await signUp(phone, 'Sacha');

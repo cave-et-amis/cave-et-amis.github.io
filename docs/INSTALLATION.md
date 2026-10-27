@@ -26,7 +26,13 @@ Durée : environ 45 minutes, sans écrire de code. Trois services :
 5. **Authentication › URL Configuration** : *Site URL* = l'adresse du site (étape 4), *Redirect URLs* = `https://votre-site/**`.
 6. *(Recommandé pour « mot de passe oublié »)* **Authentication › Emails › SMTP Settings** : branchez un service d'envoi
    (Brevo, Resend…, offres gratuites suffisantes). Sans cela, le lien de récupération n'est envoyé qu'aux membres de votre
-   équipe Supabase.
+   équipe Supabase. En ligne : Brevo (`smtp-relay.brevo.com`, port 587, clé SMTP « Cave », expéditeur
+   cocon.cave@gmail.com, nom « Cave & Amis »). Un expéditeur Gmail passe mal chez Gmail : premiers e-mails trouvés
+   dans la corbeille ; une adresse sur un nom de domaine à soi serait plus sûre.
+7. **Authentication › Emails › Templates › Reset Password** : remplacez le modèle par celui de
+   `docs/emails/reinitialisation.html` (sujet : « Cave & Amis : choisir un nouveau mot de passe »), après la mise en ligne
+   d'un site qui sait lire ce lien (`?auth=recovery&token_hash=…`). Ce lien est vérifié par l'application : il marche sur
+   n'importe quel appareil, alors que le lien par défaut de Supabase ne marche que dans le navigateur de la demande.
 
 ## 2. Fonction serveur de l'assistant
 

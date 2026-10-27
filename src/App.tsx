@@ -5,6 +5,7 @@ import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink, pendingLink, startSession } from './domain/nous';
+import { parseRecoveryLink, RECOVERY_EXPIRED } from './domain/recovery';
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
@@ -78,6 +79,8 @@ export function Framed({ href }: { href: string }) {
 function Root({ api, local }: { api: Api; local: boolean }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [recovery, setRecovery] = useState(false);
+  // Lien « mot de passe oublié » déjà utilisé ou expiré : expliqué sur l'écran de connexion.
+  const [linkError, setLinkError] = useState<string | null>(null);
   // Connexion par un lien venu de Nous : « Est-ce bien votre compte ? » avant d'entrer.
   const [confirmLink, setConfirmLink] = useState(false);
   // Lien d'invitation ouvert sans être connecté : la vitrine d'abord, puis la création de compte ou la connexion.
@@ -94,9 +97,23 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     let started = false;
     // Arrivée depuis l'agenda Nous (« Voir dans Cave & Amis ») : jeton retiré de l'adresse, puis connexion par le lien —
     // seulement si personne n'est connecté ici (on ne remplace jamais une session ouverte par une autre).
+    // Lien « mot de passe oublié » : jeton retiré de l'adresse, puis vérifié ici (fonctionne sur tout appareil).
+    const reset = parseRecoveryLink(window.location.href);
+    if (reset) window.history.replaceState(window.history.state, '', reset.cleanUrl);
     const link = parseMagicLink(window.location.href);
     if (link) window.history.replaceState(window.history.state, '', link.cleanUrl);
     void (async () => {
+      if (reset?.tokenHash) {
+        const s = await api.verifyRecovery(reset.tokenHash).catch(() => null);
+        if (!alive) return;
+        if (s) {
+          started = true;
+          setRecovery(true);
+          setSession(s);
+          return;
+        }
+      }
+      if (reset) setLinkError(RECOVERY_EXPIRED);
       const start = await startSession({ getSession: () => api.getSession(), verify: (h) => api.verifyLink(h) }, link).catch(() => ({ session: null, confirm: false }));
       if (!alive) return;
       started = true;
@@ -180,7 +197,16 @@ function Root({ api, local }: { api: Api; local: boolean }) {
         />
       );
     }
-    return <AuthScreen key={authMode ?? 'auth'} api={api} local={local} inviteCode={invite ?? pendingInvite()} initialMode={authMode ?? undefined} />;
+    return (
+      <AuthScreen
+        key={authMode ?? 'auth'}
+        api={api}
+        local={local}
+        inviteCode={invite ?? pendingInvite()}
+        initialMode={linkError ? 'forgot' : (authMode ?? undefined)}
+        notice={linkError}
+      />
+    );
   }
   // Double authentification activée : le code d'abord, avant même un nouveau mot de passe (le serveur exige alors une
   // session vérifiée par le code pour le changer).
