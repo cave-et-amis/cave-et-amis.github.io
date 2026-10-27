@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus, UtensilsCrossed } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { buildRows, colorBreakdown, pastWindow, readyToDrink } from '../../domain/cellar';
@@ -11,11 +11,13 @@ import { useActions } from '../../ui/Shell';
 import { Button, EmptyState, Notice, StarsView } from '../../ui/kit';
 import { TAP } from '../../ui/motion';
 import { WineItem } from '../../ui/WineItem';
+import { PairingSheet } from '../cellar/PairingSheet';
 import { go } from '../../ui/router';
 
 export function Home() {
   const { snapshot, me, userId, profileName } = useStore();
   const actions = useActions();
+  const [pairing, setPairing] = useState(false);
   const year = currentYear();
   const rows = useMemo(() => buildRows(snapshot.wines, snapshot.lots, snapshot.cellars, year), [snapshot, year]);
   const inStock = rows.filter((r) => r.stock > 0);
@@ -109,7 +111,12 @@ export function Home() {
             Que boire ce soir ?
             <span className="hint">Demandez à l’assistant</span>
           </button>
-          <button type="button" className="shortcut" style={{ gridColumn: '1 / -1' }} onClick={() => go('/amis?inviter=1')}>
+          <button type="button" className="shortcut" onClick={() => setPairing(true)}>
+            <UtensilsCrossed aria-hidden />
+            Que boire avec…
+            <span className="hint">Votre plat, vos bouteilles libres</span>
+          </button>
+          <button type="button" className="shortcut" onClick={() => go('/amis?inviter=1')}>
             <UserPlus aria-hidden />
             Inviter quelqu’un
             <span className="hint">Un lien ou un QR code, sans ouvrir votre cave</span>
@@ -278,6 +285,7 @@ export function Home() {
           <span className="small muted">Voir</span>
         </m.a>
       )}
+      <PairingSheet open={pairing} onClose={() => setPairing(false)} />
     </>
   );
 }
