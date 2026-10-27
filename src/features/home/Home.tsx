@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, UtensilsCrossed, Wine } from 'lucide-react';
+import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, Compass, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, Wine } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { bottlesByEntryMonth, buildRows, colorBreakdown, dayPick, pastWindow, readyToDrink, type WineRow } from '../../domain/cellar';
@@ -226,7 +226,7 @@ export function Home() {
           </div>
           <div className="dash-bars" role="img" aria-label={`Bouteilles par mois d’entrée : ${stats.series.map((m) => `${m.month} : ${m.bottles}`).join(', ')}`}>
             {stats.series.map((m, i) => (
-              <i key={m.month} className={i >= stats.series.length - 2 ? 'recent' : ''} style={{ height: `${Math.max(6, (m.bottles / maxStat) * 100)}%` }} />
+              <i key={m.month} data-v={m.bottles} className={i >= stats.series.length - 2 ? 'recent' : ''} style={{ height: `${Math.max(6, (m.bottles / maxStat) * 100)}%` }} />
             ))}
           </div>
           <p className="small muted">
@@ -268,10 +268,10 @@ export function Home() {
             Que boire ce soir ?
             <span className="hint">Demandez à l’assistant</span>
           </button>
-          <button type="button" className="shortcut" onClick={() => setPairing(true)}>
-            <UtensilsCrossed aria-hidden />
-            Que boire avec…
-            <span className="hint">Votre plat, vos bouteilles libres</span>
+          <button type="button" className="shortcut" onClick={() => go('/explorer')}>
+            <Compass aria-hidden />
+            Explorer les vins
+            <span className="hint">Chercher un vin, accords mets-vins</span>
           </button>
           <button type="button" className="shortcut" onClick={() => go('/amis?inviter=1')}>
             <UserPlus aria-hidden />

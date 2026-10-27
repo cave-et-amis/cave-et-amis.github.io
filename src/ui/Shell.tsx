@@ -1,6 +1,6 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
 import { createContext, Suspense, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, Bell, BookOpen, CalendarHeart, CircleHelp, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
+import { ArrowLeft, Bell, CalendarHeart, ChartColumn, CircleHelp, Compass, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
 import { m, useAnimationControls } from 'motion/react';
 import { useStore } from '../data/store';
 import { pageOfRoute } from '../domain/help';
@@ -48,6 +48,8 @@ const ScannerPage = lazyPage(() => import('../features/scanner/ScannerPage'), 'S
 const ScanPage = lazyPage(() => import('../features/scanner/ScanPage'), 'ScanPage');
 const ScanHistory = lazyPage(() => import('../features/scanner/ScanHistory'), 'ScanHistory');
 const ComparePage = lazyPage(() => import('../features/scanner/ComparePage'), 'ComparePage');
+const ExplorerPage = lazyPage(() => import('../features/explorer/ExplorerPage'), 'ExplorerPage');
+const StatsPage = lazyPage(() => import('../features/stats/StatsPage'), 'StatsPage');
 
 type Actions = {
   /** Fenêtre « Ajouter » : photo d'étiquette, saisie, dégustation, envie. */
@@ -148,7 +150,8 @@ function ShellInner() {
     { path: '/cave', label: 'Ma cave', icon: <PremiumIcon name="cave" fallback={<Wine />} /> },
     { path: '/amis', label: 'Amis & Groupes', short: 'Amis', icon: <PremiumIcon name="amis" fallback={<Users />} />, badge: incomingRequests },
     { path: '/evenements', label: 'Événements', icon: <PremiumIcon name="evenements" fallback={<CalendarHeart />} />, badge: pendingRsvp },
-    { path: '/carnet', label: 'Mon carnet', icon: <PremiumIcon name="carnet" fallback={<BookOpen />} /> },
+    // Le carnet est rangé dans Statistiques (onglet « Mon carnet »).
+    { path: '/statistiques', label: 'Statistiques', icon: <PremiumIcon name="statistiques" fallback={<ChartColumn />} /> },
   ];
 
   let title = 'Cave & Amis';
@@ -216,6 +219,14 @@ function ShellInner() {
         title = 'Mon carnet';
         page = <JournalPage />;
       }
+      break;
+    case 'explorer':
+      title = 'Explorer';
+      page = <ExplorerPage />;
+      break;
+    case 'statistiques':
+      title = 'Statistiques';
+      page = <StatsPage />;
       break;
     case 'scanner':
       if (seg[1] === 'visite' && seg[2]) {
@@ -304,6 +315,8 @@ function ShellInner() {
   }
 
   const activeTab = '/' + (seg[0] === 'ami' || seg[0] === 'groupes' ? 'amis' : (seg[0] ?? ''));
+  // Le carnet est une partie des Statistiques (menu et barre du bas).
+  const activeSide = activeTab === '/carnet' ? '/statistiques' : activeTab;
 
   return (
     <ActionsContext.Provider value={actions}>
@@ -327,9 +340,18 @@ function ShellInner() {
           <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
             Ajouter un vin
           </Button>
-          {/* Ordre de la maquette : Accueil, Ma cave, Lia, Événements, Amis… (libellés courts). */}
-          {[tabs[0], tabs[1], { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab, tabs[3], tabs[2], ...tabs.slice(4)].map((t) => (
-            <a key={t.path} href={`#${t.path}`} aria-current={activeTab === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
+          {/* Ordre de la maquette : Accueil, Ma cave, Explorer, Lia, Événements, Amis, Statistiques (libellés courts). Le
+              carnet est rangé dans Statistiques (et reste dans la barre du bas sur téléphone). */}
+          {[
+            tabs[0],
+            tabs[1],
+            { path: '/explorer', label: 'Explorer', icon: <PremiumIcon name="explorer" fallback={<Compass />} /> } as Tab,
+            { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab,
+            tabs[3],
+            tabs[2],
+            tabs[4],
+          ].map((t) => (
+            <a key={t.path} href={`#${t.path}`} aria-current={activeSide === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
               {t.icon}
               {t.short ?? t.label}
               {!!t.badge && <span className="pill primary" style={{ marginLeft: 'auto' }}>{t.badge}</span>}
@@ -404,7 +426,7 @@ function ShellInner() {
                 href={`#${t.path}`}
                 className="tab"
                 aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label}
-                aria-current={activeTab === t.path ? 'page' : undefined}
+                aria-current={activeSide === t.path ? 'page' : undefined}
                 data-tour={tourId(t.path)}
               >
                 {t.icon}

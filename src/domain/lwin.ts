@@ -147,9 +147,11 @@ export function searchLwin(index: LwinIndex, query: string, limit = 6): LwinWine
     const key = index.keys[i];
     if (!words.every((w) => key.includes(w))) continue;
     const w = index.wines[i];
-    const name = fold(w.name);
+    const name = fold(w.name).replace(/[-'’]/g, ' ');
     const starts = name.startsWith(words[0]) || name.includes(` ${words[0]}`);
-    hits.push({ w, score: (starts ? 0 : 1000) + key.length });
+    // Nom tapé en entier (« chateau margaux ») : ce vin avant ceux de l'appellation du même nom.
+    const exact = name === words.join(' ') ? -2000 : name.startsWith(words.join(' ')) ? -1000 : 0;
+    hits.push({ w, score: exact + (starts ? 0 : 1000) + key.length });
   }
   hits.sort((a, b) => a.score - b.score);
   return hits.slice(0, limit).map((h) => h.w);

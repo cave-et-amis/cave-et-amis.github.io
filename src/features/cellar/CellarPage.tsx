@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Download, Search, SlidersHorizontal } from 'lucide-react';
+import { BookOpen, ChartColumn, Download, Search, SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { activeFilterCount, applyFilters, buildRows, cellarCsv, EMPTY_FILTERS, sortRows, type Filters, type Sort } from '../../domain/cellar';
 import { currentYear, parseNumber } from '../../domain/format';
@@ -67,6 +67,18 @@ export function CellarPage() {
         « Ajouter » pour une nouvelle bouteille, la recherche et les « Filtres » pour la retrouver. Chaque bouteille reste privée tant que vous ne
         choisissez pas de la partager (fiche du vin › « Lot et partage »).
       </FirstTip>
+      {/* Carnet et statistiques : rangés dans Statistiques, accessibles aussi depuis la cave. */}
+      <div className="inline cellar-links">
+        <a className="pill-link" href="#/statistiques?onglet=carnet">
+          <BookOpen aria-hidden />
+          Mon carnet
+        </a>
+        <a className="pill-link" href="#/statistiques">
+          <ChartColumn aria-hidden />
+          Statistiques
+        </a>
+      </div>
+
       <div className="stack-sm">
         <div className="search">
           <Search aria-hidden />

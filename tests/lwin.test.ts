@@ -119,5 +119,7 @@ describe('fichier src/data/lwin-fr.json', () => {
     const index = decodeLwin(file);
     expect(searchLwin(index, 'guigal condrieu')[0]).toMatchObject({ name: 'E. Guigal', appellation: 'Condrieu', color: 'blanc' });
     expect(searchLwin(index, 'huet vouvray').length).toBeGreaterThan(0);
+    // Nom tapé en entier : le cru lui-même avant les autres châteaux de l'appellation Margaux.
+    expect(searchLwin(index, 'chateau margaux')[0]).toMatchObject({ name: 'Château Margaux', cuvee: null });
   });
 });

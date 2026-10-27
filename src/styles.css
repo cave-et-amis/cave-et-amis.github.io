@@ -37,7 +37,7 @@
   --wine-blanc: #e4cf7e;
   --wine-rose: #f0a3ad;
   --wine-orange: #df8f3a;
-  --wine-effervescent: #efe0a0;
+  --wine-effervescent: #d4bb63;
   --wine-autre: #b8a69c;
   --shadow: 0 1px 2px rgba(43, 29, 31, 0.06), 0 6px 20px rgba(43, 29, 31, 0.07);
   --shadow-lg: 0 12px 40px rgba(43, 29, 31, 0.2);
@@ -811,10 +811,10 @@ h2.section {
 }
 
 .qty {
-  font-family: var(--font-title);
-  font-size: 1.25rem;
-  font-weight: 650;
+  font-size: 1.35rem;
+  font-weight: 750;
   line-height: 1;
+  font-variant-numeric: lining-nums tabular-nums;
 }
 
 .qty small {
@@ -2753,7 +2753,8 @@ details.help-topic:not([open]) > summary::after {
   border: 0;
   margin: 0;
 }
-.dash-grid .section-title h2 small {
+.dash-grid .section-title h2 small,
+.explore-page .section-title h2 small {
   display: block;
   font-size: 0.74rem;
   font-weight: 500;
@@ -2975,12 +2976,358 @@ details.help-topic:not([open]) > summary::after {
 :root[data-theme='sombre'] .tabbar-inner {
   height: 76px;
 }
-:root[data-theme='sombre'] .fab {
-  bottom: calc(76px + 10px + 14px + env(safe-area-inset-bottom));
+/* La barre flottante occupe 76 px + 10 px de marge : la page, le bouton « Ajouter » et les messages se placent au-dessus. */
+:root[data-theme='sombre'] {
+  --tabbar-h: 86px;
+}
+@media (max-width: 1023px) {
+  /* Le bas de page se dégage aussi du bouton « Ajouter » (56 px au-dessus de la barre). */
+  :root[data-theme='sombre'] .app {
+    padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 76px);
+  }
 }
 /* Pastille de compteur du menu : plus contrastée sur le bleu nuit. */
 :root[data-theme='sombre'] .sidenav .pill.primary {
   background: var(--fill);
   color: #fff;
   border-color: transparent;
+}
+
+/* Tablette : la planche flotte aussi, arrondie, sous la barre du haut. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root[data-theme='sombre'] .page {
+    border-radius: 22px;
+    margin-top: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-board);
+  }
+  :root[data-theme='sombre'] .tabbar {
+    left: 50%;
+    right: auto;
+    width: min(680px, calc(100% - 20px));
+    transform: translateX(-50%);
+  }
+  /* Six raccourcis (accueil) : deux rangées de trois plutôt qu'une rangée et demie. */
+  .shortcuts:has(> :nth-child(6)) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+/* Téléphone : titres des vins sur deux lignes (le millésime reste visible), barre du bas moins serrée. */
+@media (max-width: 560px) {
+  .list .row-title {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+}
+@media (max-width: 420px) {
+  :root[data-theme='sombre'] .tab {
+    font-size: 0.66rem;
+    letter-spacing: -0.01em;
+  }
+  :root[data-theme='sombre'] .tabbar-inner {
+    padding: 0 6px;
+  }
+}
+/* Puces qui défilent : fondu au bord droit, signe qu'il y en a d'autres. */
+.subtabs {
+  mask-image: linear-gradient(90deg, #000 88%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, #000 88%, transparent);
+  scroll-padding-inline: 16px;
+}
+/* La planche occupe toute la hauteur, même quand la page a peu de contenu. */
+@media (min-width: 768px) {
+  :root[data-theme='sombre'] .page {
+    min-height: calc(100dvh - 130px);
+  }
+}
+/* Barre du bas : l'entrée active ressort aussi par son libellé. */
+:root[data-theme='sombre'] .tab[aria-current='page'] {
+  color: #fff;
+  font-weight: 750;
+}
+/* Menu : une même tuile discrète derrière chaque icône (l'entrée active garde sa tuile framboise). */
+:root[data-theme='sombre'] :is(.sidenav a, .tab):not([aria-current='page']) .premium-icon {
+  border-radius: 12px;
+  background: linear-gradient(160deg, #2a2530, #17141b);
+  box-shadow: inset 0 0 0 1px rgba(232, 200, 140, 0.18);
+}
+
+/* ---------- Statistiques (Cave & Amis 2.0) ---------- */
+.stats-wide {
+  grid-column: 1 / -1;
+}
+.stats-figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.stats-figures .wide {
+  grid-column: 1 / -1;
+}
+.stats-figures div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.stats-figures b {
+  white-space: nowrap;
+  font-size: clamp(1.15rem, 5vw, 1.55rem);
+  font-weight: 750;
+  line-height: 1.15;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.stats-figures span {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.stats-hbars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.stats-hbars li {
+  display: grid;
+  grid-template-columns: minmax(0, 11.5em) 1fr auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.88rem;
+}
+.stats-hbars li > span:first-child {
+  line-height: 1.2;
+}
+/* Jauge : rail gris, barre colorée (aucune barre pour zéro). */
+.stats-hbars .track {
+  display: block;
+  height: 10px;
+  border-radius: 6px;
+  background: #ece9ee;
+  overflow: hidden;
+}
+.stats-hbars i {
+  display: block;
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+}
+.stats-hbars i.m-ready {
+  background: var(--success-fill, var(--success));
+}
+.stats-hbars i.m-soon {
+  background: #d08a2c;
+}
+.stats-hbars i.m-young {
+  background: #3b6fd8;
+}
+.stats-hbars i.m-past {
+  background: #b42318;
+}
+.stats-hbars i.m-unknown {
+  background: #9a96a0;
+}
+.stats-hbars b {
+  min-width: 2ch;
+  text-align: right;
+}
+.stats-months {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 9px;
+  padding: 0 4px;
+  font-size: 0.72rem;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+@media (max-width: 560px) {
+  /* Un mois sur deux (le dernier compris) : les douze noms ne tiennent pas sur un téléphone. */
+  .stats-months span:nth-child(odd) {
+    visibility: hidden;
+  }
+}
+.dash-grid > * {
+  min-width: 0;
+}
+.stats-color .color-legend {
+  margin-top: 12px;
+}
+.stats-share {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.stats-share li {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--board, #f3f2f4);
+}
+.stats-share b {
+  font-size: 1.3rem;
+  font-weight: 750;
+  font-variant-numeric: lining-nums tabular-nums;
+}
+.stats-share span {
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+/* Barres des mois : valeur au-dessus, mois sans entrée en simple trait gris. */
+.dash-bars i {
+  position: relative;
+}
+.dash-bars i[data-v='0'] {
+  background: var(--line, #e3e0e6);
+  height: 2px !important;
+}
+.dash-bars em {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  margin-bottom: 2px;
+  font-style: normal;
+  font-size: 0.72rem;
+  font-weight: 650;
+  color: var(--ink-2);
+  text-align: center;
+}
+.stats-wide .dash-bars {
+  height: 130px;
+  margin-top: 22px;
+}
+.stats-wide .dash-bars i {
+  border-radius: 6px 6px 2px 2px;
+  background: linear-gradient(180deg, #c2577b, #8e2a4a);
+}
+.stats-wide .dash-bars i[data-v='0'] {
+  background: var(--line, #e3e0e6);
+}
+
+/* ---------- Explorer (Cave & Amis 2.0) ---------- */
+.explore-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 18px;
+  min-height: 150px;
+  display: flex;
+  align-items: flex-end;
+  color: #fff;
+  box-shadow: var(--shadow-board, 0 10px 30px rgba(0, 0, 0, 0.18));
+}
+.explore-hero img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.explore-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 11, 12, 0) 15%, rgba(12, 11, 12, 0.82) 100%);
+}
+.explore-hero div {
+  position: relative;
+  z-index: 1;
+  padding: 18px 20px;
+  max-width: 560px;
+}
+.explore-hero h2 {
+  margin: 0 0 4px;
+  color: #fff;
+}
+.explore-hero p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+.explore-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.explore-results .row {
+  gap: 10px;
+}
+.explore-results .dot {
+  align-self: flex-start;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+.explore-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Téléphone : les deux boutons gardent leur icône seule (nom accessible complet), sur la même ligne que le vin. */
+@media (max-width: 560px) {
+  .explore-results .row {
+    padding-left: 12px;
+    padding-right: 10px;
+  }
+  .explore-actions .btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 10px;
+  }
+  .explore-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+
+/* Ma cave : liens vers le carnet et les statistiques. */
+.pill-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent-soft, #f5d4de);
+  color: var(--accent-ink, #7a2442);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.pill-link svg {
+  width: 16px;
+  height: 16px;
+}
+.pill-link:hover {
+  filter: brightness(0.96);
+}
+
+/* Explorer au repos : appellations à découvrir. */
+.explore-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.explore-chips button {
+  min-height: 40px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.explore-chips button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
 }
