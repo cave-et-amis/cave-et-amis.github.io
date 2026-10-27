@@ -26,7 +26,7 @@ Chaque mention « [À VALIDER : …] » signale une clause à faire vérifier. R
 
 - **Option d'anonymat** de la LCEN pour un éditeur non professionnel (mentions légales), et son articulation avec l'article 13 du RGPD (identité du responsable dans la politique de confidentialité).
 - **Hébergeurs** : entité de GitHub à citer, et absence de numéro de téléphone publié par GitHub et Supabase.
-- **Contrats et garanties** : contrat de sous-traitance de GitHub (« GitHub Customer Agreement » à accepter dans les paramètres de l'organisation `cave-et-amis`), rôle des services de notification, fiches du « Data Privacy Framework » à contrôler dans un navigateur, formulation sur la conservation chez Anthropic.
+- **Contrats et garanties** : contrat de sous-traitance de GitHub (« GitHub Customer Agreement » signé par l'éditeur le 27/10/2026 dans les paramètres de l'organisation `cave-et-amis`, alors que GitHub présente cette formule « Corporate » comme destinée aux entreprises et la formule « Standard » aux particuliers : valider que ce choix convient à un éditeur personne physique, et le nom de l'entité signataire), rôle des services de notification, fiches du « Data Privacy Framework » à contrôler dans un navigateur, formulation sur la conservation chez Anthropic.
 - **Gratuité** et caractère non commercial du service.
 - **Âge minimum** de 18 ans et message sanitaire sur l'alcool.
 - **Limitation de responsabilité**, dans les limites permises par la loi.
