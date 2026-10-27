@@ -121,6 +121,9 @@ test('scanner : identifier en magasin, confirmer le prix, garder l’historique'
   await toast(page, 'Vin ajouté');
   // La photo d'étiquette est gardée dans la cave (copiée : celles du scanner sont supprimées à échéance).
   await expect(page.locator('.wine-photo img')).toBeVisible();
+  // Audit Cave 2.0 : la fenêtre de garde et les accords de l'analyse sont repris, comme estimation de Lia.
+  await expect(page.getByText('Agneau, entrecôte.')).toBeVisible();
+  await expect(page.getByText(/Origine : Estimation de Lia/)).toBeVisible();
 
   // Lot 3d : comparer avec une autre bouteille du même magasin, puis demander à Lia.
   await goto(page, '/scanner/historique');

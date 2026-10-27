@@ -49,6 +49,10 @@ describe('dégustations partagées avec un événement (audit Cave 2.0, point 7)
     ]);
     // Dans la table : seulement ses propres notes.
     expect((await as<{ wine_name: string }>(db, claire, `select wine_name from tastings`)).map((t) => t.wine_name)).toEqual(['Celle de Claire']);
+    // Ni les liens internes de Bruno (lot, fiche, groupe…).
+    expect(await as(db, claire, `select lot_id, wine_id, movement_id, group_id, request_id from event_tastings($1) where wine_name = 'Partagée'`, [ev])).toEqual([
+      { lot_id: null, wine_id: null, movement_id: null, group_id: null, request_id: null },
+    ]);
     // Bruno garde son prix ; Marc, non invité, ne voit rien.
     expect(await as(db, bruno, `select price_paid from event_tastings($1) where wine_name = 'Partagée'`, [ev])).toEqual([{ price_paid: '85.00' }]);
     expect(await as(db, marc, `select * from event_tastings($1)`, [ev])).toEqual([]);
@@ -57,7 +61,7 @@ describe('dégustations partagées avec un événement (audit Cave 2.0, point 7)
 });
 
 describe('historique des prix d’une cave partagée (audit Cave 2.0, point 8)', () => {
-  it('la personne associée ajoute un relevé, seul le propriétaire en supprime', async () => {
+  it('la personne associée ajoute un relevé, seul le propriétaire en modifie ou en supprime', async () => {
     const cave = (await one<{ id: string }>(db, bruno, `select id from cellars where name = 'Ma cave'`)).id;
     await one(db, bruno, `select invite_to_cellar($1, $2::uuid[])`, [cave, [claire]]);
     await one(db, claire, `select respond_cellar_invite($1, true)`, [cave]);
@@ -65,6 +69,11 @@ describe('historique des prix d’une cave partagée (audit Cave 2.0, point 8)',
     await as(db, bruno, `insert into market_prices (wine_id, price_low, price_high, method) values ($1, 18, 22, 'manual')`, [wineId]);
     await as(db, claire, `insert into market_prices (wine_id, price_low, price_high) values ($1, 20, 25)`, [wineId]);
     expect(await as(db, claire, `delete from market_prices returning id`)).toEqual([]);
+    // Ni modifier le prix, ni rattacher le relevé à une de ses fiches (il quitterait l'historique de Bruno).
+    const { wineId: hers } = await addWine(db, claire, { name: 'À Claire' });
+    expect(await as(db, claire, `update market_prices set price_low = 1 returning id`)).toEqual([]);
+    expect(await as(db, claire, `update market_prices set wine_id = $1 returning id`, [hers])).toEqual([]);
+    expect((await as(db, bruno, `update market_prices set price_high = 30 where price_low = 18 returning id`)).length).toBe(1);
     expect((await as(db, bruno, `select price_low from market_prices order by price_low`)).length).toBe(2);
     expect((await as(db, bruno, `delete from market_prices returning id`)).length).toBe(2);
   });
@@ -77,6 +86,16 @@ describe('nombre d’analyses du scanner par jour, sous le verrou d’ai_begin (
     expect(await begin(bruno, 'scan')).toEqual({ ok: false, code: 'scan_quota' });
     expect(await begin(bruno, 'scan_quality')).toMatchObject({ ok: true });
     expect(await begin(claire, 'scan')).toMatchObject({ ok: true });
+  });
+});
+
+describe('cache commun du scanner (audit Cave 2.0, point 9)', () => {
+  it('la mise à jour efface les analyses de vins en cache, pas les lectures d’étiquettes ni les prix', async () => {
+    const later = new Date(Date.now() + 86_400_000).toISOString();
+    for (const kind of ['identify', 'assess', 'price'])
+      await asService(db, `insert into scan_cache (key, kind, value, expires_at) values ($1, $2, '{}', $3)`, [`k-${kind}`, kind, later]);
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, '20261102000001_lot0_correctifs.sql'), 'utf8'));
+    expect((await asService<{ kind: string }>(db, `select kind from scan_cache order by kind`)).map((r) => r.kind)).toEqual(['identify', 'price']);
   });
 });
 

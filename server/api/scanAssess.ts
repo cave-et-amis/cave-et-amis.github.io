@@ -24,13 +24,23 @@ export const PRICE_CACHE_HOURS = 72;
 
 /**
  * Une analyse n'entre dans le cache commun à tous les comptes que si son niveau de qualité est retenu et s'appuie sur
- * au moins deux sites différents : une seule page (éventuellement piégée) ne fausse jamais le résultat des autres.
- * Sinon, l'analyse sert seulement à la personne qui l'a demandée.
+ * au moins deux sites différents : une seule page (éventuellement piégée) ne suffit plus à fausser le résultat des
+ * autres. Seules comptent les sources qui fondent le niveau (producteur, millésime, avis), et un site compte une fois quel
+ * que soit son sous-domaine. Sinon, l'analyse sert seulement à la personne qui l'a demandée.
  */
 export function shareableAssessment(a: ScanAssessment) {
   if (a.reason || !a.quality) return false;
-  const sites = new Set(a.sources.map((s) => normUrl(s.url) && new URL(s.url).hostname.replace(/^www\./, '')).filter(Boolean));
-  return sites.size >= 2;
+  const grounding = [...a.producer.sources, ...a.vintage.sources, ...a.critics.map((c) => c.url), ...a.consumers.map((c) => c.url)];
+  return new Set(grounding.map(siteOf).filter(Boolean)).size >= 2;
+}
+
+/** Site d'une adresse : les deux derniers niveaux du nom (a.exemple.fr et b.exemple.fr sont le même site). */
+function siteOf(url: string) {
+  try {
+    return new URL(url).hostname.toLowerCase().split('.').slice(-2).join('.');
+  } catch {
+    return '';
+  }
 }
 
 const TIERS: QualityTier[] = ['remarquable', 'tres_bon', 'bon', 'correct', 'decevant'];

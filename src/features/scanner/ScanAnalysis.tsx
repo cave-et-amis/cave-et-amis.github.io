@@ -91,7 +91,8 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-export function ScanAnalysis({ scan }: { scan: Scan }) {
+/** `onAssessment` : analyse en cours d’affichage (pour ce vin précis), reprise par l’ajout à la cave. */
+export function ScanAnalysis({ scan, onAssessment }: { scan: Scan; onAssessment?: (a: ScanAssessment | null) => void }) {
   const { api, online, snapshot, userId } = useStore();
   const toast = useToast();
   const ai = useAiStatus();
@@ -99,6 +100,7 @@ export function ScanAnalysis({ scan }: { scan: Scan }) {
   // Une analyse faite pour un autre vin (fiche modifiée depuis) n'est pas reprise.
   const [assessment, setAssessment] = useState<ScanAssessment | null>(scan.assessment?.key === key ? scan.assessment : null);
   const [market, setMarket] = useState<ScanMarket | null>(scan.market?.key === key ? scan.market : null);
+  useEffect(() => onAssessment?.(assessment?.key === key ? assessment : null), [assessment, key, onAssessment]);
   const [step, setStep] = useState<'quality' | 'price' | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const started = useRef(false);

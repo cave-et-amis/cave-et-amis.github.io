@@ -10,7 +10,7 @@
 | Lot **proposable pour un événement** | oui | idem, et peut le **suggérer** (le propriétaire confirme) | non | idem si la cave est ouverte au participant | non |
 | Vins proposés pour un événement | oui | — | — | photographie du vin (nom, millésime, couleur, propriétaire, quantité prévue) | non |
 | Photos | oui | si elles illustrent un lot qu'elle voit | non | si elles illustrent un vin de l'événement ou une note partagée | non |
-| Dégustations | oui | non | non | seulement si partagées avec l'événement, **sans le prix payé** (lues par `event_tastings`) | non |
+| Dégustations | oui | non | non | seulement si partagées avec l'événement, **sans le prix payé** ni les liens internes de l'auteur (lues par `event_tastings`) | non |
 | Prix de marché, relevés, liste d'envies | oui | non | non | non | non |
 | Conversations avec l'assistant | oui | non | non | non | **non, ni l'administrateur dans l'application** (l'exploitant du projet Supabase y a techniquement accès ; Anthropic reçoit ce qu'il faut pour chaque réponse) |
 
@@ -44,7 +44,7 @@
   20 demandes par jour au plus.
 - **Cave gérée à plusieurs** : une personne associée (invitation acceptée, avec son propre compte) voit et gère les bouteilles,
   emplacements, fiches et prix de **cette cave seulement**, jamais les autres caves du propriétaire. Le partage, les groupes,
-  les événements et toute suppression (relevés de prix compris) restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
+  les événements, toute suppression et la modification des relevés de prix restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
   un blocage coupe l'accès immédiatement.
 - **Vie de groupe** : une soirée de groupe n'est visible que de ses participants ; les notes partagées avec un groupe, ses
   envies communes et leurs participants ne sont lisibles que par ses membres (lecture par des fonctions qui le vérifient).
@@ -270,7 +270,9 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 - Le verdict et la note sur 10 sont **calculés par l'application** (`src/domain/scan.ts`), jamais rédigés par l'IA.
 - Cache du serveur, séparé de l'historique : analyse d'un vin 90 jours, relevé de prix 72 heures (seulement s'il est vérifié).
   Une analyse n'est mise en commun avec les autres comptes que si son niveau de qualité est retenu et s'appuie sur **au moins
-  deux sites différents** : une seule page, éventuellement piégée, ne fausse jamais le résultat des autres.
+  deux sites différents** (producteur, millésime ou avis ; un site compte une fois, quel que soit son sous-domaine) : une
+  seule page, éventuellement piégée, ne suffit plus à fausser le résultat des autres. Sinon, elle ne sert qu'à la personne
+  qui l'a demandée.
   L'historique garde le relevé daté ; l'application propose de l'actualiser au-delà de 72 heures.
 
 ### Vos goûts et votre budget (lot 3c)

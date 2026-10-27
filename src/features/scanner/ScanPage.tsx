@@ -10,7 +10,7 @@ import { usePhotoUrl } from '../../data/photos';
 import { normalizeBarcode } from '../../domain/barcode';
 import { dateShort, money, parseNumber } from '../../domain/format';
 import { toMessage } from '../../domain/errors';
-import type { Color, Scan, ScanCandidate, ScanWine } from '../../domain/types';
+import type { Color, Scan, ScanAssessment, ScanCandidate, ScanWine } from '../../domain/types';
 import { colorLabel, volumeLabel, VOLUMES, wineSubtitle, wineTitle } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
 import { Button, Check, EmptyState, Field, InlineLoading, Notice, Pill, useConfirm } from '../../ui/kit';
@@ -348,6 +348,7 @@ function ScanReview({ scan, onSaved }: { scan: Scan; onSaved: (s: Scan) => void 
 function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
   const { api, run, userId } = useStore();
   const [copying, setCopying] = useState(false);
+  const [assessment, setAssessment] = useState<ScanAssessment | null>(null);
   const actions = useActions();
   const confirm = useConfirm();
   const w = scan.wine;
@@ -392,10 +393,10 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
       setCopying(false);
     }
     // Fenêtre de garde et accords de l'analyse : repris dans la fiche comme conseils de l'IA (modifiables avant l'ajout).
-    const a = scan.assessment;
+    const a = assessment;
     const dw = a?.drink_window ?? null;
     const advice = {
-      ...(dw ? { drink_from: dw.from, drink_until: dw.until, window_note: dw.source ? `D’après ${host(dw.source)}` : 'Estimation de Lia' } : {}),
+      ...(dw ? { drink_from: dw.from, drink_until: dw.until, window_note: dw.source ? `Relevée par Lia, d’après ${host(dw.source)}` : 'Estimation de Lia' } : {}),
       ...(a?.pairings ? { pairings: a.pairings } : {}),
     };
     actions.newWine({
@@ -415,7 +416,7 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
 
   return (
     <div className="stack">
-      <ScanAnalysis key={scan.updated_at} scan={scan} />
+      <ScanAnalysis key={scan.updated_at} scan={scan} onAssessment={setAssessment} />
       <div className="card stack-sm">
         <div className="between">
           <h2 style={{ margin: 0 }}>{title}</h2>

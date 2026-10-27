@@ -186,6 +186,20 @@ describe('scanner : analyse qualitative sourcée', () => {
     const again = await call(claire.sb, { action: 'scan_quality', scan_id: await confirmedScan(claire.sb) });
     expect(again).toMatchObject({ ok: true, from_cache: false, assessment: { quality: { tier: 'tres_bon' } } });
     expect(env.anthropic.requests).toHaveLength(2);
+    // Deux sous-domaines d'un même site, ou une page d'appellation en plus : toujours un seul site pour le niveau.
+    const SOUS = 'https://b.piege.example/labeille';
+    const sameSite = assessmentReply({
+      producer: { text: 'Réputé.', source_urls: [PIEGE] },
+      appellation: { text: 'Appellation.', source_urls: [GUIDE] },
+      vintage: { text: 'Millésime.', rating: 'exceptionnel', source_urls: [SOUS] },
+      critics: [],
+      consumers: [],
+    });
+    sameSite.content.splice(0, 2, ...searchBlock([PIEGE, SOUS, GUIDE]));
+    env.anthropic.reply(sameSite);
+    expect(await call(bruno.sb, { action: 'scan_quality', scan_id: await confirmedScan(bruno.sb, { ...WINE, vintage: 2017 }) })).toMatchObject({ ok: true, from_cache: false });
+    env.anthropic.reply(assessmentReply());
+    expect(await call(claire.sb, { action: 'scan_quality', scan_id: await confirmedScan(claire.sb, { ...WINE, vintage: 2017 }) })).toMatchObject({ ok: true, from_cache: false });
     // Une analyse appuyée sur deux sites, elle, est partagée.
     const third = await call(bruno.sb, { action: 'scan_quality', scan_id: await confirmedScan(bruno.sb) });
     expect(third).toMatchObject({ ok: true, from_cache: true });

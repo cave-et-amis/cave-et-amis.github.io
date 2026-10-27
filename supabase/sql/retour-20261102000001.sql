@@ -5,13 +5,18 @@
 --    entier par les participants, prix supprimables par une personne associée, nombre d'analyses du scanner contrôlé par
 --    cave-api seulement).
 --
--- Le tarif corrigé de Claude Sonnet 5.5 (lecture en cache à 0,20 $) reste en place : c'est le tarif officiel.
+-- Le tarif corrigé de Claude Sonnet 5.5 (lecture en cache à 0,20 $) reste en place : c'est le tarif officiel. Les analyses
+-- effacées du cache commun ne reviennent pas (elles sont refaites à la demande).
 
 drop policy if exists tastings_read on public.tastings;
 create policy tastings_read on public.tastings for select to authenticated
   using (user_id = auth.uid() or (share_with_event and public.is_event_participant(event_id)));
 drop function if exists public.event_tastings(uuid);
 
+drop policy if exists market_prices_update on public.market_prices;
+create policy market_prices_update on public.market_prices for update to authenticated
+  using ((owner_id = auth.uid() or public.can_manage_wine(wine_id)) and method = 'manual')
+  with check ((owner_id = auth.uid() or public.can_manage_wine(wine_id)) and method = 'manual' and check_id is null);
 drop policy if exists market_prices_delete on public.market_prices;
 create policy market_prices_delete on public.market_prices for delete to authenticated using (owner_id = auth.uid() or public.can_manage_wine(wine_id));
 

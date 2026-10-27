@@ -6,9 +6,9 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 395 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN) | ✔ 395/395 |
+| Vitest : 407 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN, garde-fous de la base) | ✔ 407/407 |
 | Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 47 parcours téléphone + 3 ordinateur | ✔ 50/50 |
+| Playwright (Microsoft Edge) sur l'export de production : 49 parcours téléphone + 3 ordinateur, dont l'accessibilité (axe-core) | ✔ 52/52 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
@@ -93,3 +93,11 @@ Captures d'écran des parcours : `reports/screens/`.
 - Le **premier compte créé** devient administrateur : créez le vôtre dès la mise en ligne, avant de diffuser l'adresse.
 - Une demande à l'assistant est limitée à environ 140 secondes (limite d'exécution des fonctions Supabase) : au-delà,
   l'assistant s'arrête proprement avec ce qu'il a déjà trouvé.
+
+| Garde-fous de la base (lot 0 de Cave & Amis 2.0) | `tests/sql/garde-fous` : toute table du schéma public a ses règles d'accès ; aucune table ouverte sans connexion ; sans connexion, seulement les deux fonctions prévues ; toute fonction à droits élevés ouverte aux comptes identifie l'appelant (exceptions relues et listées) ; chemin de recherche fixé partout. Ces contrôles s'appliquent à chaque future migration. |
+| Correctifs de l'audit Cave & Amis 2.0 | `tests/sql/lot0-correctifs` (notes partagées d'un événement lues sans le prix payé ni les liens internes de leur auteur, rien pour un non-invité ; relevés de prix : une personne associée en ajoute, seul le propriétaire en modifie, rattache ou supprime ; nombre d'analyses du scanner contrôlé sous le verrou d'`ai_begin` ; tarif de Sonnet 5.5 ; analyses du cache commun effacées ; retour arrière et mise à jour rejouable) ; `tests/ai/scan-assess` (une seule page, deux sous-domaines d'un même site ou une page d'appellation en plus : analyse jamais partagée avec les autres comptes) ; `tests/ai/assistant` (lecture d'étiquette avec le modèle du scanner) ; e2e `scanner` (fenêtre de garde et accords repris à l'ajout en cave, comme estimation de Lia) |
+| Accessibilité et hors ligne | e2e `vue-accessibilite` : axe-core (WCAG 2.1 A et AA) sur 9 écrans, aucun défaut grave ni critique ; lien « Aller au contenu » au clavier ; hors ligne : bandeau affiché, écrans déjà ouverts toujours lisibles. Le service worker de production précharge toutes les pages chargées à la demande. |
+
+**Limite connue** : PGlite n'ouvre qu'une connexion. Les verrous (`for update`, verrous consultatifs) sont lus dans le code mais pas
+éprouvés par deux transactions réellement simultanées. Un test sur un vrai PostgreSQL (Supabase local, Docker) est prévu
+avant les achats collaboratifs.

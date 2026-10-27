@@ -2,16 +2,23 @@
 --
 --  1. Dégustations partagées avec un événement : les autres participants ne lisaient pas seulement la note, mais toute
 --     la ligne, y compris le prix payé. La table ne se lit plus que par son auteur ; les notes d'un événement passent
---     par event_tastings(), qui donne aux participants les notes partagées sans le prix payé ni sa nature.
---  2. Relevés de prix : une personne associée à une cave pouvait supprimer l'historique de prix du propriétaire. Elle
---     peut toujours ajouter ou corriger un relevé manuel ; seul le propriétaire en supprime.
+--     par event_tastings(), qui donne aux participants les notes partagées sans le prix payé, sa nature, ni les liens
+--     internes de leur auteur (lot, mouvement, fiche, groupe).
+--  2. Relevés de prix : une personne associée à une cave pouvait supprimer ou modifier (jusqu'à le rattacher à une
+--     autre fiche) l'historique de prix du propriétaire. Elle peut toujours ajouter un relevé manuel ; seul le
+--     propriétaire en modifie ou en supprime.
 --  3. Nombre d'analyses du scanner par jour : contrôlé jusqu'ici avant l'appel, sans réservation (deux demandes
 --     simultanées pouvaient le dépasser d'une). ai_begin le contrôle maintenant sous son verrou, comme les autres quotas.
 --  4. Tarifs de l'IA : la lecture en cache de Claude Sonnet 5.5 coûte 0,20 $ par million de jetons (grille officielle),
 --     pas 0,10 $. Corrigé seulement là où l'ancienne valeur est encore en place (un réglage de l'administration reste tel quel).
 --
 -- À exécuter une seule fois dans Supabase › SQL Editor, après 20261101000005_double_authentification.sql. Rejouable sans
--- danger. Seule donnée modifiée : le tarif du point 4. Retour arrière : supabase/sql/retour-20261102000001.sql.
+-- danger. Données modifiées : le tarif du point 4, et les analyses de vins du cache commun du scanner (point 5), qui
+-- sont effacées pour être refaites sous la nouvelle règle. Retour arrière : supabase/sql/retour-20261102000001.sql.
+--
+--  5. Cache commun du scanner : une analyse n'y entre plus que si son niveau s'appuie sur au moins deux sites différents
+--     (règle appliquée par cave-api). Les analyses déjà en cache sont effacées : chacune sera refaite, une fois, à la
+--     prochaine demande (coût d'une analyse). Les lectures d'étiquettes et les relevés de prix ne sont pas touchés.
 
 -- ───────────── 1. Dégustations partagées sans le prix payé ─────────────
 
@@ -37,6 +44,11 @@ begin
     if r.user_id <> v_me then
       r.price_paid := null;
       r.price_kind := null;
+      r.lot_id := null;
+      r.movement_id := null;
+      r.wine_id := null;
+      r.group_id := null;
+      r.request_id := null;
     end if;
     return next r;
   end loop;
@@ -44,8 +56,12 @@ end $$;
 revoke all on function public.event_tastings(uuid) from public, anon;
 grant execute on function public.event_tastings(uuid) to authenticated;
 
--- ───────────── 2. Historique des prix : suppression par le propriétaire seulement ─────────────
+-- ───────────── 2. Historique des prix : modification et suppression par le propriétaire seulement ─────────────
 
+drop policy if exists market_prices_update on public.market_prices;
+create policy market_prices_update on public.market_prices for update to authenticated
+  using (owner_id = auth.uid() and method = 'manual')
+  with check (owner_id = auth.uid() and method = 'manual' and check_id is null);
 drop policy if exists market_prices_delete on public.market_prices;
 create policy market_prices_delete on public.market_prices for delete to authenticated using (owner_id = auth.uid());
 
@@ -123,3 +139,7 @@ alter table public.ai_settings alter column prices set default '{
     "claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_write": 0.125, "cache_read": 0.01},
     "claude-fable-5-1": {"input": 10, "output": 50, "cache_write": 12.5, "cache_read": 0.25}
   }'::jsonb;
+
+-- ───────────── 5. Cache commun du scanner : analyses refaites sous la nouvelle règle ─────────────
+
+delete from public.scan_cache where kind = 'assess';

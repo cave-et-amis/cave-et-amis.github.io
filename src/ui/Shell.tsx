@@ -21,6 +21,7 @@ import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
 import { Avatar, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 import { lazyPage } from './lazyPage';
+import { PageBoundary } from './PageBoundary';
 
 // Pages chargées à leur première visite (l'accueil et la cave restent dans le premier chargement).
 const FriendsPage = lazyPage(() => import('../features/friends/FriendsPage'), 'FriendsPage');
@@ -368,7 +369,10 @@ function ShellInner() {
         <main className="page" id="contenu" tabIndex={-1}>
           {seg[0] === undefined && <ResumeTour />}
           <LegalNotice />
-          <Suspense fallback={<InlineLoading />}>{page}</Suspense>
+          {/* Une page par chemin : les paramètres (?…) qu'une page ajoute ou retire ne la remontent pas. */}
+          <PageBoundary key={route.split('?')[0]}>
+            <Suspense fallback={<InlineLoading />}>{page}</Suspense>
+          </PageBoundary>
         </main>
         {!['assistant', 'admin', 'reglages', 'scanner', 'legal'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">

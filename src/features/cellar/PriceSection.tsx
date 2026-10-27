@@ -44,7 +44,7 @@ function Sources({ sources }: { sources: PriceSource[] }) {
 }
 
 export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]; tastings: Tasting[] }) {
-  const { snapshot, api, run } = useStore();
+  const { snapshot, api, run, userId } = useStore();
   const confirm = useConfirm();
   const [manual, setManual] = useState(false);
   const [lookup, setLookup] = useState(false);
@@ -95,9 +95,19 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
         <span className="strong small">Prix de marché indicatif</span>
         {latest.length === 0 && <span className="muted small">Prix non vérifié : aucun relevé enregistré pour ce vin.</span>}
         {latest.map((p) => (
-          <MarketRow key={p.id} p={p} wine={wine} onDelete={async () => {
-            if (await confirm({ title: 'Supprimer ce relevé de prix ?', confirmLabel: 'Supprimer', danger: true })) await run(() => api.deleteMarketPrice(p.id), { success: 'Relevé supprimé' });
-          }} />
+          <MarketRow
+            key={p.id}
+            p={p}
+            wine={wine}
+            // Supprimer un relevé : au propriétaire de la fiche (une personne associée à la cave en ajoute seulement).
+            onDelete={
+              wine.owner_id === userId
+                ? async () => {
+                    if (await confirm({ title: 'Supprimer ce relevé de prix ?', confirmLabel: 'Supprimer', danger: true })) await run(() => api.deleteMarketPrice(p.id), { success: 'Relevé supprimé' });
+                  }
+                : undefined
+            }
+          />
         ))}
         {older.length > 0 && <span className="small faint">{older.length} relevé(s) plus ancien(s) conservé(s).</span>}
         <div className="inline">
@@ -116,15 +126,17 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
   );
 }
 
-function MarketRow({ p, wine, onDelete }: { p: MarketPrice; wine: Wine; onDelete: () => void }) {
+function MarketRow({ p, wine, onDelete }: { p: MarketPrice; wine: Wine; onDelete?: () => void }) {
   const old = Date.now() - new Date(p.checked_at).getTime() > 180 * 86400_000;
   return (
     <div className="card soft" style={{ padding: 12 }}>
       <div className="between">
         <strong>{moneyRange(Number(p.price_low), Number(p.price_high), p.currency)}</strong>
-        <button type="button" className="icon-btn" aria-label="Supprimer ce relevé" onClick={onDelete}>
-          <Trash2 />
-        </button>
+        {onDelete && (
+          <button type="button" className="icon-btn" aria-label="Supprimer ce relevé" onClick={onDelete}>
+            <Trash2 />
+          </button>
+        )}
       </div>
       <p className="small muted">
         {wineTitle(wine)} · {volumeLabel(p.volume_ml)} · {p.currency} · consulté le {dateLong(p.checked_at)} ·{' '}
