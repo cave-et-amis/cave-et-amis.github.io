@@ -2302,7 +2302,8 @@ var ToolBox = class {
 				limit: intIn(i.limit, 1, 60)
 			}));
 			case "get_my_taste": {
-				const [{ data: declared }, { data: rows }] = await Promise.all([this.user.from("taste_profiles").select("likes, dislikes, ignored, budget_max, note").eq("user_id", this.userId).maybeSingle(), this.user.from("tastings").select("*").eq("user_id", this.userId).not("rating", "is", null).order("tasted_on", { ascending: false }).limit(1e3)]);
+				const [{ data: declared, error: e1 }, { data: rows, error: e2 }] = await Promise.all([this.user.from("taste_profiles").select("likes, dislikes, ignored, budget_max, note").eq("user_id", this.userId).maybeSingle(), this.user.from("tastings").select("*").eq("user_id", this.userId).not("rating", "is", null).order("tasted_on", { ascending: false }).limit(1e3)]);
+				if (e1 || e2) return JSON.stringify({ error: "Profil de goûts illisible pour le moment : ne conclus rien sur les préférences de la personne." });
 				const d = declared;
 				const s = tasteSummary(rows ?? [], this.userId, d?.ignored ?? []);
 				const brief = (t) => ({
@@ -3531,12 +3532,16 @@ function notificationText(n) {
 			href: "#/reglages"
 		};
 		case "maturity_ready": return {
-			text: `${n.actor_name || "Un vin de votre cave"} entre dans sa période de dégustation, d’après sa fiche`,
+			text: `${n.actor_name || "Un vin de votre cave"} entre dans sa période de dégustation (période indicative de sa fiche)`,
 			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave?tri=maturite"
 		};
 		case "maturity_last": return {
-			text: `${n.actor_name || "Un vin de votre cave"} : dernière année de sa période de dégustation, d’après sa fiche`,
+			text: `${n.actor_name || "Un vin de votre cave"}  : dernière année de sa période de dégustation (période indicative de sa fiche)`,
 			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave?tri=maturite"
+		};
+		case "maturity_many": return {
+			text: `${n.actor_name ?? "Plusieurs"} vins de votre cave entrent dans leur période de dégustation ou la terminent cette année`,
+			href: "#/cave?tri=maturite"
 		};
 		default: return {
 			text: "Vous avez une nouvelle notification",
