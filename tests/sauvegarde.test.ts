@@ -70,6 +70,26 @@ describe.skipIf(process.platform !== 'win32')('sauvegardes chiffrées (scripts/l
     expect(out).toContain('vide True');
   }, 60_000);
 
+  it('outil Supabase : ses messages d’avancement n’arrêtent pas la sauvegarde ; seul le code de retour compte', () => {
+    // Faux outil, vrai processus : message d'avancement sur la sortie d'erreur, comme « Initialising login role... ».
+    const out = powershell(`
+      $ErrorActionPreference = 'Stop'
+      . '${LIB}'
+      function npx { node -e "process.stderr.write('Initialising login role...\\n'); console.log(JSON.stringify({ ok: 1 }))" }
+      $r = Invoke-CaveSupabase @('db', 'query')
+      'code ' + $r.Code
+      'texte ' + $r.Texte
+      'messages ' + $r.Messages
+      function npx { node -e "process.stderr.write('Cannot find project ref\\n'); process.exit(3)" }
+      $r = Invoke-CaveSupabase @('db', 'query')
+      'echec ' + $r.Code + ' ' + $r.Messages
+    `);
+    expect(out).toContain('code 0');
+    expect(out).toContain('texte {"ok":1}');
+    expect(out).toContain('messages Initialising login role...');
+    expect(out).toContain('echec 3 Cannot find project ref');
+  }, 60_000);
+
   it('les scripts de sauvegarde et de lecture ne contiennent aucune erreur de syntaxe', () => {
     const scripts = ['sauvegarde.ps1', 'dechiffrer-sauvegarde.ps1', 'lib-chiffrement.ps1'].map((f) => join(import.meta.dirname, '..', 'scripts', f));
     const out = powershell(

@@ -64,13 +64,24 @@ select pg_temp.sauvegarde() as sauvegarde;
 '@
 
 Write-Host '1. Connexion à Supabase' -ForegroundColor Cyan
-npx -y supabase@2 projects list *> $null
-if ($LASTEXITCODE -ne 0) { throw 'Connexion Supabase absente : lancez d''abord, dans un terminal :  npx.cmd -y supabase@2 login' }
+if ((Invoke-CaveSupabase @('projects', 'list')).Code -ne 0) { throw 'Connexion Supabase absente : lancez d''abord, dans un terminal :  npx.cmd -y supabase@2 login' }
 
 Write-Host '2. Lecture de la base (rien n''est écrit sur le disque)' -ForegroundColor Cyan
-$brut = (npx -y supabase@2 db query --linked --project-ref $Projet --output-format json $Sql) -join "`n"
-if ($LASTEXITCODE -ne 0) { throw 'La lecture de la base a échoué : rien n''a été sauvegardé.' }
-$donnees = Find-CaveBackup ($brut | ConvertFrom-Json)
+# L'outil lit la référence du projet dans supabase\.temp\project-ref (--linked ignore --project-ref) : un dossier
+# temporaire, retiré aussitôt, ne contient que cette référence et la requête, jamais les données.
+$Lien = Join-Path ([IO.Path]::GetTempPath()) ('cave-sauvegarde-' + [guid]::NewGuid().ToString('N'))
+try {
+  New-Item -ItemType Directory -Force (Join-Path $Lien 'supabase\.temp') | Out-Null
+  $sansBom = New-Object Text.UTF8Encoding $false
+  [IO.File]::WriteAllText((Join-Path $Lien 'supabase\.temp\project-ref'), $Projet, $sansBom)
+  [IO.File]::WriteAllText((Join-Path $Lien 'sauvegarde.sql'), $Sql, $sansBom)
+  $lecture = Invoke-CaveSupabase @('db', 'query', '--linked', '--workdir', $Lien, '--output-format', 'json', '--file', (Join-Path $Lien 'sauvegarde.sql'))
+} finally {
+  Remove-Item -LiteralPath $Lien -Recurse -Force -ErrorAction SilentlyContinue
+}
+if ($lecture.Code -ne 0) { throw ('La lecture de la base a échoué : rien n''a été sauvegardé. ' + $lecture.Messages) }
+$brut = $lecture.Texte
+$donnees = Find-CaveBackup $brut
 if (-not $donnees) { throw 'Réponse inattendue de Supabase : rien n''a été sauvegardé.' }
 
 Write-Host '3. Chiffrement' -ForegroundColor Cyan

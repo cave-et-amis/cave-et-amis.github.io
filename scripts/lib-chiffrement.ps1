@@ -113,6 +113,20 @@ function Get-CaveSha256 {
   try { return ([BitConverter]::ToString($sha.ComputeHash($Bytes)) -replace '-', '').ToLowerInvariant() } finally { $sha.Dispose() }
 }
 
+# Outil officiel de Supabase (npx supabase@2). Ses messages d'avancement (« Initialising login role... ») arrivent sur
+# la sortie d'erreur : Windows PowerShell les change en erreurs, qui ne doivent pas arrêter le script. Seul le code de
+# retour compte. Renvoie ce code, la sortie normale (Texte) et ces messages (Messages), à part.
+function Invoke-CaveSupabase([string[]]$Arguments) {
+  $ErrorActionPreference = 'Continue'
+  $sortie = @(& npx -y supabase@2 @Arguments 2>&1)
+  $code = $LASTEXITCODE
+  [pscustomobject]@{
+    Code     = $code
+    Texte    = ($sortie | Where-Object { $_ -isnot [Management.Automation.ErrorRecord] } | ForEach-Object { "$_" }) -join "`n"
+    Messages = ($sortie | Where-Object { $_ -is [Management.Automation.ErrorRecord] } | ForEach-Object { "$_" }) -join "`n"
+  }
+}
+
 # Contenu d'une sauvegarde dans la réponse de l'outil Supabase (« db query ») : une liste de lignes, un objet qui la
 # contient, ou un texte JSON dans une colonne. Renvoie l'objet au format cave-sauvegarde-v1, sinon $null.
 function Find-CaveBackup($valeur) {
