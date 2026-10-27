@@ -1029,6 +1029,7 @@ Prix
 Modifications
 - Les bouteilles « mises à disposition d'un groupe » (bottles_set_aside_for_groups) ou réservées pour un événement restent à la personne mais ne sont pas libres : ne propose de sortir que des bouteilles disponibles (bottles_available, available).
 - Une cave peut être gérée à plusieurs : ses bouteilles appartiennent à son propriétaire (« cave de X, gérée à plusieurs ») ; la personne peut les boire, en ajouter ou les ranger, mais n'apporte à un événement que ses propres bouteilles.
+- Pour les goûts de la personne, consulte get_my_taste : ce qu'elle a déclaré passe avant ce que son carnet laisse deviner (une estimation, à présenter comme telle).
 - Pour un groupe (get_group) : appuie-toi sur ses bouteilles (de préférence celles mises à sa disposition), les goûts des membres (leurs notes sur 5 partagées avec le groupe) et les envies communes ; pour sa soirée, propose des bouteilles avec propose_event_wine (leur propriétaire confirme).
 - Tu ne modifies jamais rien toi-même. Pour proposer une consommation, un ajout à la liste d'envies, des conseils à enregistrer sur une fiche, une bouteille pour un événement ou une note de dégustation, utilise l'outil propose_* correspondant : la personne verra un bouton pour confirmer. Ne dis jamais qu'une action est faite.
 
@@ -1981,6 +1982,85 @@ function median(values) {
 	const mid = Math.floor(s.length / 2);
 	return s.length % 2 ? s[mid] : round2((s[mid - 1] + s[mid]) / 2);
 }
+var DISLIKED_UNTIL = 2.5;
+var MAX_TRAITS = 8;
+var traitKey = (kind, value) => `${kind}:${fold(value).trim()}`;
+var STRUCTURE = {
+	"acidite:vive": "Acidité vive",
+	"acidite:faible": "Acidité discrète",
+	"tanins:souples": "Tanins souples",
+	"tanins:marques": "Tanins marqués",
+	"longueur:longue": "Finale longue",
+	"longueur:courte": "Finale courte"
+};
+/** Traits d'une dégustation : couleur, région, appellation, cépages et structure notée. */
+function traitsOf(t) {
+	const out = [];
+	if (t.color) out.push({
+		kind: "couleur",
+		value: t.color,
+		label: colorLabel(t.color)
+	});
+	if (t.region?.trim()) out.push({
+		kind: "region",
+		value: t.region,
+		label: t.region.trim()
+	});
+	if (t.appellation?.trim()) out.push({
+		kind: "appellation",
+		value: t.appellation,
+		label: t.appellation.trim()
+	});
+	for (const g of t.grapes ?? []) if (g.trim()) out.push({
+		kind: "cepage",
+		value: g,
+		label: g.trim()
+	});
+	for (const [field, value] of [
+		["acidite", t.acidite],
+		["tanins", t.tanins],
+		["longueur", t.longueur]
+	]) {
+		const label = value ? STRUCTURE[`${field}:${value}`] : void 0;
+		if (label) out.push({
+			kind: "structure",
+			value: `${field} ${value}`,
+			label
+		});
+	}
+	return out;
+}
+function tasteSummary(tastings, me, ignored = []) {
+	const skip = new Set(ignored);
+	const rated = tastings.filter((t) => t.user_id === me && typeof t.rating === "number");
+	const acc = /* @__PURE__ */ new Map();
+	for (const t of rated) for (const tr of traitsOf(t)) {
+		const key = traitKey(tr.kind, tr.value);
+		if (skip.has(key)) continue;
+		const a = acc.get(key) ?? {
+			kind: tr.kind,
+			label: tr.label,
+			sum: 0,
+			count: 0
+		};
+		a.sum += t.rating;
+		a.count += 1;
+		acc.set(key, a);
+	}
+	const traits = [...acc.entries()].filter(([, a]) => a.count >= 2).map(([key, a]) => ({
+		key,
+		kind: a.kind,
+		label: a.label,
+		count: a.count,
+		average: Math.round(a.sum / a.count * 10) / 10
+	}));
+	const byStrength = (x, y) => y.count - x.count || x.label.localeCompare(y.label, "fr");
+	return {
+		rated: rated.length,
+		liked: traits.filter((t) => t.average >= 4).sort((a, b) => b.average - a.average || byStrength(a, b)).slice(0, MAX_TRAITS),
+		disliked: traits.filter((t) => t.average <= DISLIKED_UNTIL).sort((a, b) => a.average - b.average || byStrength(a, b)).slice(0, MAX_TRAITS)
+	};
+}
 //#endregion
 //#region server/api/tools.ts
 var nullable = (schema) => ({ anyOf: [schema, { type: "null" }] });
@@ -2035,6 +2115,7 @@ var CHAT_TOOLS = [
 		min_rating: nullable(int$2),
 		limit: nullable(int$2)
 	}),
+	tool("get_my_taste", "Profil de goûts de la personne : ses préférences déclarées (prioritaires) et ce que son carnet laisse deviner (estimation calculée par l’application à partir de ses dégustations notées).", {}),
 	tool("search_friends_wines", "Bouteilles partagées dans les caves que des amis ont ouvertes à la personne, avec les masques choisis par chacun (un simple contact n’en montre aucune).", {
 		query: nullable(str$3),
 		color: nullable(colorEnum),
@@ -2220,6 +2301,31 @@ var ToolBox = class {
 				min_rating: intIn(i.min_rating, 1, 5),
 				limit: intIn(i.limit, 1, 60)
 			}));
+			case "get_my_taste": {
+				const [{ data: declared }, { data: rows }] = await Promise.all([this.user.from("taste_profiles").select("likes, dislikes, ignored, budget_max, note").eq("user_id", this.userId).maybeSingle(), this.user.from("tastings").select("*").eq("user_id", this.userId).not("rating", "is", null).order("tasted_on", { ascending: false }).limit(1e3)]);
+				const d = declared;
+				const s = tasteSummary(rows ?? [], this.userId, d?.ignored ?? []);
+				const brief = (t) => ({
+					trait: t.label,
+					type: t.kind,
+					tastings: t.count,
+					average_rating: t.average
+				});
+				return JSON.stringify({
+					declared: d ? {
+						likes: d.likes,
+						dislikes: d.dislikes,
+						budget_max: d.budget_max,
+						note: d.note
+					} : null,
+					from_tastings: {
+						rated_tastings: s.rated,
+						likes: s.liked.map(brief),
+						dislikes: s.disliked.map(brief)
+					},
+					rule: "Les préférences déclarées passent avant ce que le carnet laisse deviner, qui reste une estimation."
+				});
+			}
 			case "search_friends_wines": return JSON.stringify(await friendsWines(this.user, {
 				query: text(i.query, 200),
 				color: text(i.color, 40),
@@ -3423,6 +3529,14 @@ function notificationText(n) {
 		case "nous_linked": return {
 			text: `Votre compte est relié à ${n.actor_name ? `l’agenda Nous de ${n.actor_name}` : "un agenda Nous"}. Ce n’est pas vous ? Déliez-le dans les Réglages.`,
 			href: "#/reglages"
+		};
+		case "maturity_ready": return {
+			text: `${n.actor_name || "Un vin de votre cave"} entre dans sa période de dégustation, d’après sa fiche`,
+			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave?tri=maturite"
+		};
+		case "maturity_last": return {
+			text: `${n.actor_name || "Un vin de votre cave"} : dernière année de sa période de dégustation, d’après sa fiche`,
+			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave?tri=maturite"
 		};
 		default: return {
 			text: "Vous avez une nouvelle notification",
