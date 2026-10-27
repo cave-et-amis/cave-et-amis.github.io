@@ -5,14 +5,14 @@ import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink, pendingLink, startSession } from './domain/nous';
-import { parseRecoveryLink, RECOVERY_EXPIRED } from './domain/recovery';
+import { expiredMessage, parseEmailLink } from './domain/emailLink';
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
 import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
 import { LegalScreen } from './features/legal/LegalViews';
 import { Shell } from './ui/Shell';
-import { Button, ConfirmProvider, ToastProvider } from './ui/kit';
+import { Button, ConfirmProvider, ToastProvider, useToast } from './ui/kit';
 import { go, routeQuery, useRoute } from './ui/router';
 
 export function App({ api, local }: { api: Api; local: boolean }) {
@@ -79,8 +79,9 @@ export function Framed({ href }: { href: string }) {
 function Root({ api, local }: { api: Api; local: boolean }) {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
   const [recovery, setRecovery] = useState(false);
-  // Lien « mot de passe oublié » déjà utilisé ou expiré : expliqué sur l'écran de connexion.
-  const [linkError, setLinkError] = useState<string | null>(null);
+  // Lien reçu par e-mail déjà utilisé ou expiré : expliqué sur l'écran de connexion, au bon formulaire.
+  const [linkError, setLinkError] = useState<{ text: string; mode: 'login' | 'forgot' } | null>(null);
+  const toast = useToast();
   // Connexion par un lien venu de Nous : « Est-ce bien votre compte ? » avant d'entrer.
   const [confirmLink, setConfirmLink] = useState(false);
   // Lien d'invitation ouvert sans être connecté : la vitrine d'abord, puis la création de compte ou la connexion.
@@ -97,14 +98,17 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     let started = false;
     // Arrivée depuis l'agenda Nous (« Voir dans Cave & Amis ») : jeton retiré de l'adresse, puis connexion par le lien —
     // seulement si personne n'est connecté ici (on ne remplace jamais une session ouverte par une autre).
-    // Lien « mot de passe oublié » : jeton retiré de l'adresse, puis vérifié ici (fonctionne sur tout appareil).
-    const reset = parseRecoveryLink(window.location.href);
-    if (reset) window.history.replaceState(window.history.state, '', reset.cleanUrl);
+    // Lien reçu par e-mail (mot de passe oublié, confirmation d'inscription, changement d'adresse) : jeton retiré de
+    // l'adresse, puis vérifié ici (fonctionne sur tout appareil).
+    const mail = parseEmailLink(window.location.href);
+    if (mail) window.history.replaceState(window.history.state, '', mail.cleanUrl);
     const link = parseMagicLink(window.location.href);
     if (link) window.history.replaceState(window.history.state, '', link.cleanUrl);
     void (async () => {
-      if (reset?.tokenHash) {
-        const s = await api.verifyRecovery(reset.tokenHash).catch(() => null);
+      // Lien plus valable (jeton absent, refusé, ou erreur renvoyée par Supabase) : expliqué ensuite.
+      let failed = Boolean(mail && !mail.tokenHash);
+      if (mail?.tokenHash && mail.kind === 'recovery') {
+        const s = await api.verifyRecovery(mail.tokenHash).catch(() => null);
         if (!alive) return;
         if (s) {
           started = true;
@@ -112,8 +116,35 @@ function Root({ api, local }: { api: Api; local: boolean }) {
           setSession(s);
           return;
         }
+        failed = true;
+      } else if (mail?.tokenHash && mail.kind === 'signup') {
+        const s = await api.verifySignup(mail.tokenHash).catch(() => null);
+        if (!alive) return;
+        if (s) {
+          started = true;
+          setSession(s);
+          toast('Adresse e-mail confirmée : bienvenue !');
+          return;
+        }
+        failed = true;
+      } else if (mail?.tokenHash && mail.kind === 'email_change') {
+        const r = await api.verifyEmailChange(mail.tokenHash).catch(() => ({ result: 'expired' as const }));
+        if (!alive) return;
+        if (r.result === 'done') {
+          started = true;
+          setSession(r.session);
+          toast(`Adresse e-mail changée : ${r.session.user.email ?? ''}`);
+          return;
+        }
+        if (r.result === 'other') toast('Premier lien accepté : ouvrez aussi celui envoyé à votre autre adresse pour terminer le changement.', { tone: 'info' });
+        else failed = true;
       }
-      if (reset) setLinkError(RECOVERY_EXPIRED);
+      if (mail && failed) {
+        const text = expiredMessage(mail.kind);
+        setLinkError({ text, mode: mail.kind === 'recovery' || mail.kind === null ? 'forgot' : 'login' });
+        // Connecté sur cet appareil : l'écran de connexion n'apparaît pas, le message passe en bandeau.
+        if (mail.kind === 'email_change') toast(text, { tone: 'error' });
+      }
       const start = await startSession({ getSession: () => api.getSession(), verify: (h) => api.verifyLink(h) }, link).catch(() => ({ session: null, confirm: false }));
       if (!alive) return;
       started = true;
@@ -203,8 +234,8 @@ function Root({ api, local }: { api: Api; local: boolean }) {
         api={api}
         local={local}
         inviteCode={invite ?? pendingInvite()}
-        initialMode={linkError ? 'forgot' : (authMode ?? undefined)}
-        notice={linkError}
+        initialMode={linkError?.mode ?? authMode ?? undefined}
+        notice={linkError?.text}
       />
     );
   }

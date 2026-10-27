@@ -29,9 +29,9 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Finalité** : créer le compte, se connecter, protéger l'accès.
 - **Données** : adresse e-mail, mot de passe haché (par Supabase), prénom affiché, devise, préférences, dates d'inscription et de dernière connexion.
 - **Base légale** : exécution du contrat (conditions d'utilisation).
-- **Destinataires** : la personne ; l'administrateur voit l'adresse e-mail de chaque compte ; Supabase (hébergeur).
+- **Destinataires** : la personne ; l'administrateur voit l'adresse e-mail de chaque compte ; Supabase (hébergeur) ; Brevo, pour les e-mails de connexion (mot de passe oublié, confirmation d'inscription, changement d'adresse : adresse e-mail et contenu du message), depuis le 27/10/2026.
 - **Transferts hors UE** : voir la section « Transferts ».
-- **Durée** : tant que le compte existe.
+- **Durée** : tant que le compte existe ; journaux d'envoi chez Brevo : [À VALIDER : durée non trouvée].
 
 ### T2. Cave, carnet et envies
 
@@ -143,7 +143,9 @@ Repris de la politique de confidentialité et des pages officielles consultées 
 | Google, Apple, Mozilla, Microsoft | Transport des notifications chiffrées | Selon le navigateur | Aucun publié pour le Web Push. [À VALIDER] | Google, Microsoft : Data Privacy Framework ; Apple, Mozilla : clauses contractuelles types |
 | Open Food Facts (association, France) | Recherche de produits et photos | France | Sans objet : aucun identifiant de personne envoyé. [À VALIDER : qualification] | Sans objet |
 
-Prestataires prévus, pas encore en place au 27/10/2026 : Brevo (e-mails) et Cloudflare Turnstile (anti-robots). À ajouter à ce registre le jour de leur mise en service.
+| Brevo (BREVO SAS, Paris) | Envoi des e-mails de connexion, en service depuis le 27/10/2026 | D'après Brevo : OVH (France), Google Cloud (Union européenne) | Annexe 3 de ses conditions d'utilisation | D'après Brevo, pas de transfert ; Google Cloud : Data Privacy Framework. [À VALIDER : relevé par la session Cocon sur les pages officielles le 27/10/2026, à relire] |
+
+Prestataire prévu, pas encore en place au 27/10/2026 : Cloudflare Turnstile (anti-robots). À ajouter à ce registre le jour de sa mise en service.
 
 ## Tenue du registre
 

@@ -66,3 +66,20 @@ test('déconnecter tous mes appareils : cet appareil puis un autre téléphone s
   // Le mot de passe reste le même : on se reconnecte normalement.
   await signIn(other, 'Sacha');
 });
+
+test('changer d’adresse e-mail : deux liens envoyés, rien ne change avant les deux confirmations', async ({ browser }) => {
+  const phone = await newPhone(browser);
+  await signUp(phone, 'Zoe');
+  await expect(phone.getByRole('heading', { name: 'Bonjour Zoe' })).toBeVisible();
+  await goto(phone, '/reglages');
+  await phone.getByRole('button', { name: 'Changer', exact: true }).click();
+  const sheet = phone.getByRole('dialog', { name: 'Changer d’adresse e-mail' });
+  await expect(sheet.getByRole('button', { name: 'Recevoir les liens' })).toBeDisabled();
+  await sheet.getByLabel('Nouvelle adresse e-mail').fill('zoe.nouvelle@exemple.test');
+  await sheet.getByRole('button', { name: 'Recevoir les liens' }).click();
+  await expect(sheet.getByText(/Deux e-mails viennent de partir/)).toBeVisible();
+  await sheet.getByRole('button', { name: 'Fermer' }).last().click();
+  // Rouvert : le changement attend encore les confirmations ; l'adresse affichée n'a pas changé.
+  await phone.getByRole('button', { name: 'Changer', exact: true }).click();
+  await expect(phone.getByText(/Un changement vers zoe\.nouvelle@exemple\.test attend encore vos confirmations/)).toBeVisible();
+});

@@ -195,8 +195,7 @@ export function PrivacyPage() {
         </h2>
         <p className="small">
           Vous pouvez corriger ou supprimer à tout moment vos fiches, lots, dégustations, envies, événements, conversations et analyses, et changer votre prénom
-          dans les Réglages. Votre adresse e-mail ne se modifie pas encore dans l’application : écrivez à l’adresse de contact indiquée dans la politique de
-          confidentialité.
+          et votre adresse e-mail dans les Réglages (pour l’adresse, un lien est envoyé à l’ancienne et à la nouvelle : il faut ouvrir les deux).
         </p>
         <p className="small">
           <strong>Supprimer votre compte</strong> efface votre profil, vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et

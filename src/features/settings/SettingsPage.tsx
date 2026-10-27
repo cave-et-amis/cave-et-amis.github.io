@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, MonitorSmartphone, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, Mail, MonitorSmartphone, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
 import { useStore } from '../../data/store';
+import { toMessage } from '../../domain/errors';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
@@ -25,6 +26,7 @@ export function SettingsPage() {
   const tour = useTour();
   const [name, setName] = useState(me.display_name);
   const [password, setPassword] = useState(false);
+  const [changingEmail, setChangingEmail] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // Affiché aussitôt coché ou décoché ; revient en arrière seulement si l'enregistrement échoue.
   const [discoverable, setDiscoverable] = useState(me.discoverable);
@@ -56,9 +58,21 @@ export function SettingsPage() {
           </div>
         </Field>
         <Field label="Adresse e-mail">
-          <span className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--surface-2)' }}>
-            {email}
-          </span>
+          {/* Adresse longue : raccourcie (« … ») pour ne jamais élargir la page sur un téléphone. */}
+          <div className="inline" style={{ flexWrap: 'nowrap', minWidth: 0 }}>
+            <span
+              className="input"
+              title={email}
+              style={{ display: 'block', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', background: 'var(--surface-2)' }}
+            >
+              {email}
+            </span>
+            <span style={{ flexShrink: 0 }}>
+              <Button variant="secondary" icon={<Mail />} onClick={() => setChangingEmail(true)}>
+                Changer
+              </Button>
+            </span>
+          </div>
         </Field>
         <Field label="Devise de mes prix">
           <select className="input" value={me.currency} onChange={(e) => void run(() => api.updateProfile(me.id, { currency: e.target.value }), { success: 'Devise enregistrée' })}>
@@ -288,6 +302,7 @@ export function SettingsPage() {
       <LegalLinks />
 
       {password && <PasswordSheet onClose={() => setPassword(false)} />}
+      {changingEmail && <EmailSheet current={email} onClose={() => setChangingEmail(false)} />}
       {deleting && (
         <DeleteAccountSheet
           onClose={() => setDeleting(false)}
@@ -299,6 +314,74 @@ export function SettingsPage() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * Changer d'adresse e-mail : un lien part à l'adresse actuelle et un à la nouvelle ; le changement se fait quand les deux
+ * sont ouverts (une session volée ne suffit pas, il faut aussi la boîte mail actuelle). Rien ne change d'ici là.
+ */
+function EmailSheet({ current, onClose }: { current: string; onClose: () => void }) {
+  const { api } = useStore();
+  const [next, setNext] = useState('');
+  const [pending, setPending] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    api.pendingEmail().then(setPending, () => undefined);
+  }, [api]);
+  const valid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(next.trim()) && next.trim().toLowerCase() !== current.toLowerCase();
+  return (
+    <Sheet
+      open
+      onClose={onClose}
+      title="Changer d’adresse e-mail"
+      footer={
+        sent ? (
+          <Button onClick={onClose}>Fermer</Button>
+        ) : (
+          <Button
+            disabled={!valid}
+            loading={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await api.changeEmail(next);
+                setPending(next.trim());
+                setSent(true);
+              } catch (e) {
+                setError(toMessage(e));
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Recevoir les liens
+          </Button>
+        )
+      }
+    >
+      <div className="form">
+        {sent ? (
+          <Notice tone="success">
+            Deux e-mails viennent de partir : l’un à {current}, l’autre à {pending}. Ouvrez le lien de chacun, sur n’importe quel appareil : votre adresse change
+            quand les deux sont ouverts. Pensez à regarder dans les indésirables.
+          </Notice>
+        ) : (
+          <>
+            <p className="small">
+              Adresse actuelle : <strong>{current}</strong>. Pour la changer, un lien est envoyé à cette adresse et un autre à la nouvelle : il faudra ouvrir les deux.
+            </p>
+            {pending && <Notice tone="info">Un changement vers {pending} attend encore vos confirmations. Une nouvelle demande le remplace.</Notice>}
+            <Field label="Nouvelle adresse e-mail" htmlFor="new-email" error={error ?? undefined}>
+              <input id="new-email" className="input" type="email" autoComplete="email" value={next} onChange={(e) => setNext(e.target.value)} data-autofocus />
+            </Field>
+          </>
+        )}
+      </div>
+    </Sheet>
   );
 }
 

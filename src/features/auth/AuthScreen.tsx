@@ -188,6 +188,8 @@ export function AuthScreen({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(notice ?? null);
   const [info, setInfo] = useState<string | null>(null);
+  // Connexion refusée car l'adresse n'est pas encore confirmée : un nouveau lien peut être demandé.
+  const [unconfirmed, setUnconfirmed] = useState(false);
   const [invitation, setInvitation] = useState<InviteInfo | null>(null);
   // Inscription : âge minimum et conditions d'utilisation (case jamais cochée d'avance), versions notées avec le compte.
   const legal = useLegalDocs(api);
@@ -225,13 +227,15 @@ export function AuthScreen({
           { cgu_version: cgu?.version, confidentialite_version: policy?.version },
           captcha.take(),
         );
-        if (needsConfirmation) setInfo('Compte créé. Ouvrez le lien reçu par e-mail pour confirmer votre adresse, puis connectez-vous.');
+        if (needsConfirmation)
+          setInfo('Compte créé. Ouvrez le lien reçu par e-mail (pensez à regarder dans les indésirables) : il confirme votre adresse et vous connecte.');
       } else {
         await api.resetPassword(email, captcha.take());
         setInfo('Si un compte existe avec cette adresse, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe.');
       }
     } catch (err) {
       const m = (err as Error).message;
+      setUnconfirmed(mode === 'login' && (err as { code?: string }).code === 'email_not_confirmed');
       setError(
         m === 'name'
           ? 'Indiquez votre prénom : il sera visible par vos amis.'
@@ -321,6 +325,24 @@ export function AuthScreen({
               <p className="field error" role="alert" style={{ color: 'var(--danger)', fontWeight: 650 }}>
                 {error}
               </p>
+            )}
+            {unconfirmed && mode === 'login' && (
+              <Button
+                variant="secondary"
+                block
+                onClick={async () => {
+                  setError(null);
+                  try {
+                    await api.resendConfirmation(email, captcha.take());
+                    setUnconfirmed(false);
+                    setInfo('Un nouveau lien de confirmation vient de partir. Pensez à regarder dans les indésirables.');
+                  } catch (err) {
+                    setError(toMessage(err));
+                  }
+                }}
+              >
+                Recevoir un nouveau lien de confirmation
+              </Button>
             )}
             {info && <Notice tone="success">{info}</Notice>}
             <Button type="submit" size="lg" block loading={busy}>

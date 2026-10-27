@@ -372,6 +372,9 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
   const magicTokens = new Map<string, string>();
   const recoveryTokens = new Map<string, string>();
   const lastRecovery = new Map<string, string>();
+  /** Changement d'adresse « sécurisé », comme chez Supabase : un jeton pour l'adresse actuelle, un pour la nouvelle. */
+  const emailChanges = new Map<string, { newEmail: string; current: string; next: string; confirmed: Set<'current' | 'next'> }>();
+  const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(28)), (b) => b.toString(16).padStart(2, '0')).join('');
   const findUser = async (where: string, value: string) =>
     (
       await db.query<UserRow>(
@@ -397,7 +400,7 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
         [userId],
       )
     ).rows;
-  const userOut = async (row: UserRow) => userJson(row, await factorsOf(row.id));
+  const userOut = async (row: UserRow) => ({ ...userJson(row, await factorsOf(row.id)), new_email: emailChanges.get(row.id)?.newEmail ?? null });
   /** Code vérifié du compte (`factorId` : celui-là précisément). */
   const hasVerifiedFactor = async (userId: string, factorId: string | null = null) =>
     (
@@ -561,6 +564,20 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
 
     // Lien magique (connexion directe depuis Nous) ou lien « mot de passe oublié » : jeton à usage unique, gardé en
     // mémoire, valable seulement pour son type.
+    if (path === 'verify' && method === 'POST' && body.type === 'email_change') {
+      const hash = String(body.token_hash ?? '');
+      const entry = [...emailChanges].find(([, c]) => c.current === hash || c.next === hash);
+      if (!entry) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
+      const [userId, change] = entry;
+      const side = change.current === hash ? 'current' : 'next';
+      if (change.confirmed.has(side)) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
+      change.confirmed.add(side);
+      if (change.confirmed.size < 2) return respond(200, { msg: 'Confirmation link accepted. Please proceed to confirm link sent to the other email' });
+      emailChanges.delete(userId);
+      await db.query(`update auth.users set email = $2 where id = $1`, [userId, change.newEmail]);
+      const user = (await findUser('id = $1', userId))!;
+      return respond(200, makeSession(await userOut(user), openSession(userId, 'email_change')));
+    }
     if (path === 'verify' && method === 'POST') {
       const hash = String(body.token_hash ?? '');
       const type = body.type === 'recovery' ? 'recovery' : 'magiclink';
@@ -609,6 +626,13 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
             user.id,
             password,
           ]);
+        }
+        if (typeof body.email === 'string' && body.email.trim()) {
+          const newEmail = body.email.trim().toLowerCase();
+          if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(newEmail)) return authError(400, 'validation_failed', 'Unable to validate email address: invalid format');
+          if (await findUser('email = $1', newEmail)) return authError(422, 'email_exists', 'A user with this email address has already been registered');
+          // Une nouvelle demande remplace la précédente ; rien ne change avant les deux confirmations.
+          emailChanges.set(user.id, { newEmail, current: newToken(), next: newToken(), confirmed: new Set() });
         }
         if (body.data && typeof body.data === 'object') {
           await db.query(`update auth.users set raw_user_meta_data = coalesce(raw_user_meta_data, '{}') || $2::jsonb where id = $1`, [
@@ -976,5 +1000,10 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
 
   /** Jeton du dernier lien « mot de passe oublié » envoyé à cette adresse (l'e-mail simulé, pour les tests). */
   const lastRecoveryToken = (email: string) => lastRecovery.get(email.trim().toLowerCase()) ?? null;
-  return { handle, fetch: fetchFn, signingSecret, lastRecoveryToken };
+  /** Jetons des deux liens du changement d'adresse en cours (les e-mails simulés, pour les tests). */
+  const emailChangeTokens = (userId: string) => {
+    const c = emailChanges.get(userId);
+    return c ? { current: c.current, next: c.next } : null;
+  };
+  return { handle, fetch: fetchFn, signingSecret, lastRecoveryToken, emailChangeTokens };
 }

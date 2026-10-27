@@ -88,13 +88,15 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 
 ### Les e-mails de connexion
 
-- La réinitialisation du mot de passe par e-mail n'est pas encore disponible.
+- Pour un mot de passe oublié, la confirmation de votre adresse à l'inscription et le changement d'adresse, Cave & Amis vous envoie un e-mail avec un lien à usage unique, depuis cocon.cave@gmail.com, par le service Brevo. Données : votre adresse e-mail (l'ancienne et la nouvelle pour un changement), votre adresse dans le message, et le lien lui-même. Aucun autre e-mail ne vous est envoyé.
+- À quoi ils servent : protéger l'accès à votre compte.
+- Base légale : l'exécution du contrat (les conditions d'utilisation). [À VALIDER : base légale des e-mails de connexion]
 
 ### Les preuves de vos choix
 
 - Les versions des conditions d'utilisation que vous avez acceptées et des politiques que vous avez lues (date, version, moment : inscription, connexion ou réglages), et l'historique de vos choix (apparaître dans la recherche, relier l'agenda Nous). Aucune adresse IP, aucune information sur votre appareil.
 - À quoi elles servent : pouvoir prouver ce qui a été accepté ou choisi, et quand.
-- Base légale : l'intérêt légitime de l'éditeur.
+- Base légale : l'obligation de pouvoir démontrer un consentement (article 7 du RGPD) et l'intérêt légitime de l'éditeur à prouver l'acceptation des conditions.
 
 ### Les pages d'invitation, sans compte
 
@@ -123,8 +125,10 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 - **Anthropic** (Anthropic Ireland, Limited, Dublin, pour les clients de l'Espace économique européen) : intelligence artificielle de Lia (assistant, lecture d'étiquette, scanner, prix). Son contrat de sous-traitance fait partie de ses conditions commerciales : https://www.anthropic.com/legal/data-processing-addendum
 - **Les services de notification** de votre navigateur (Google, Apple, Mozilla ou Microsoft), si vous activez les notifications : ils reçoivent l'adresse d'abonnement de l'appareil et le texte chiffré, qu'ils ne peuvent pas lire.
 - **Open Food Facts** (association loi 1901, Saint-Maur-des-Fossés, France ; serveurs en France) : recherche de produits et de photos officielles par code-barres ou par nom, et affichage des vignettes depuis son site. Selon sa politique, Open Food Facts garde 3 ans les journaux de visite (adresse IP).
+- **Brevo** (BREVO SAS, 17 rue de Salneuve, 75017 Paris, France ; RCS Paris 498 019 298) : envoi des e-mails de connexion (votre adresse e-mail et le contenu du message). Son contrat de sous-traitance est l'annexe 3 de ses conditions d'utilisation. D'après Brevo, ses données sont hébergées chez OVH (France) et Google Cloud (Union européenne). [À VALIDER : informations relevées le 27/10/2026 sur les pages officielles de Brevo par la session Cocon, à relire ; durée de conservation des journaux d'envoi non trouvée]
 - **Nous (application Cocon)**, si vous reliez vos comptes : même responsable de traitement.
 - **Les messageries que vous choisissez** pour envoyer un lien d'invitation : Cave & Amis ne leur envoie rien lui-même.
+- **Les autorités**, seulement lorsque la loi l'impose.
 
 ## Transferts hors de l'Union européenne
 
@@ -135,6 +139,7 @@ Certaines données peuvent être traitées hors de l'Union européenne, avec ces
 - **GitHub** : adhésion au cadre de protection des données UE–États-Unis (« Data Privacy Framework ») et clauses contractuelles types.
 - **Google** (notifications de Chrome et d'Android) et **Microsoft** : adhésion au « Data Privacy Framework ».
 - **Apple** et **Mozilla** : clauses contractuelles types.
+- **Brevo** : d'après Brevo, données hébergées dans l'Union européenne ; son hébergeur Google Cloud adhère au « Data Privacy Framework ». [À VALIDER : absence de transfert hors de l'Union européenne pour Brevo]
 
 Adhésions au « Data Privacy Framework » vérifiées le 27/10/2026 sur la liste officielle : https://www.dataprivacyframework.gov/list
 
@@ -179,13 +184,13 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, et du droit de retirer votre consentement.
 
 - **Accès et portabilité** : Réglages › Confidentialité et mes données › « Télécharger toutes mes données » vous donne une archive avec toutes vos données (fichier JSON, lisible par d'autres logiciels) et vos photos.
-- **Rectification** : vous corrigez vous-même vos fiches, notes, événements, votre prénom et votre devise. Pour changer d'adresse e-mail, écrivez à l'adresse de contact.
+- **Rectification** : vous corrigez vous-même vos fiches, notes, événements, votre prénom, votre devise et votre adresse e-mail (Réglages › Mon profil : un lien est envoyé à l'ancienne et à la nouvelle adresse, et le changement se fait quand les deux sont ouverts).
 - **Effacement** : vous supprimez vous-même chaque élément, ou votre compte entier (Réglages › Confidentialité et mes données).
 - **Retrait du consentement** : à tout moment, sans effet sur ce qui a été fait avant : apparaître dans la recherche (Réglages), agenda Nous (délier), notifications (désactiver).
 - **Opposition et limitation** : écrivez à l'adresse de contact.
 - **Après votre décès** : vous pouvez définir des directives sur le sort de vos données (conservation, effacement, transmission) en écrivant à cocon.cave@gmail.com.
 
-Pour exercer vos droits : cocon.cave@gmail.com. Une preuve d'identité peut vous être demandée, par exemple écrire depuis l'adresse e-mail de votre compte. Une réponse vous est apportée dans un délai d'un mois.
+Pour exercer vos droits : cocon.cave@gmail.com. Une preuve d'identité peut vous être demandée, par exemple écrire depuis l'adresse e-mail de votre compte. Une réponse vous est apportée dans un délai d'un mois. Ce délai peut être prolongé de deux mois pour une demande complexe ; vous en êtes alors prévenu.
 
 Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la CNIL (www.cnil.fr).
 
@@ -199,5 +204,5 @@ Une personne inscrite peut parler de vous dans Cave & Amis : note « Pour qui ? 
 
 ## Les mises à jour de cette politique
 
-- Une nouvelle version est publiée dans l'application quand le traitement de vos données change. Vous en êtes informé à votre prochaine connexion.
+- Une nouvelle version est publiée dans l'application quand le traitement de vos données change. Vous êtes informé de toute nouvelle version à votre prochaine connexion, avec un résumé de ce qui change.
 - Les versions que vous avez lues sont consultables dans Réglages › Confidentialité et mes données.
