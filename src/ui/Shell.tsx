@@ -39,6 +39,7 @@ const SettingsPage = lazyPage(() => import('../features/settings/SettingsPage'),
 const CellarsPage = lazyPage(() => import('../features/settings/CellarsPage'), 'CellarsPage');
 const WhoSeesPage = lazyPage(() => import('../features/settings/WhoSeesPage'), 'WhoSeesPage');
 const AdminPage = lazyPage(() => import('../features/admin/AdminPage'), 'AdminPage');
+const AdminJournal = lazyPage(() => import('../features/admin/AdminJournal'), 'AdminJournal');
 const LegalAdmin = lazyPage(() => import('../features/admin/LegalAdmin'), 'LegalAdmin');
 const ScannerPage = lazyPage(() => import('../features/scanner/ScannerPage'), 'ScannerPage');
 const ScanPage = lazyPage(() => import('../features/scanner/ScanPage'), 'ScanPage');
@@ -267,6 +268,7 @@ function ShellInner() {
         <>
           <LegalAdmin />
           <AdminPage />
+          <AdminJournal />
         </>
       ) : (
         <EmptyState icon="🔒" title="Espace réservé à l’administrateur" />

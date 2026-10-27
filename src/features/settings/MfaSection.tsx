@@ -1,6 +1,7 @@
 /**
- * Réglages › Double authentification (administrateur) : en plus du mot de passe, un code à 6 chiffres donné par une
- * application d'authentification (TOTP, gratuit chez Supabase) est demandé à chaque connexion ; la base l'exige aussi pour
+ * Réglages › Double authentification, proposée à tous les comptes : en plus du mot de passe, un code à 6 chiffres donné
+ * par une application d'authentification (TOTP, gratuit chez Supabase) est demandé à chaque connexion ; tant qu'il n'est
+ * pas saisi, la base ne laisse rien lire ni modifier. Obligatoire pour l'administrateur : sans elle, la base refuse
  * l'administration et la publication des documents légaux. Le QR code est dessiné ici, à partir de l'adresse otpauth://
  * (rien n'est envoyé à un autre service) ; la clé peut aussi être recopiée à la main.
  */
@@ -16,7 +17,7 @@ import { Button, copyText, Field, InlineLoading, Notice, Sheet, useConfirm, useT
 /** Clé en groupes de 4 caractères, plus facile à recopier. */
 const keyGroups = (secret: string) => secret.replace(/(.{4})(?=.)/g, '$1 ');
 
-export function MfaSection() {
+export function MfaSection({ admin }: { admin: boolean }) {
   const { api, run } = useStore();
   const confirm = useConfirm();
   // undefined : vérification en cours ; null : désactivée.
@@ -38,7 +39,9 @@ export function MfaSection() {
   async function disable(f: MfaFactor) {
     const ok = await confirm({
       title: 'Désactiver la double authentification ?',
-      message: 'Le code ne sera plus demandé : le mot de passe seul protégera de nouveau le compte administrateur.',
+      message: admin
+        ? 'Le code ne sera plus demandé, et l’administration sera fermée tant que vous n’aurez pas réactivé la double authentification.'
+        : 'Le code ne sera plus demandé : le mot de passe seul protégera de nouveau votre compte.',
       confirmLabel: 'Désactiver',
       danger: true,
     });
@@ -56,8 +59,9 @@ export function MfaSection() {
         </h2>
       </div>
       <p className="small">
-        Protège le compte administrateur : en plus du mot de passe, un code à 6 chiffres, donné par une application gratuite sur votre téléphone, est demandé à
-        chaque connexion. Il est aussi exigé pour l’administration et la publication des documents légaux.
+        Protège votre compte : en plus du mot de passe, un code à 6 chiffres, donné par une application gratuite sur votre téléphone, est demandé à chaque
+        connexion.
+        {admin && ' Obligatoire pour l’administration et la publication des documents légaux.'}
       </p>
       {error && <Notice tone="warn">{error}</Notice>}
       {factor === undefined ? (
@@ -79,6 +83,7 @@ export function MfaSection() {
       )}
       {enrolling && (
         <EnrollSheet
+          admin={admin}
           onClose={() => setEnrolling(false)}
           onDone={async () => {
             setEnrolling(false);
@@ -91,7 +96,7 @@ export function MfaSection() {
 }
 
 /** Activation : QR code ou clé à recopier, puis premier code ; fermée avant la fin, l'activation commencée est retirée. */
-function EnrollSheet({ onClose, onDone }: { onClose: () => void; onDone: () => Promise<void> }) {
+function EnrollSheet({ admin, onClose, onDone }: { admin: boolean; onClose: () => void; onDone: () => Promise<void> }) {
   const { api } = useStore();
   const toast = useToast();
   const [enrollment, setEnrollment] = useState<MfaEnrollment | null>(null);
@@ -186,8 +191,9 @@ function EnrollSheet({ onClose, onDone }: { onClose: () => void; onDone: () => P
             />
           </Field>
           <Notice tone="warn">
-            Gardez ce téléphone : sans lui, vous ne pourrez plus vous connecter. La double authentification se retire alors depuis le tableau de bord Supabase
-            (voir le guide de sécurité, docs/SECURITE.md).
+            {admin
+              ? 'Gardez ce téléphone : sans lui, vous ne pourrez plus vous connecter. La double authentification se retire alors depuis le tableau de bord Supabase (voir le guide de sécurité, docs/SECURITE.md).'
+              : 'Gardez ce téléphone : sans lui, vous ne pourrez plus vous connecter. Écrivez alors à cocon.cave@gmail.com depuis l’adresse de votre compte pour la faire retirer.'}
           </Notice>
         </div>
       )}

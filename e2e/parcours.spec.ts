@@ -4,7 +4,7 @@
  * administration et quotas, révocation d'un ami.
  */
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { goto, inviteCode as createInvite, labelPhoto, shot, signIn, signUp, tile, toast } from './helpers';
+import { enableCode, goto, inviteCode as createInvite, labelPhoto, saveAdminKey, shot, signIn, signUp, tile, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -306,7 +306,12 @@ test('assistant : réponse fondée sur la cave, action confirmée par la personn
   await expect.poll(() => tile(bruno, /bouteilles en stock/)).toBe(before - 1);
 });
 
-test('administration : test de connexion sans afficher la clé, quota atteint, fonctions manuelles intactes', async () => {
+test('administration : double authentification obligatoire, test de connexion sans afficher la clé, quota atteint, fonctions manuelles intactes', async () => {
+  // Sans code activé, l'administration explique ce qu'il faut faire, sans rien montrer.
+  await goto(bruno, '/admin');
+  await expect(bruno.getByText(/L’administration demande la double authentification/).first()).toBeVisible();
+  await expect(bruno.getByRole('button', { name: 'Tester la connexion' })).toHaveCount(0);
+  saveAdminKey(await enableCode(bruno));
   await goto(bruno, '/admin');
   await bruno.getByRole('button', { name: 'Tester la connexion' }).click();
   await expect(bruno.getByText(/Connexion réussie/)).toBeVisible();

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PlugZap, RefreshCw, Save } from 'lucide-react';
 import type { AdminOverview } from '../../data/api';
 import { useStore } from '../../data/store';
+import { errorCode, toMessage } from '../../domain/errors';
 import { dateShort } from '../../domain/format';
 import { parseNumber } from '../../domain/format';
 import { Button, Check, Field, InlineLoading, Notice, Sheet } from '../../ui/kit';
@@ -44,8 +45,9 @@ export function AdminPage() {
       setDraft({});
       setPrices(JSON.stringify(d.settings.prices, null, 2));
       setError(null);
-    } catch {
-      setError('Impossible de charger l’administration.');
+    } catch (e) {
+      // Sans code de double authentification activé, l'explication de la base est montrée telle quelle.
+      setError(errorCode(e) === 'admin_mfa_required' ? toMessage(e) : 'Impossible de charger l’administration.');
     }
   }, [api]);
 

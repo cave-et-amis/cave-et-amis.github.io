@@ -988,7 +988,18 @@ export class Api {
   async adminSetLimits(user: string, daily: number | null, monthly: number | null, blocked: boolean, reset = false) {
     must(await this.sb.rpc('admin_set_user_limits', { p_user: user, p_daily: daily, p_monthly: monthly, p_blocked: blocked, p_reset: reset }));
   }
+  /** Journal des actions de l'administrateur (12 mois), le plus récent d'abord. */
+  async adminJournal(limit = 100) {
+    return (must(await this.sb.rpc('admin_audit_journal', { p_limit: limit })) ?? []) as AdminJournalEntry[];
+  }
 }
+
+export type AdminJournalEntry = {
+  at: string;
+  action: 'publication_document' | 'reglages_assistant' | 'limites_compte';
+  target_name: string;
+  details: Record<string, unknown>;
+};
 
 export type AdminOverview = {
   settings: {

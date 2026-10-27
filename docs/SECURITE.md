@@ -79,8 +79,9 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
   Publiés par l'administrateur seulement (`admin_legal_publish`), jamais modifiés ni supprimés ensuite (déclencheur) ;
   numéro de version et empreinte SHA-256 du texte calculés par la base. Un texte qui contient encore « [À COMPLÉTER » ou
   « [À VALIDER » est refusé. Les premières conditions d'utilisation demandent toujours une acceptation de tous ; seules les
-  conditions peuvent en demander une. Dès que l'administrateur a activé une double authentification, la publication exige
-  une session vérifiée par le code (niveau aal2). Les projets sont dans `docs/legal/` (à compléter et à faire valider).
+  conditions peuvent en demander une. La publication exige la double authentification de l'administrateur et une session
+  vérifiée par le code (niveau aal2), et elle est notée dans le journal de l'administration. Les projets sont dans
+  `docs/legal/`.
 - **Preuves et consentements** (`legal_acceptances`, `user_consents`) : ajout seul, aucune adresse IP ni information sur
   l'appareil. Pas de clé étrangère vers le compte : à sa suppression, un déclencheur note la date (`account_deleted_at`) et
   les lignes sont effacées 5 ans plus tard ; seule la purge peut les effacer. Aucun accès direct aux tables : tout passe par
@@ -116,15 +117,30 @@ Modèle commun avec Cocon (mêmes tables et mêmes fonctions), migration `202611
 - **Déconnecter tous mes appareils** (Réglages) : retire les notifications de tous les appareils et ferme toutes les
   sessions ; un autre appareil est déconnecté dès que l'application y est rouverte, au plus tard quand son jeton expire (1 h).
 
-## Double authentification de l'administrateur
+## Double authentification (comme Cocon, migration `20261102000001_alignement_cocon`)
 
-- Code à 6 chiffres d'une application d'authentification (TOTP, gratuit chez Supabase), activé dans Réglages ›
-  « Double authentification » (proposé à l'administrateur) ; le QR code est calculé dans le navigateur.
-- Une fois activé, le code est demandé à chaque connexion, et la base exige une session vérifiée par le code (aal2) pour
-  l'administration de l'assistant et la publication des documents légaux.
-- Téléphone perdu : dans Supabase › SQL Editor,
+- Code à 6 chiffres d'une application d'authentification (TOTP, gratuit chez Supabase), proposé à **tous les comptes** dans
+  Réglages › « Double authentification » ; le QR code est calculé dans le navigateur.
+- Une fois activé, le code est demandé à chaque connexion. Tant que la session n'est pas vérifiée par le code (aal2), la
+  personne ne lit ni n'écrit rien : politiques restrictives `_mfa_ok` sur chaque table protégée par les règles d'accès, et
+  `require_user()` (appelée par les fonctions du serveur) refuse avec `mfa_required`. Sans code activé, rien ne change.
+- **Obligatoire pour administrer** : sans code activé, `require_admin()` refuse avec `admin_mfa_required` (administration de
+  l'assistant, publication et statistiques des documents légaux, journal) ; avec un code, une session aal2 est exigée. La
+  page Administration explique quoi faire. Avant de mettre la migration en ligne, l'administrateur active son code.
+- Le test de la clé Anthropic (`admin_test`, dans cave-api) vérifie seulement `is_admin` : il ne montre ni ne modifie
+  aucune donnée personnelle.
+- Téléphone perdu (n'importe quel compte, sur demande écrite depuis l'adresse du compte) : dans Supabase › SQL Editor,
   `delete from auth.mfa_factors where user_id = (select id from auth.users where email = '…');` puis reconnexion avec le
-  seul mot de passe, et nouvelle activation.
+  seul mot de passe, et nouvelle activation (obligatoire pour l'administrateur).
+
+## Journal de l'administration
+
+- Table `admin_audit_log`, écrite par des déclencheurs : publication d'un document légal (type, version, titre,
+  empreinte ; jamais le texte), réglages de l'assistant (champs changés, avant et après ; jamais l'état de la clé ni un
+  secret), limites d'un compte (compte visé, valeurs, ou « réinitialisées »). Les écritures du serveur sans compte connecté
+  ne sont pas notées.
+- Inaltérable (déclencheur `admin_audit_immutable`) : seule la purge de chaque nuit efface, après 12 mois. Aucun accès
+  direct ; lecture par l'administrateur seul (`admin_audit_journal`, avec le code), en bas de la page Administration.
 
 ## Contrôle anti-robots (CAPTCHA) et politique de sécurité du contenu
 
@@ -149,6 +165,8 @@ Contrat complet : `docs/INTEGRATION-NOUS.md`.
   voit tout de suite.
 - **Anti-rejeu** : l'empreinte SHA-256 de chaque signature acceptée est gardée 10 minutes (`eco_replay`) ; une requête
   rejouée est refusée (401 `replay`) ; si la vérification est impossible, la requête est refusée.
+- **30 jours après la fin d'un événement** (fin estimée selon le type), `nous_event_payload` n'envoie plus les participants
+  ni les vins ; Nous les efface aussi de sa copie à ce moment-là (règle de Cocon).
 
 ## Limites et durcissements côté serveur
 
@@ -195,7 +213,8 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 | Conversations avec Lia | 12 mois après le dernier message |
 | Journaux d'usage de l'IA / erreurs techniques | 13 mois / 3 mois |
 | Relevés de prix | 24 mois |
-| Liens d'invitation expirés ou révoqués | 90 jours (code et note « Pour qui ? » partent avec la ligne) |
+| Liens d'invitation expirés ou annulés | 90 jours après l'expiration ou l'annulation (`revoked_at`) ; code et note « Pour qui ? » partent avec la ligne |
+| Journal de l'administration | 12 mois |
 | Demandes de contact ou d'accès refusées | 6 mois |
 | Analyses du scanner (avec leurs photos) et visites vides | 30 jours (réglage `scan_retention_days`), purgées chaque nuit même si la personne ne revient pas |
 | Appareils de notification en échec | 90 jours sans succès |

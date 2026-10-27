@@ -42,6 +42,30 @@ export async function as<T = Record<string, unknown>>(db: Db, userId: string | n
   });
 }
 
+/**
+ * En tant qu'administrateur, comme l'exige la base (20261102000001) : code de double authentification activé et session
+ * vérifiée par ce code (aal2). Le code ajouté pour l'occasion est retiré ensuite, pour ne pas changer le reste du test.
+ */
+export async function asAdmin<T = Record<string, unknown>>(db: Db, userId: string, sql: string, params: unknown[] = []) {
+  const added = await db.query(
+    `insert into auth.mfa_factors (user_id, status) select $1, 'verified'
+     where not exists (select 1 from auth.mfa_factors where user_id = $1 and status = 'verified') returning id`,
+    [userId],
+  );
+  try {
+    return await db.transaction(async (tx) => {
+      await tx.query(`select set_config('request.jwt.claim.sub', $1, true), set_config('request.jwt.claims', $2, true)`, [
+        userId,
+        JSON.stringify({ sub: userId, aal: 'aal2' }),
+      ]);
+      await tx.exec('set local role authenticated');
+      return (await tx.query<T>(sql, params)).rows;
+    });
+  } finally {
+    for (const row of added.rows as { id: string }[]) await db.query(`delete from auth.mfa_factors where id = $1`, [row.id]);
+  }
+}
+
 export async function one<T = Record<string, unknown>>(db: Db, userId: string | null, sql: string, params: unknown[] = []) {
   const rows = await as<T>(db, userId, sql, params);
   return rows[0];

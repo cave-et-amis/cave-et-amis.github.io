@@ -31,11 +31,11 @@ const adminCalls = (who: string, aal: 'aal1' | 'aal2') => [
 const addFactor = (status: 'verified' | 'unverified') => db.query(`insert into auth.mfa_factors (user_id, status) values ($1, $2)`, [bruno, status]);
 
 describe('double authentification de l’administrateur', () => {
-  it('sans code activé, rien ne change ; un code commencé mais pas vérifié ne compte pas', async () => {
-    for (const call of adminCalls(bruno, 'aal1')) await call();
+  it('sans code activé, l’administration est refusée ; un code commencé mais pas vérifié ne compte pas', async () => {
+    for (const call of adminCalls(bruno, 'aal1')) await expectError(call(), /admin_mfa_required/);
     await addFactor('unverified');
-    for (const call of adminCalls(bruno, 'aal1')) await call();
-    expect((await db.query(`select alert_pct from ai_settings where id = 1`)).rows).toEqual([{ alert_pct: 70 }]);
+    for (const call of adminCalls(bruno, 'aal2')) await expectError(call(), /admin_mfa_required/);
+    expect((await db.query(`select alert_pct from ai_settings where id = 1`)).rows).not.toEqual([{ alert_pct: 70 }]);
     for (const call of adminCalls(claire, 'aal2')) await expectError(call(), /forbidden/);
   });
 
@@ -46,8 +46,8 @@ describe('double authentification de l’administrateur', () => {
     await expectError(as(db, bruno, `select admin_ai_overview()`), /mfa_required/);
     for (const call of adminCalls(bruno, 'aal2')) await call();
     expect((await db.query(`select daily_requests from ai_user_limits where user_id = $1`, [claire])).rows).toEqual([{ daily_requests: 5 }]);
-    // Une autre personne n'y gagne rien, même avec un code.
-    for (const call of adminCalls(claire, 'aal2')) await expectError(call(), /forbidden/);
+    // Une autre personne n'y gagne rien, même avec un code (sans code, sa session aal1 suffit à être refusée).
+    for (const call of adminCalls(claire, 'aal1')) await expectError(call(), /forbidden/);
     // La règle elle-même n'est pas appelable par les comptes.
     await expectError(at(bruno, 'aal2', `select require_admin()`), /permission denied/);
     await expectError(at(bruno, 'aal2', `select admin_strong_session()`), /permission denied/);

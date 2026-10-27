@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { text, TEST_ANTHROPIC_KEY } from '../helpers/anthropicMock.ts';
+import { totp } from '../helpers/totp.ts';
 import { call, makeAiEnv, setSettings, usageRows } from './setup.ts';
 
 const ok = { kind: 'message' as const, content: [text('Réponse')] };
@@ -126,6 +127,12 @@ describe('assistant : quotas, budget et erreurs', () => {
     expect(res).toMatchObject({ ok: true, key_present: true, key_status: 'ok', test: { ok: true, text: 'OK' } });
     expect((res.models as { id: string }[]).map((m) => m.id)).toContain('claude-opus-5-5');
     expect(JSON.stringify(res)).not.toContain(TEST_ANTHROPIC_KEY);
+    // La vue d'ensemble demande la double authentification de l'administrateur (20261102000001).
+    expect((await admin.sb.rpc('admin_ai_overview')).error?.message).toBe('admin_mfa_required');
+    const enrolled = await admin.sb.auth.mfa.enroll({ factorType: 'totp' });
+    if (enrolled.error) throw enrolled.error;
+    const verified = await admin.sb.auth.mfa.challengeAndVerify({ factorId: enrolled.data.id, code: totp(enrolled.data.totp.secret) });
+    if (verified.error) throw verified.error;
     const { data: overview, error } = await admin.sb.rpc('admin_ai_overview');
     expect(error).toBeNull();
     expect(JSON.stringify(overview)).not.toContain(TEST_ANTHROPIC_KEY);
