@@ -271,7 +271,10 @@ export function AdminPage() {
           <input {...num('web_search_price_per_1000')} />
         </Field>
         <h3 className="section">Scanner avant d’acheter</h3>
-        <Field label="Modèle du scanner" hint="Vide : le même modèle que l’assistant. Sonnet 5.5 coûte environ deux fois moins qu’Opus 5.5 pour lire les étiquettes.">
+        <Field
+          label="Modèle du scanner et de la lecture d’étiquette"
+          hint="Sert aussi à lire une étiquette et à chercher le prix depuis une fiche (la conversation avec Lia garde le modèle de l’assistant). Vide : le même modèle que l’assistant. Sonnet 5.5 coûte environ deux fois moins qu’Opus 5.5."
+        >
           <input className="input" value={s.scan_model ?? ''} onChange={(e) => set({ scan_model: e.target.value.trim() || null })} placeholder={s.model} />
         </Field>
         {s.scan_model && !s.prices?.[s.scan_model] && !prices.includes(`"${s.scan_model}"`) && (

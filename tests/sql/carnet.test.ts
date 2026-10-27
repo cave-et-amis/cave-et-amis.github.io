@@ -57,7 +57,9 @@ describe('carnet de dégustation', () => {
     ]);
     await createTasting(bruno, { wine_name: 'Privée', event_id: ev.r.id });
     await createTasting(bruno, { wine_name: 'Partagée', event_id: ev.r.id, share_with_event: true, comment: 'Très belle' });
-    const seen = await as<{ wine_name: string }>(db, claire, `select wine_name from tastings`);
+    // Les notes partagées se lisent par event_tastings (sans le prix payé), jamais dans la table.
+    expect(await as(db, claire, `select wine_name from tastings`)).toEqual([]);
+    const seen = await as<{ wine_name: string }>(db, claire, `select wine_name from event_tastings($1)`, [ev.r.id]);
     expect(seen.map((s) => s.wine_name)).toEqual(['Partagée']);
     await expectError(createTasting(claire, { wine_name: 'X', event_id: crypto.randomUUID() }), /not_participant/);
     // Partage impossible sans événement.

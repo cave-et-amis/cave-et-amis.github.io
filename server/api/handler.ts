@@ -22,7 +22,7 @@ import { IDENTIFY_CACHE_DAYS, identifyScan, initialWine, parsePhotos, purgeExpir
 import { normalizeBarcode } from '../../src/domain/barcode.ts';
 import { wineKey } from '../../src/domain/scan.ts';
 import type { ScanAssessment, ScanMarket, ScanWine } from '../../src/domain/types.ts';
-import { ASSESS_CACHE_DAYS, assessWine, emptyAssessment, emptyMarket, PRICE_CACHE_HOURS, scanCacheKey, searchMarket } from './scanAssess.ts';
+import { ASSESS_CACHE_DAYS, assessWine, emptyAssessment, emptyMarket, PRICE_CACHE_HOURS, scanCacheKey, searchMarket, shareableAssessment } from './scanAssess.ts';
 import { AiFailure, corsHeaders, isUuid, json, rateOk, readCapped, sanitize, type ApiEnv } from './util.ts';
 import type { Wine } from '../../src/domain/types.ts';
 
@@ -190,6 +190,8 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           'label',
           (m) => m.estimate({ chars: 6_000, images: images.length, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
           (meter) => identifyLabel({ meter, images }),
+          // Lecture d'étiquette et prix depuis une fiche : modèle du scanner (même travail), l'assistant garde le sien.
+          s.scan_model,
         );
         return { result };
       }
@@ -206,6 +208,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           'price',
           (m) => m.estimate({ chars: 6_000, webSearches: s.web_search_enabled ? s.max_web_searches : 0, maxTokens: Math.min(s.max_output_tokens, 4000) }),
           (meter) => lookupPrice({ svc, meter, userId, currency }, wine as Wine, volume),
+          s.scan_model,
         );
         return { result };
       }
@@ -301,7 +304,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
             if (searchOff) assessment = emptyAssessment(key, 'La recherche web est désactivée par l’administrateur : le vin ne peut pas être analysé avec des sources.', t);
             else {
               assessment = await metered(userId, 'scan_quality', estimate, (meter) => assessWine(meter, scan.wine, key, t), s.scan_model);
-              if (!assessment.reason) await remember(assessment, ASSESS_CACHE_DAYS * 86_400_000);
+              if (shareableAssessment(assessment)) await remember(assessment, ASSESS_CACHE_DAYS * 86_400_000);
             }
           }
           const { error } = await svc.from('scans').update({ assessment, assessed_at: t.toISOString() }).eq('id', scan.id).eq('user_id', userId);

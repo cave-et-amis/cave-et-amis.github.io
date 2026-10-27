@@ -45,7 +45,7 @@ const FIT_TONE = { forte: 'success', moyenne: 'gold', faible: 'danger' } as cons
 
 const pct = (n: number) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)} %`;
 const signed = (n: number, c: string) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${money(Math.abs(n), c)}`;
-const host = (url: string) => {
+export const host = (url: string) => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
   } catch {

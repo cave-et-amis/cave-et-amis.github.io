@@ -713,7 +713,8 @@ export class Api {
       this.sb.from('event_dishes').select('*').eq('event_id', id).order('position').order('created_at').then(must),
       this.sb.from('event_wines').select('*').eq('event_id', id).order('created_at').then(must),
       planned ? this.sb.rpc('event_suggestable_lots', { p_event: id }).then(must) : Promise.resolve([]),
-      this.sb.from('tastings').select('*').eq('event_id', id).then(must),
+      // Notes partagées des autres participants : sans leur prix payé (fonction de la base).
+      this.sb.rpc('event_tastings', { p_event: id }).then(must),
     ]);
     return {
       participants: participants as Participant[],

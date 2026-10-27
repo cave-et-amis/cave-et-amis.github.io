@@ -17,7 +17,7 @@ import { Button, Check, EmptyState, Field, InlineLoading, Notice, Pill, useConfi
 import { go } from '../../ui/router';
 import { ColorChips } from '../cellar/fields';
 import { ROLES } from './ScannerPage';
-import { ScanAnalysis } from './ScanAnalysis';
+import { host, ScanAnalysis } from './ScanAnalysis';
 
 export const ISSUE_TEXT: Record<string, string> = {
   blurry: 'La photo est floue : si un champ vous semble faux, reprenez-la en tenant le téléphone immobile.',
@@ -391,8 +391,16 @@ function ScanSummary({ scan, onEdit }: { scan: Scan; onEdit: () => void }) {
       photo = await api.copyPhoto(userId, front.path).catch(() => null);
       setCopying(false);
     }
+    // Fenêtre de garde et accords de l'analyse : repris dans la fiche comme conseils de l'IA (modifiables avant l'ajout).
+    const a = scan.assessment;
+    const dw = a?.drink_window ?? null;
+    const advice = {
+      ...(dw ? { drink_from: dw.from, drink_until: dw.until, window_note: dw.source ? `D’après ${host(dw.source)}` : 'Estimation de Lia' } : {}),
+      ...(a?.pairings ? { pairings: a.pairings } : {}),
+    };
     actions.newWine({
-      wine: { ...wine, name: w.name ?? '', barcode: scan.barcode, label_photo: photo },
+      wine: { ...wine, ...advice, name: w.name ?? '', barcode: scan.barcode, label_photo: photo },
+      aiAdvice: Object.keys(advice).length > 0,
       volume_ml: volume_ml ?? null,
       purchase: { price: scan.price_confirmed ? scan.store_price : null, place: scan.store_name },
       uploaded: photo ? [photo] : [],

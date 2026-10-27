@@ -445,6 +445,8 @@ describe('assistant : identification d’étiquette', () => {
     // L'image est bien envoyée, avec un format de sortie structuré.
     const sent = env.anthropic.requests[0].body!;
     expect(JSON.stringify(sent.messages)).toContain('"type":"image"');
+    // Lecture d'étiquette : modèle du scanner (Sonnet par défaut), pas celui de la conversation.
+    expect(sent.model).toBe('claude-sonnet-5-5');
     expect((sent.output_config as { format: { type: string } }).format.type).toBe('json_schema');
     // Rien n'est enregistré.
     const { data: wines } = await bruno.sb.from('wines').select('*');

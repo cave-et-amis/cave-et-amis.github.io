@@ -22,6 +22,17 @@ export const BLOCKED_DOMAINS = ['vivino.com'];
 export const ASSESS_CACHE_DAYS = 90;
 export const PRICE_CACHE_HOURS = 72;
 
+/**
+ * Une analyse n'entre dans le cache commun à tous les comptes que si son niveau de qualité est retenu et s'appuie sur
+ * au moins deux sites différents : une seule page (éventuellement piégée) ne fausse jamais le résultat des autres.
+ * Sinon, l'analyse sert seulement à la personne qui l'a demandée.
+ */
+export function shareableAssessment(a: ScanAssessment) {
+  if (a.reason || !a.quality) return false;
+  const sites = new Set(a.sources.map((s) => normUrl(s.url) && new URL(s.url).hostname.replace(/^www\./, '')).filter(Boolean));
+  return sites.size >= 2;
+}
+
 const TIERS: QualityTier[] = ['remarquable', 'tres_bon', 'bon', 'correct', 'decevant'];
 const VINTAGE_RATINGS = ['exceptionnel', 'tres_bon', 'bon', 'moyen', 'difficile'] as const;
 
