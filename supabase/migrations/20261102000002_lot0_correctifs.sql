@@ -12,9 +12,9 @@
 --  4. Tarifs de l'IA : la lecture en cache de Claude Sonnet 5.5 coûte 0,20 $ par million de jetons (grille officielle),
 --     pas 0,10 $. Corrigé seulement là où l'ancienne valeur est encore en place (un réglage de l'administration reste tel quel).
 --
--- À exécuter une seule fois dans Supabase › SQL Editor, après 20261101000005_double_authentification.sql. Rejouable sans
+-- À exécuter une seule fois dans Supabase › SQL Editor, après 20261102000001_alignement_cocon.sql. Rejouable sans
 -- danger. Données modifiées : le tarif du point 4, et les analyses de vins du cache commun du scanner (point 5), qui
--- sont effacées pour être refaites sous la nouvelle règle. Retour arrière : supabase/sql/retour-20261102000001.sql.
+-- sont effacées pour être refaites sous la nouvelle règle. Retour arrière : supabase/sql/retour-20261102000002.sql.
 --
 --  5. Cache commun du scanner : une analyse n'y entre plus que si son niveau s'appuie sur au moins deux sites différents
 --     (règle appliquée par cave-api). Les analyses déjà en cache sont effacées : chacune sera refaite, une fois, à la

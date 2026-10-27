@@ -1,4 +1,4 @@
--- Cave & Amis — retour arrière de 20261102000001_lot0_correctifs.sql (seulement en cas de problème).
+-- Cave & Amis — retour arrière de 20261102000002_lot0_correctifs.sql (seulement en cas de problème).
 --
 -- 1) Republier d'abord le site d'avant (il lit les notes d'un événement directement dans la table, pas par event_tastings).
 -- 2) Puis exécuter CE fichier dans Supabase › SQL Editor : les règles d'avant reviennent (notes partagées lisibles en

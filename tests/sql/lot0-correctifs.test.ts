@@ -94,7 +94,7 @@ describe('cache commun du scanner (audit Cave 2.0, point 9)', () => {
     const later = new Date(Date.now() + 86_400_000).toISOString();
     for (const kind of ['identify', 'assess', 'price'])
       await asService(db, `insert into scan_cache (key, kind, value, expires_at) values ($1, $2, '{}', $3)`, [`k-${kind}`, kind, later]);
-    await db.exec(readFileSync(join(MIGRATIONS_DIR, '20261102000001_lot0_correctifs.sql'), 'utf8'));
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, '20261102000002_lot0_correctifs.sql'), 'utf8'));
     expect((await asService<{ kind: string }>(db, `select kind from scan_cache order by kind`)).map((r) => r.kind)).toEqual(['identify', 'price']);
   });
 });
@@ -103,7 +103,7 @@ describe('tarifs de l’IA (audit Cave 2.0)', () => {
   it('lecture en cache de Claude Sonnet 5.5 : 0,20 $ ; un tarif réglé par l’administration reste tel quel', async () => {
     expect(await asService(db, `select prices -> 'claude-sonnet-5-5' ->> 'cache_read' as v from ai_settings`)).toEqual([{ v: '0.2' }]);
     await asService(db, `update ai_settings set prices = jsonb_set(prices, '{claude-sonnet-5-5,cache_read}', '0.15')`);
-    await db.exec(readFileSync(join(MIGRATIONS_DIR, '20261102000001_lot0_correctifs.sql'), 'utf8'));
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, '20261102000002_lot0_correctifs.sql'), 'utf8'));
     expect(await asService(db, `select prices -> 'claude-sonnet-5-5' ->> 'cache_read' as v from ai_settings`)).toEqual([{ v: '0.15' }]);
   });
 });
@@ -112,13 +112,13 @@ describe('mise à jour et retour arrière', () => {
   it('le retour arrière rend l’état d’avant ; la mise à jour se rejoue sans danger', async () => {
     const ev = await tasting([claire]);
     await createTasting(bruno, { wine_name: 'Partagée', event_id: ev, share_with_event: true, price_paid: 85 });
-    await db.exec(readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'retour-20261102000001.sql'), 'utf8'));
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'retour-20261102000002.sql'), 'utf8'));
     expect(await as(db, claire, `select price_paid from tastings`)).toEqual([{ price_paid: '85.00' }]);
     await asService(db, `update ai_settings set scan_daily_limit = 1 where id = 1`);
     expect(await begin(bruno, 'scan')).toMatchObject({ ok: true });
     expect(await begin(bruno, 'scan')).toMatchObject({ ok: true });
 
-    const migration = readFileSync(join(MIGRATIONS_DIR, '20261102000001_lot0_correctifs.sql'), 'utf8');
+    const migration = readFileSync(join(MIGRATIONS_DIR, '20261102000002_lot0_correctifs.sql'), 'utf8');
     await db.exec(migration);
     await db.exec(migration);
     expect(await as(db, claire, `select * from tastings`)).toEqual([]);
