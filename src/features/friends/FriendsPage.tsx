@@ -4,12 +4,14 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Check as CheckIcon, Eye, KeyRound, Search, Send, UserPlus, X } from 'lucide-react';
+import { m } from 'motion/react';
 import type { Relation, SharedLot, UserResult } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateLong, deName } from '../../domain/format';
 import { toMessage } from '../../domain/errors';
 import { fold, vintageLabel } from '../../domain/wine';
 import { Avatar, Button, Check, EmptyState, InlineLoading, Notice, Pill, Segmented, Sheet } from '../../ui/kit';
+import { rowMotion } from '../../ui/motion';
 import { go, routeQuery, useRoute } from '../../ui/router';
 import { useActions } from '../../ui/Shell';
 import { FirstTip } from '../tour/Tour';
@@ -129,8 +131,8 @@ function FriendsTab() {
           </EmptyState>
         ) : (
           <div className="list">
-            {friends.map((r) => (
-              <a key={r.user_id} className="row" href={`#/amis/${r.user_id}`}>
+            {friends.map((r, i) => (
+              <m.a key={r.user_id} className="row" href={`#/amis/${r.user_id}`} {...rowMotion(i)}>
                 <Avatar name={r.display_name} seed={r.user_id} />
                 <span className="row-main">
                   <span className="row-title">{r.display_name}</span>
@@ -142,7 +144,7 @@ function FriendsTab() {
                   )}
                   <AccessBadges relation={r} />
                 </span>
-              </a>
+              </m.a>
             ))}
           </div>
         )}
@@ -158,8 +160,8 @@ function FriendsTab() {
             En relation, sans cave ouverte : vous pouvez vous inviter à des événements et à des groupes.
           </p>
           <div className="list">
-            {contacts.map((r) => (
-              <div key={r.user_id} className="row static" style={{ alignItems: 'flex-start' }}>
+            {contacts.map((r, i) => (
+              <m.div key={r.user_id} className="row static" style={{ alignItems: 'flex-start' }} {...rowMotion(i, false)}>
                 <Avatar name={r.display_name} seed={r.user_id} />
                 <span className="row-main">
                   <a className="row-title" href={`#/amis/${r.user_id}`}>
@@ -190,7 +192,7 @@ function FriendsTab() {
                     )}
                   </span>
                 </span>
-              </div>
+              </m.div>
             ))}
           </div>
         </section>

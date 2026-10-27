@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
+import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { eventDate, relativeDays } from '../../domain/format';
 import type { CaveEvent } from '../../domain/types';
 import { EVENT_KINDS, label } from '../../domain/wine';
 import { Button, EmptyState, Segmented } from '../../ui/kit';
+import { rowMotion } from '../../ui/motion';
 import { routeQuery } from '../../ui/router';
 import { useActions } from '../../ui/Shell';
 import { FirstTip } from '../tour/Tour';
@@ -50,10 +52,10 @@ export function EventsPage() {
         </EmptyState>
       ) : (
         <div className="list">
-          {list.map((e) => {
+          {list.map((e, i) => {
             const rsvp = mine.find((p) => p.event_id === e.id)?.rsvp ?? 'pending';
             return (
-              <a key={e.id} className="row" href={`#/evenements/${e.id}`}>
+              <m.a key={e.id} className="row" href={`#/evenements/${e.id}`} {...rowMotion(i)}>
                 <span className="bottle-thumb" aria-hidden style={{ fontSize: '1.4rem', background: 'var(--gold-soft)' }}>
                   {EVENT_KINDS.find((k) => k.value === e.kind)?.icon}
                 </span>
@@ -72,7 +74,7 @@ export function EventsPage() {
                   </span>
                 </span>
                 {e.status === 'planned' && !isPast(e) && <span className="small muted">{relativeDays(e.starts_at)}</span>}
-              </a>
+              </m.a>
             );
           })}
         </div>

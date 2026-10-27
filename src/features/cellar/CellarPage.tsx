@@ -117,8 +117,8 @@ export function CellarPage() {
         </EmptyState>
       ) : (
         <div className="list">
-          {shown.map((r) => (
-            <WineItem key={r.wine.id} row={r} />
+          {shown.map((r, i) => (
+            <WineItem key={r.wine.id} row={r} index={i} />
           ))}
         </div>
       )}

@@ -14,7 +14,9 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { AnimatePresence, m, useIsPresent, type HTMLMotionProps } from 'motion/react';
 import { Info, Star, TriangleAlert, Wine as WineIcon, X } from 'lucide-react';
+import { EXIT, TAP } from './motion';
 import { registerSheet } from './router';
 
 // ───────────── Boutons ─────────────
@@ -30,10 +32,10 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export function Button({ variant = 'primary', size = 'md', block, loading, icon, children, className, disabled, ...rest }: ButtonProps) {
   const cls = ['btn', `btn-${variant}`, size !== 'md' && `btn-${size}`, block && 'btn-block', className].filter(Boolean).join(' ');
   return (
-    <button type="button" className={cls} disabled={disabled || loading} aria-busy={loading || undefined} {...rest}>
+    <m.button type="button" className={cls} disabled={disabled || loading} aria-busy={loading || undefined} whileTap={TAP} {...(rest as HTMLMotionProps<'button'>)}>
       {loading ? <span className="spinner" aria-hidden /> : icon}
       {children}
-    </button>
+    </m.button>
   );
 }
 
@@ -53,10 +55,12 @@ export function Spinner({ label = 'Chargement…' }: { label?: string }) {
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function useModalBehavior(ref: React.RefObject<HTMLElement | null>, onClose: () => void, history = true) {
+/** `active` passe à false dès le début de l'animation de fermeture : la fenêtre rend tout de suite la main. */
+function useModalBehavior(ref: React.RefObject<HTMLElement | null>, onClose: () => void, history = true, active = true) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
+    if (!active) return;
     const previous = document.activeElement as HTMLElement | null;
     const el = ref.current;
     const auto = el?.querySelector<HTMLElement>('[data-autofocus]');
@@ -89,24 +93,29 @@ function useModalBehavior(ref: React.RefObject<HTMLElement | null>, onClose: () 
       unregister();
       previous?.focus?.({ preventScroll: true });
     };
-  }, [ref, history]);
+  }, [ref, history, active]);
 }
+
+/** Fond assombri des fenêtres : fondu à l'ouverture et à la fermeture ; pendant la fermeture, plus rien n'y réagit. */
+const OVERLAY = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0, transition: EXIT } };
+const RISE = { initial: { y: 24, opacity: 0.6 }, animate: { y: 0, opacity: 1 }, exit: { y: 24, opacity: 0, transition: EXIT } };
+const POP = { initial: { scale: 0.96, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.96, opacity: 0, transition: EXIT } };
 
 type SheetProps = { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; label?: string };
 
 /** Fenêtre qui monte du bas de l'écran (centrée sur ordinateur). */
 export function Sheet(props: SheetProps) {
-  if (!props.open) return null;
-  return createPortal(<SheetInner {...props} />, document.body);
+  return createPortal(<AnimatePresence>{props.open && <SheetInner key="sheet" {...props} />}</AnimatePresence>, document.body);
 }
 
 function SheetInner({ onClose, title, children, footer, label }: SheetProps) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useModalBehavior(ref, onClose);
+  const present = useIsPresent();
+  useModalBehavior(ref, onClose, true, present);
   return (
-    <div className="overlay" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="sheet" role="dialog" aria-modal="true" aria-labelledby={label ? undefined : titleId} aria-label={label} ref={ref} tabIndex={-1}>
+    <m.div className="overlay" {...OVERLAY} inert={!present} aria-hidden={!present || undefined} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <m.div className="sheet" {...RISE} role="dialog" aria-modal="true" aria-labelledby={label ? undefined : titleId} aria-label={label} ref={ref} tabIndex={-1}>
         <div className="sheet-grab" aria-hidden />
         <div className="sheet-head">
           <h2 id={titleId}>{title}</h2>
@@ -116,8 +125,8 @@ function SheetInner({ onClose, title, children, footer, label }: SheetProps) {
         </div>
         <div className="sheet-body">{children}</div>
         {footer && <div className="sheet-foot">{footer}</div>}
-      </div>
-    </div>
+      </m.div>
+    </m.div>
   );
 }
 
@@ -142,7 +151,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      {state && createPortal(<ConfirmDialog state={state} onClose={close} />, document.body)}
+      {createPortal(<AnimatePresence>{state && <ConfirmDialog key="confirm" state={state} onClose={close} />}</AnimatePresence>, document.body)}
     </ConfirmContext.Provider>
   );
 }
@@ -150,10 +159,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 function ConfirmDialog({ state, onClose }: { state: ConfirmState; onClose: (ok: boolean) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useModalBehavior(ref, () => onClose(false), false);
+  const present = useIsPresent();
+  useModalBehavior(ref, () => onClose(false), false, present);
   return (
-    <div className="overlay center" onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
-      <div className="dialog" role="alertdialog" aria-modal="true" aria-labelledby={titleId} ref={ref} tabIndex={-1}>
+    <m.div className="overlay center" {...OVERLAY} inert={!present} aria-hidden={!present || undefined} onMouseDown={(e) => e.target === e.currentTarget && onClose(false)}>
+      <m.div className="dialog" {...POP} role="alertdialog" aria-modal="true" aria-labelledby={titleId} ref={ref} tabIndex={-1}>
         <h2 id={titleId}>{state.title}</h2>
         {state.message && <div className="muted">{state.message}</div>}
         <div className="dialog-actions">
@@ -164,8 +174,8 @@ function ConfirmDialog({ state, onClose }: { state: ConfirmState; onClose: (ok: 
             {state.confirmLabel ?? 'Confirmer'}
           </Button>
         </div>
-      </div>
-    </div>
+      </m.div>
+    </m.div>
   );
 }
 
