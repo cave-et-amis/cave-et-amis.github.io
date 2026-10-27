@@ -170,6 +170,15 @@ Cave retire la liaison.
 - `status = 'cancelled'` : l'événement reste affiché, marqué « Annulé ». `remove` : mis à la corbeille.
 - Les champs venus de Cave (titre, dates, lieu, description, source…) ne sont modifiables que par cette fonction
   (déclencheur de garde).
+- **Prévu côté Nous, pas encore en ligne au 27/10/2026** (constat R3 de l'audit, accord de l'éditeur le 27/10/2026,
+  branche Cocon `securite-rgpd/lots-1-3`) :
+  - lot 2 : `participants` et `wines` ne sont plus gardés dans `external_meta`, mais dans `cave_event_details`, lisible
+    par la seule personne liée (règle de la base), même si l'événement est partagé avec le foyer. Restent visibles du
+    foyer : type, titre, statut, dates, lieu, description, thème, prénom de l'organisateur, réponse de la personne liée ;
+  - lot 4 : la purge `participants_vins_cave_30_jours` efface la ligne `cave_event_details` 30 jours après `ends_at`,
+    et Nous ne garde plus ces listes pour un événement terminé depuis plus de 30 jours, même si Cave les renvoie. Purge
+    désactivée tant que l'éditeur ne l'a pas activée lui-même.
+  Rien ne change côté Cave : le contenu d'`event.upsert` reste le même.
 
 ## 6. Synchronisation Nous → Cave (réponse seulement)
 

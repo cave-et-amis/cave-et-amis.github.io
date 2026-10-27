@@ -94,8 +94,8 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Finalité** : faire apparaître les événements de Cave & Amis dans l'agenda Nous (application Cocon).
 - **Données** : à la liaison, prénom, e-mail, identifiants dans les deux applications, choix d'ouvrir Cave depuis Nous sans mot de passe ; ensuite, pour chaque événement : type, titre, état, dates, lieu, description, thème, prénom de l'organisateur, prénoms et réponses de tous les participants, vins prévus. En retour, la réponse de la personne.
 - **Base légale** : consentement (liaison), retiré en déliant. [À VALIDER : base légale pour les données des autres participants envoyées à Nous]
-- **Destinataires** : Nous, même responsable de traitement. Voir aussi le constat R3 de l'audit, en cours avec Cocon.
-- **Durée** : tant que la liaison existe ; à la suppression du compte, les événements sont mis à la corbeille dans Nous.
+- **Destinataires** : Nous, même responsable de traitement. Prévu dans Nous (constat R3, accord de l'éditeur le 27/10/2026, **pas encore en ligne**) : participants et vins lisibles par la seule personne liée, même sur un événement partagé avec le foyer ; le foyer voit le type, le titre, l'état, les dates, le lieu, la description, le thème, le prénom de l'organisateur et la réponse de la personne liée.
+- **Durée** : tant que la liaison existe ; à la suppression du compte ou à la déliaison, les événements vont à la corbeille de Nous (effacés 30 jours après). Prévu dans Nous, **pas encore en ligne** : participants et vins effacés 30 jours après la fin de l'événement (purge à activer par l'éditeur).
 
 ### T10. Preuves d'acceptation et consentements
 

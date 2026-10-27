@@ -11,6 +11,8 @@ Ils décrivent Cave & Amis **après la mise en ligne de la priorité 2** de l'au
 
 Ils décrivent aussi la liaison avec l'agenda Nous durcie (migration `20261101000002_liaison_nous_durcie.sql` : ouverture depuis Nous sans mot de passe en option, désactivée au départ ; avis après chaque liaison) : mettez-la en ligne avant de les publier.
 
+La politique de confidentialité annonce aussi deux règles de Nous (constat R3, accord de l'éditeur le 27/10/2026) : participants et vins visibles de la seule personne liée, même pour le foyer (lot 2 de Cocon), et effacés 30 jours après la fin de l'événement (lot 4 de Cocon, purge activée par l'éditeur). Au 27/10/2026, ils ne sont pas en ligne : ne publiez pas la politique avant leur mise en ligne dans Cocon, ou retirez ces deux phrases.
+
 ## Ce qu'il faut compléter
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.

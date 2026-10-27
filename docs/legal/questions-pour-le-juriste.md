@@ -57,7 +57,7 @@ Pour chaque question : où elle se trouve, et ce qui est écrit aujourd'hui.
     *Politique, « Les données traitées » ; registre.*
 16. **Données d'autres personnes envoyées à Anthropic.** Quand une personne interroge l'assistant, les prénoms et des informations simples sur ses amis, les membres de ses groupes et les participants de ses événements peuvent être envoyés à Anthropic. Sur quelle base légale ?
     *Politique, « Lia » ; registre, T6.*
-17. **Données des autres participants envoyées à l'agenda Nous.** La liaison repose sur le consentement de la personne qui relie ses comptes, mais elle transmet aussi les prénoms et réponses des autres participants. Quelle base légale ? (Un changement est à l'étude : ne plus montrer ces données au foyer, et les effacer 30 jours après l'événement.)
+17. **Données des autres participants envoyées à l'agenda Nous.** La liaison repose sur le consentement de la personne qui relie ses comptes, mais elle transmet aussi les prénoms et réponses des autres participants. Quelle base légale ? (Changement décidé le 27/10/2026, pas encore en ligne : ces données ne seront plus visibles du foyer dans Nous, seulement de la personne reliée, et seront effacées 30 jours après la fin de l'événement. Le prénom de l'organisateur reste visible du foyer.)
     *Politique, « L'agenda Nous » ; registre, T9.*
 18. **Preuves d'acceptation.** Base légale retenue : l'intérêt légitime. Est-ce juste ?
     *Politique, « Les preuves de vos choix » ; registre, T10.*
