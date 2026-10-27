@@ -56,3 +56,5 @@ Ordre conseillé : les mentions légales, la page cookies et la politique de con
 - Ces textes suivent le modèle commun aux deux applications (`legal_documents`, `legal_acceptances`, `user_consents`), convenu avec l'audit de Cocon. Si une règle change dans l'une, vérifiez l'autre.
 - Les durées de conservation affichées dans l'application (src/domain/legal.ts) et appliquées par la base (retention_purge) doivent rester celles de la politique.
 - Toute nouvelle fonction qui traite des données personnelles (nouveau prestataire, nouvelle donnée, nouvelle durée) doit être ajoutée à la politique de confidentialité, puis publiée comme nouvelle version.
+
+La liste complète des questions, prête à transmettre à un juriste, avec le contexte de l'application : `questions-pour-le-juriste.md` (44 questions au 27/10/2026, qui couvrent aussi les documents de `docs/conformite/`).
