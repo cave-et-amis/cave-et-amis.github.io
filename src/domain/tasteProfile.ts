@@ -28,6 +28,8 @@ export type TasteSummary = { rated: number; liked: Trait[]; disliked: Trait[] };
 export const MIN_COUNT = 2;
 export const LIKED_FROM = 4;
 export const DISLIKED_UNTIL = 2.5;
+/** Traits écartés au plus (contrainte de la table taste_profiles). */
+export const MAX_IGNORED = 60;
 const MAX_TRAITS = 8;
 
 const KIND_LABELS: Record<TraitKind, string> = { couleur: 'Couleur', region: 'Région', appellation: 'Appellation', cepage: 'Cépage', structure: 'Structure' };

@@ -5,7 +5,8 @@
 --    reçues sont effacées (la liste des types de notification d'avant ne les accepte pas).
 
 drop function if exists public.maturity_alerts();
-delete from public.notifications where kind in ('maturity_ready', 'maturity_last');
+drop table if exists public.maturity_alerts_sent;
+delete from public.notifications where kind in ('maturity_ready', 'maturity_last', 'maturity_many');
 alter table public.notifications drop constraint if exists notifications_kind_check;
 alter table public.notifications add constraint notifications_kind_check
   check (kind in ('friend_request', 'friend_accepted', 'event_invite', 'group_invite', 'group_joined', 'cellar_invite', 'cellar_joined',

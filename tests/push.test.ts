@@ -128,6 +128,10 @@ describe('texte des notifications', () => {
       'maturity_ready',
       'maturity_last',
     ];
+    expect(notificationText({ kind: 'maturity_many', actor_name: '7', ref_id: null })).toEqual({
+      text: '7 vins de votre cave entrent dans leur période de dégustation ou la terminent cette année',
+      href: '#/cave?tri=maturite',
+    });
     for (const kind of kinds) {
       const t = notificationText({ kind, actor_id: '00000000-0000-0000-0000-000000000001', actor_name: 'Claire', ref_id: '00000000-0000-0000-0000-000000000002' });
       expect(t.text, kind).toContain('Claire');

@@ -33,6 +33,7 @@ const ICONS: Record<NotificationKind, ReactNode> = {
   nous_linked: <Link2 />,
   maturity_ready: <Hourglass />,
   maturity_last: <Hourglass />,
+  maturity_many: <Hourglass />,
 };
 
 function describe(n: AppNotification): { text: string; href: string; icon: ReactNode } {

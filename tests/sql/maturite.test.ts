@@ -44,10 +44,31 @@ describe('alertes de maturité (mission F)', () => {
     expect(await run()).toBe(0);
   });
 
-  it('aucune bouteille libre (toutes réservées ou bues) : pas d’alerte', async () => {
+  it('aucune bouteille libre (bues, ou réservées pour un événement) : pas d’alerte', async () => {
     await optIn(bruno);
     const { lotId } = await addWine(db, bruno, { name: 'Bu', drink_from: year, drink_until: year + 2 }, { quantity: 1 });
     await one(db, bruno, `select record_movement($1, 'consommation', 1, null, null, $2)`, [lotId, rid()]);
+    const reserved = await addWine(db, bruno, { name: 'Réservé', drink_from: year, drink_until: year + 2 }, { quantity: 1 });
+    await asService(db, `update lots set reserved = 1 where id = $1`, [reserved.lotId]);
+    expect(await run()).toBe(0);
+  });
+
+  it('notification effacée par la personne : l’alerte ne revient pas la même année ; repère général exclu', async () => {
+    await optIn(bruno);
+    await addWine(db, bruno, { name: 'Morgon', drink_from: year, drink_until: year + 3, window_source: 'personal' }, { quantity: 1 });
+    await addWine(db, bruno, { name: 'Repère', drink_from: year, drink_until: year + 3, window_source: 'general' }, { quantity: 1 });
+    expect(await run()).toBe(1);
+    await as(db, bruno, `delete from notifications where kind like 'maturity%'`);
+    expect(await run()).toBe(0);
+    expect(await alerts(bruno)).toEqual([]);
+    await expectError(as(db, bruno, `select * from maturity_alerts_sent`), /permission denied/);
+  });
+
+  it('plus de 3 nouvelles alertes le même jour : un seul résumé', async () => {
+    await optIn(bruno);
+    for (const name of ['A', 'B', 'C', 'D', 'E']) await addWine(db, bruno, { name, drink_from: year, drink_until: year + 3 }, { quantity: 1 });
+    expect(await run()).toBe(5);
+    expect(await alerts(bruno)).toEqual([{ kind: 'maturity_many', actor_name: '5', ref_id: null }]);
     expect(await run()).toBe(0);
   });
 

@@ -47,7 +47,9 @@ export type AppNotification = {
     | 'nous_linked'
     /** Alertes de maturité (actor_name : nom du vin ; ref_id : le vin). */
     | 'maturity_ready'
-    | 'maturity_last';
+    | 'maturity_last'
+    /** Résumé de plus de 3 alertes le même jour (actor_name : leur nombre). */
+    | 'maturity_many';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;

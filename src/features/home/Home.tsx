@@ -30,8 +30,10 @@ export function Home() {
     forGroups > 0 ? `${forGroups} pour mes groupes` : null,
   ].filter(Boolean);
   const ready = readyToDrink(rows, 5);
-  const urgent = pastWindow(rows);
-  const byColor = colorBreakdown(rows);
+  // Mes bouteilles seulement (une cave gérée à plusieurs montre aussi celles de son propriétaire).
+  const mine = rows.filter((r) => r.wine.owner_id === userId);
+  const urgent = pastWindow(mine);
+  const byColor = colorBreakdown(mine);
   // Calculés sur l'appareil, sans requête ni IA : dernières dégustations et ce que le carnet dit des goûts.
   const recent = useMemo(() => [...snapshot.tastings].filter((t) => t.user_id === userId).sort((a, b) => b.tasted_on.localeCompare(a.tasted_on) || b.created_at.localeCompare(a.created_at)).slice(0, 3), [snapshot.tastings, userId]);
   const taste = useMemo(() => tasteSummary(snapshot.tastings, userId), [snapshot.tastings, userId]);

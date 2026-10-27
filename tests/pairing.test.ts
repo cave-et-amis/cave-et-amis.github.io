@@ -13,6 +13,12 @@ describe('accords mets et vins parmi les bouteilles disponibles (mission H)', ()
     expect(dishFamily('Huîtres de Marennes')?.id).toBe('mer');
     expect(dishFamily('Tarte au citron')?.id).toBe('dessert');
     expect(dishFamily('Quelque chose')).toBeNull();
+    // Mots entiers, plats principaux d'abord (relecture du lot 1).
+    expect(dishFamily('Plateau de fruits de mer')?.id).toBe('mer');
+    expect(dishFamily('Pâtes carbonara')?.id).toBe('vegetarien');
+    expect(dishFamily('Barbecue entre amis')).toBeNull();
+    expect(dishFamily('Magret glacé au miel')?.id).toBe('viande_rouge');
+    expect(dishFamily('Côtes de porc')?.id).toBe('viande_blanche');
   });
 
   it('rouge pour le magret, prêt à boire d’abord ; jamais une bouteille sans exemplaire libre', () => {
@@ -41,5 +47,11 @@ describe('accords mets et vins parmi les bouteilles disponibles (mission H)', ()
     expect(suggestions.map((s) => s.row.wine.name)).toEqual(['Maury', 'Sauternes', 'Chablis']);
     expect(suggestions[0].reasons).toContain('accord noté sur sa fiche');
     expect(suggestPairings('plat mystère', rows).suggestions).toEqual([]);
+  });
+
+  it('huîtres : jamais un rouge sur son seul type « tranquille »', () => {
+    const wines = [wine({ name: 'Bordeaux rouge', color: 'rouge', wine_type: 'tranquille' }), wine({ name: 'Muscadet', color: 'blanc', wine_type: 'tranquille' })];
+    const rows = buildRows(wines, wines.map((w) => lot(w.id)), cellars, 2026);
+    expect(suggestPairings('huîtres', rows).suggestions.map((s) => s.row.wine.name)).toEqual(['Muscadet']);
   });
 });

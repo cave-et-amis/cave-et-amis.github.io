@@ -260,10 +260,11 @@ export class ToolBox {
       case 'list_my_tastings':
         return JSON.stringify(await listTastings(this.user, this.userId, { query: text(i.query, 200), min_rating: intIn(i.min_rating, 1, 5), limit: intIn(i.limit, 1, 60) }));
       case 'get_my_taste': {
-        const [{ data: declared }, { data: rows }] = await Promise.all([
+        const [{ data: declared, error: e1 }, { data: rows, error: e2 }] = await Promise.all([
           this.user.from('taste_profiles').select('likes, dislikes, ignored, budget_max, note').eq('user_id', this.userId).maybeSingle(),
           this.user.from('tastings').select('*').eq('user_id', this.userId).not('rating', 'is', null).order('tasted_on', { ascending: false }).limit(1000),
         ]);
+        if (e1 || e2) return JSON.stringify({ error: 'Profil de goûts illisible pour le moment : ne conclus rien sur les préférences de la personne.' });
         const d = declared as { likes: string[]; dislikes: string[]; ignored: string[]; budget_max: number | null; note: string | null } | null;
         const s = tasteSummary((rows ?? []) as Tasting[], this.userId, d?.ignored ?? []);
         const brief = (t: { label: string; kind: string; count: number; average: number }) => ({ trait: t.label, type: t.kind, tastings: t.count, average_rating: t.average });

@@ -6,19 +6,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { EyeOff, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { money, parseNumber } from '../../domain/format';
-import { cleanPreferenceList, DISLIKED_UNTIL, kindLabel, LIKED_FROM, MIN_COUNT, tasteSummary, type TasteProfile, type Trait } from '../../domain/tasteProfile';
+import { cleanPreferenceList, DISLIKED_UNTIL, kindLabel, LIKED_FROM, MAX_IGNORED, MIN_COUNT, tasteSummary, type TasteProfile, type Trait } from '../../domain/tasteProfile';
 import { Button, EmptyState, Field, InlineLoading, Notice, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 
 const splitList = (s: string) => cleanPreferenceList(s.split(/[,;\n]/));
 
-function TraitRow({ t, onIgnore }: { t: Trait; onIgnore: () => void }) {
+function TraitRow({ t, onIgnore, disabled }: { t: Trait; onIgnore: () => void; disabled: boolean }) {
   return (
     <li className="between" style={{ gap: 8 }}>
       <span>
         <strong>{t.label}</strong> <span className="small muted">· {kindLabel(t.kind)} · {t.count} dégustations, {String(t.average).replace('.', ',')}/5 en moyenne</span>
       </span>
-      <button type="button" className="icon-btn" aria-label={`Écarter « ${t.label} » de mon profil`} onClick={onIgnore}>
+      <button type="button" className="icon-btn" aria-label={`Écarter « ${t.label} » de mon profil`} onClick={onIgnore} disabled={disabled}>
         <EyeOff />
       </button>
     </li>
@@ -57,6 +57,13 @@ export function TastePage() {
     if (res.ok) await load();
   }
 
+  /** Écarte un trait, à partir de la liste à jour (un autre onglet a pu en écarter d'autres). */
+  async function ignore(t: Trait) {
+    const latest = (await api.myTaste(userId).catch(() => null))?.ignored ?? ignored;
+    if (latest.includes(t.key)) return load();
+    await save({ ignored: [...latest, t.key] }, `« ${t.label} » écarté`);
+  }
+
   async function erase() {
     const ok = await confirm({
       title: 'Effacer mon profil de goûts ?',
@@ -70,6 +77,8 @@ export function TastePage() {
   }
 
   const budgetValue = budget.trim() ? parseNumber(budget) : null;
+  const budgetBad = Boolean(budget.trim()) && (budgetValue === null || budgetValue <= 0 || budgetValue >= 100000);
+  const full = ignored.length >= MAX_IGNORED;
 
   return (
     <div className="stack">
@@ -93,7 +102,7 @@ export function TastePage() {
                 <span className="strong small">Vous aimez</span>
                 <ul className="stack-sm" style={{ listStyle: 'none', padding: 0 }}>
                   {summary.liked.map((t) => (
-                    <TraitRow key={t.key} t={t} onIgnore={() => void save({ ignored: [...ignored, t.key] }, `« ${t.label} » écarté`)} />
+                    <TraitRow key={t.key} t={t} disabled={full} onIgnore={() => void ignore(t)} />
                   ))}
                 </ul>
               </>
@@ -103,13 +112,14 @@ export function TastePage() {
                 <span className="strong small">Vous aimez moins</span>
                 <ul className="stack-sm" style={{ listStyle: 'none', padding: 0 }}>
                   {summary.disliked.map((t) => (
-                    <TraitRow key={t.key} t={t} onIgnore={() => void save({ ignored: [...ignored, t.key] }, `« ${t.label} » écarté`)} />
+                    <TraitRow key={t.key} t={t} disabled={full} onIgnore={() => void ignore(t)} />
                   ))}
                 </ul>
               </>
             )}
           </>
         )}
+        {full && <Notice tone="warn">Vous avez écarté {MAX_IGNORED} traits, le maximum : rétablissez-les pour en écarter d’autres.</Notice>}
         {ignored.length > 0 && (
           <Button variant="ghost" size="sm" icon={<RotateCcw />} onClick={() => void save({ ignored: [] }, 'Traits écartés rétablis')}>
             Rétablir les {ignored.length} trait(s) écarté(s)
@@ -135,14 +145,14 @@ export function TastePage() {
         <Field label="J’aime moins">
           <input className="input" value={dislikes} onChange={(e) => setDislikes(e.target.value)} maxLength={800} />
         </Field>
-        <Field label={`Budget habituel par bouteille (${me.currency ?? 'EUR'})`} error={budget.trim() && (budgetValue === null || budgetValue <= 0) ? 'Indiquez un montant, par exemple 25.' : undefined}>
+        <Field label={`Budget habituel par bouteille (${me.currency ?? 'EUR'})`} error={budgetBad ? 'Indiquez un montant entre 1 et 99 999, par exemple 25.' : undefined}>
           <input className="input" inputMode="decimal" value={budget} onChange={(e) => setBudget(e.target.value)} />
         </Field>
         <Field label="Autre chose à savoir (facultatif)">
           <textarea className="input" rows={3} value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} />
         </Field>
         {profile?.budget_max ? <p className="small muted">Budget enregistré : {money(profile.budget_max, me.currency ?? 'EUR')}.</p> : null}
-        <Button type="submit" disabled={Boolean(budget.trim()) && (budgetValue === null || budgetValue <= 0)}>
+        <Button type="submit" disabled={budgetBad}>
           Enregistrer mes préférences
         </Button>
       </form>

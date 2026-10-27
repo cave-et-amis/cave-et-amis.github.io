@@ -26,6 +26,8 @@
   --success: #2e6b3f;
   --success-soft: #e2efe2;
   --danger: #b42318;
+  /* Rouge plein, texte blanc par-dessus (boutons, messages d’erreur) : contraste AA dans les deux thèmes. */
+  --danger-fill: #b42318;
   --danger-soft: #fbe4e1;
   --warn: #85560a;
   --warn-soft: #fbefd5;
@@ -502,7 +504,7 @@ a {
 }
 
 .btn-danger {
-  background: var(--danger);
+  background: var(--danger-fill);
   color: #fff;
 }
 
@@ -1440,7 +1442,7 @@ details.advanced .form {
 }
 
 .toast.error {
-  background: var(--danger);
+  background: var(--danger-fill);
   color: #fff;
 }
 

@@ -978,7 +978,11 @@ export class Api {
   async saveTaste(userId: string, patch: Partial<Pick<TasteProfile, 'likes' | 'dislikes' | 'ignored' | 'budget_max' | 'note'>>) {
     // Mise à jour, sinon création (la colonne user_id n'est pas modifiable : pas d'upsert).
     const updated = must(await this.sb.from('taste_profiles').update(patch).eq('user_id', userId).select('user_id')) as unknown[];
-    if (!updated.length) must(await this.sb.from('taste_profiles').insert({ user_id: userId, ...patch }));
+    if (updated.length) return;
+    const { error } = await this.sb.from('taste_profiles').insert({ user_id: userId, ...patch });
+    // Créée entre-temps (autre onglet) : on la met à jour.
+    if (error && error.code === '23505') must(await this.sb.from('taste_profiles').update(patch).eq('user_id', userId));
+    else if (error) throw error;
   }
   async deleteTaste(userId: string) {
     must(await this.sb.from('taste_profiles').delete().eq('user_id', userId));

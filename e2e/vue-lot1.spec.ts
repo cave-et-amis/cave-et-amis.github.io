@@ -56,6 +56,10 @@ test('mes goûts : déclarer, retrouver, effacer', async () => {
   await expect(page.getByLabel('J’aime (séparez par des virgules)')).toHaveValue('pinot noir, Bourgogne');
   await expect(page.getByLabel(/Budget habituel/)).toHaveValue('25');
   await page.getByRole('button', { name: 'Effacer mon profil de goûts' }).click();
+  // Thème sombre par défaut, fenêtre de confirmation ouverte (bouton rouge) : aucun défaut d'accessibilité grave.
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
   await page.getByRole('alertdialog').getByRole('button', { name: 'Effacer' }).click();
   await toast(page, 'Profil effacé');
   await expect(page.getByLabel('J’aime (séparez par des virgules)')).toHaveValue('');
