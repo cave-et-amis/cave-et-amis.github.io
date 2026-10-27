@@ -69,6 +69,10 @@ Sans clé, l'application fonctionne entièrement ; seul l'assistant indique « n
 
 ## 4. Site (Netlify)
 
+> Le site en service est publié sur **GitHub Pages** (https://cave-et-amis.github.io, branche `gh-pages`, mise à jour à
+> la main avec `dist/` et `.nojekyll` : voir `docs/MISE-EN-LIGNE-AUDIT.md`, étape 6). Netlify, décrit ci-dessous,
+> reste une autre façon de l'héberger.
+
 1. Copiez `config.production.example.js` en **`config.production.js`** et remplacez les deux valeurs par celles de
    **Supabase › Project Settings › API Keys** : l'URL du projet et la clé **publishable** (`sb_publishable_…`).
    Ces deux valeurs sont publiques par nature ; le site refuse de démarrer avec une clé secrète.
@@ -87,14 +91,16 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 **Réglages › Administration** :
 
 1. **Tester la connexion** : vérifie la clé sans jamais l'afficher et récupère la liste des modèles disponibles.
-2. Choisissez le **modèle** (par défaut Claude Opus 5.5), l'**effort**, le **budget mensuel**, les **quotas par personne**,
+2. Choisissez le **modèle** de l'assistant (par défaut Claude Opus 5.5) et celui du **scanner et de la lecture
+   d'étiquette** (par défaut Claude Sonnet 5.5), l'**effort**, le **budget mensuel**, les **quotas par personne**,
    la **recherche web** et ses limites. Les tarifs des modèles (dollars par million de jetons) sont pré-remplis d'après la page
    de tarifs d'Anthropic d'octobre 2026 : à mettre à jour s'ils changent. Un modèle sans tarif est refusé.
 3. Invitez vos amis depuis **Amis & Groupes › « Inviter quelqu'un »** (lien, QR code, WhatsApp, SMS ou e-mail).
 
 ## Mettre à jour
 
-- Interface : `npm run package:site`, puis déposez l'archive dans **Netlify › Deploys**.
+- Interface : `npm run build`, puis publiez `dist/` sur la branche `gh-pages` (ou, avec Netlify, `npm run package:site` et
+  l'archive dans **Netlify › Deploys**).
 - Fonction serveur : `npm run build:function`, puis redéployez `cave-api` (option A ou B).
 - Base : si un **nouveau** fichier apparaît dans `supabase/migrations/`, exécutez-le seul dans le SQL Editor
   (jamais l'ancien une seconde fois), **avant** de redéployer la fonction et l'interface. Quand une mise à jour a un script

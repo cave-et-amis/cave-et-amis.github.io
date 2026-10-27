@@ -4113,6 +4113,15 @@ async function purgeExpired(svc, userId, now) {
 //#endregion
 //#region server/api/scanAssess.ts
 var BLOCKED_DOMAINS = ["vivino.com"];
+/**
+* Une analyse n'entre dans le cache commun à tous les comptes que si son niveau de qualité est retenu et s'appuie sur
+* au moins deux sites différents : une seule page (éventuellement piégée) ne fausse jamais le résultat des autres.
+* Sinon, l'analyse sert seulement à la personne qui l'a demandée.
+*/
+function shareableAssessment(a) {
+	if (a.reason || !a.quality) return false;
+	return new Set(a.sources.map((s) => normUrl(s.url) && new URL(s.url).hostname.replace(/^www\./, "")).filter(Boolean)).size >= 2;
+}
 var TIERS = [
 	"remarquable",
 	"tres_bon",
@@ -4784,7 +4793,7 @@ function createApiHandler(env, deps = {}) {
 				}), (meter) => identifyLabel({
 					meter,
 					images
-				})) };
+				}), s.scan_model) };
 			}
 			case "price_lookup": {
 				if (!isUuid(body.wine_id)) throw new AiFailure("invalid");
@@ -4802,7 +4811,7 @@ function createApiHandler(env, deps = {}) {
 					meter,
 					userId,
 					currency
-				}, wine, volume)) };
+				}, wine, volume), s.scan_model) };
 			}
 			case "scan_identify": {
 				const photos = parsePhotos(body.photos);
@@ -4898,7 +4907,7 @@ function createApiHandler(env, deps = {}) {
 						if (searchOff) assessment = emptyAssessment(key, "La recherche web est désactivée par l’administrateur : le vin ne peut pas être analysé avec des sources.", t);
 						else {
 							assessment = await metered(userId, "scan_quality", estimate, (meter) => assessWine(meter, scan.wine, key, t), s.scan_model);
-							if (!assessment.reason) await remember(assessment, 7776e6);
+							if (shareableAssessment(assessment)) await remember(assessment, 7776e6);
 						}
 					}
 					const { error } = await svc.from("scans").update({

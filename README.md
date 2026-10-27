@@ -79,7 +79,7 @@ L'assistant fonctionne en local **si** la variable d'environnement `ANTHROPIC_AP
 | `npm run local` | Serveur local tout-en-un (base PostgreSQL PGlite, comptes, photos, fonction serveur) + interface. Options : `--demo`, `--reset`, `--lan` (réseau local) |
 | `npm run build` | Export de production dans `dist/` (+ `config.production.js`), contrôle des secrets et du code local |
 | `npm run build:function` | Regroupe la fonction serveur dans `supabase/functions/cave-api/index.ts` (à déployer sur Supabase) |
-| `npm run package:site` | Export + archive `livraison/cave-et-amis-site.zip` pour Netlify |
+| `npm run package:site` | Export + archive `livraison/cave-et-amis-site.zip` pour Netlify (le site en service est publié sur GitHub Pages, branche `gh-pages`) |
 | `npm test` | Tests : règles, base de données et droits, serveur de l'assistant (Vitest + PGlite) |
 | `npm run test:e2e` | Tests d'interface sur l'export de production, téléphone et ordinateur (Playwright, Microsoft Edge) |
 | `npm run verify` | Tout vérifier ; rapport dans `reports/verification.json` |

@@ -10,7 +10,7 @@
 | Lot **proposable pour un événement** | oui | idem, et peut le **suggérer** (le propriétaire confirme) | non | idem si la cave est ouverte au participant | non |
 | Vins proposés pour un événement | oui | — | — | photographie du vin (nom, millésime, couleur, propriétaire, quantité prévue) | non |
 | Photos | oui | si elles illustrent un lot qu'elle voit | non | si elles illustrent un vin de l'événement ou une note partagée | non |
-| Dégustations | oui | non | non | seulement si partagées avec l'événement | non |
+| Dégustations | oui | non | non | seulement si partagées avec l'événement, **sans le prix payé** (lues par `event_tastings`) | non |
 | Prix de marché, relevés, liste d'envies | oui | non | non | non | non |
 | Conversations avec l'assistant | oui | non | non | non | **non, ni l'administrateur dans l'application** (l'exploitant du projet Supabase y a techniquement accès ; Anthropic reçoit ce qu'il faut pour chaque réponse) |
 
@@ -44,7 +44,7 @@
   20 demandes par jour au plus.
 - **Cave gérée à plusieurs** : une personne associée (invitation acceptée, avec son propre compte) voit et gère les bouteilles,
   emplacements, fiches et prix de **cette cave seulement**, jamais les autres caves du propriétaire. Le partage, les groupes,
-  les événements et toute suppression restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
+  les événements et toute suppression (relevés de prix compris) restent au propriétaire ; chaque mouvement garde son auteur. Un retrait, un départ ou
   un blocage coupe l'accès immédiatement.
 - **Vie de groupe** : une soirée de groupe n'est visible que de ses participants ; les notes partagées avec un groupe, ses
   envies communes et leurs participants ne sont lisibles que par ses membres (lecture par des fonctions qui le vérifient).
@@ -251,9 +251,11 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
 - Conservation : `scan_retention_days` (30 jours par défaut), puis suppression des analyses **et de leurs photos** (par le
   serveur à chaque nouvelle analyse, et par l'application à l'ouverture de l'historique). Suppression manuelle à tout moment.
 - **Cache** (`scan_cache`, inaccessible depuis l'application) : une série de photos identique octet pour octet n'est pas
-  renvoyée à l'IA (lecture reprise pendant 90 jours, sans coût ni quota). Il ne contient que la lecture des étiquettes.
-- Coûts : modèle propre au scanner (`scan_model`, Sonnet 5.5 par défaut), **nombre d'analyses par jour et par personne**
-  (`scan_daily_limit`, 10 par défaut) en plus des quotas et budgets de l'assistant ; photos réduites sur le téléphone
+  renvoyée à l'IA (lecture reprise pendant 90 jours, sans coût ni quota).
+- Coûts : modèle propre au scanner (`scan_model`, Sonnet 5.5 par défaut, qui sert aussi à lire une étiquette et à chercher
+  le prix depuis une fiche ; la conversation avec Lia garde le modèle de l'assistant), **nombre d'analyses par jour et par
+  personne** (`scan_daily_limit`, 10 par défaut, contrôlé par `ai_begin` sous son verrou : deux demandes simultanées ne le
+  dépassent pas) en plus des quotas et budgets de l'assistant ; photos réduites sur le téléphone
   (1 600 px) et taille maximale contrôlée par le serveur. Open Food Facts (code-barres) est gratuit et sans clé.
 
 ### Analyse et prix du marché (lot 3b)
@@ -267,6 +269,8 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
   millésime et la même contenance, et jamais hors taxes. **Vivino est exclu** de la recherche (`blocked_domains`).
 - Le verdict et la note sur 10 sont **calculés par l'application** (`src/domain/scan.ts`), jamais rédigés par l'IA.
 - Cache du serveur, séparé de l'historique : analyse d'un vin 90 jours, relevé de prix 72 heures (seulement s'il est vérifié).
+  Une analyse n'est mise en commun avec les autres comptes que si son niveau de qualité est retenu et s'appuie sur **au moins
+  deux sites différents** : une seule page, éventuellement piégée, ne fausse jamais le résultat des autres.
   L'historique garde le relevé daté ; l'application propose de l'actualiser au-delà de 72 heures.
 
 ### Vos goûts et votre budget (lot 3c)

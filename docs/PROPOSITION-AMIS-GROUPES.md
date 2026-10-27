@@ -1,6 +1,7 @@
 # Amis, groupes et caves partagées — proposition à valider
 
-> Statut : **proposition**, rien n'est développé. Rédigée le 25 octobre 2026 à partir du code actuel de Cave & Amis.
+> Statut : **réalisée** : les phases A à E sont en ligne depuis le 25 octobre 2026. Ce document garde la proposition
+> d'origine, rédigée le 25 octobre 2026 à partir du code de l'époque.
 > Mise à jour après tes choix : **vin seulement**, **pas de propriété collective** (une cave = un propriétaire, qui peut associer d'autres personnes, chacune avec son compte), **le propriétaire confirme** chaque ouverture, **« tous mes amis » est gardé** à côté des groupes.
 
 ## 1. Ce qui existe déjà (et sera réutilisé)
