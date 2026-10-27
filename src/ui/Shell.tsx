@@ -1,5 +1,5 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, Suspense, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, Bell, BookOpen, CalendarHeart, CircleHelp, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
 import { useStore } from '../data/store';
 import { pageOfRoute } from '../domain/help';
@@ -12,33 +12,36 @@ import { WinePage } from '../features/cellar/WinePage';
 import { AddSheet } from '../features/cellar/AddSheet';
 import { WineFormSheet, type WinePrefill } from '../features/cellar/WineForm';
 import { LabelScanSheet } from '../features/cellar/LabelScan';
-import { FriendsPage } from '../features/friends/FriendsPage';
-import { NotificationsPage } from '../features/notifications/NotificationsPage';
-import { GroupPage } from '../features/groups/GroupPage';
-import { FriendCellar } from '../features/friends/FriendCellar';
-import { InvitePage } from '../features/friends/InvitePage';
-import { EventsPage } from '../features/events/EventsPage';
-import { EventPage } from '../features/events/EventPage';
-import { JournalPage } from '../features/journal/JournalPage';
-import { TastingPage } from '../features/journal/TastingPage';
 import { TastingFormSheet, type TastingPrefill } from '../features/journal/TastingForm';
 import { WishFormSheet, type WishPrefill } from '../features/journal/WishForm';
-import { AssistantPage } from '../features/assistant/AssistantPage';
-import { SettingsPage } from '../features/settings/SettingsPage';
-import { CellarsPage } from '../features/settings/CellarsPage';
-import { WhoSeesPage } from '../features/settings/WhoSeesPage';
-import { AdminPage } from '../features/admin/AdminPage';
-import { LegalAdmin } from '../features/admin/LegalAdmin';
 import { LegalNotice } from '../features/legal/LegalGate';
 import { LegalPage } from '../features/legal/LegalViews';
-import { PrivacyPage } from '../features/legal/PrivacyPage';
 import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
-import { ScannerPage } from '../features/scanner/ScannerPage';
-import { ScanPage } from '../features/scanner/ScanPage';
-import { ScanHistory } from '../features/scanner/ScanHistory';
-import { ComparePage } from '../features/scanner/ComparePage';
-import { Avatar, Button, EmptyState } from './kit';
+import { Avatar, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
+import { lazyPage } from './lazyPage';
+
+// Pages chargées à leur première visite (l'accueil et la cave restent dans le premier chargement).
+const FriendsPage = lazyPage(() => import('../features/friends/FriendsPage'), 'FriendsPage');
+const NotificationsPage = lazyPage(() => import('../features/notifications/NotificationsPage'), 'NotificationsPage');
+const GroupPage = lazyPage(() => import('../features/groups/GroupPage'), 'GroupPage');
+const FriendCellar = lazyPage(() => import('../features/friends/FriendCellar'), 'FriendCellar');
+const InvitePage = lazyPage(() => import('../features/friends/InvitePage'), 'InvitePage');
+const EventsPage = lazyPage(() => import('../features/events/EventsPage'), 'EventsPage');
+const EventPage = lazyPage(() => import('../features/events/EventPage'), 'EventPage');
+const JournalPage = lazyPage(() => import('../features/journal/JournalPage'), 'JournalPage');
+const TastingPage = lazyPage(() => import('../features/journal/TastingPage'), 'TastingPage');
+const AssistantPage = lazyPage(() => import('../features/assistant/AssistantPage'), 'AssistantPage');
+const SettingsPage = lazyPage(() => import('../features/settings/SettingsPage'), 'SettingsPage');
+const CellarsPage = lazyPage(() => import('../features/settings/CellarsPage'), 'CellarsPage');
+const WhoSeesPage = lazyPage(() => import('../features/settings/WhoSeesPage'), 'WhoSeesPage');
+const AdminPage = lazyPage(() => import('../features/admin/AdminPage'), 'AdminPage');
+const LegalAdmin = lazyPage(() => import('../features/admin/LegalAdmin'), 'LegalAdmin');
+const PrivacyPage = lazyPage(() => import('../features/legal/PrivacyPage'), 'PrivacyPage');
+const ScannerPage = lazyPage(() => import('../features/scanner/ScannerPage'), 'ScannerPage');
+const ScanPage = lazyPage(() => import('../features/scanner/ScanPage'), 'ScanPage');
+const ScanHistory = lazyPage(() => import('../features/scanner/ScanHistory'), 'ScanHistory');
+const ComparePage = lazyPage(() => import('../features/scanner/ComparePage'), 'ComparePage');
 
 type Actions = {
   /** Fenêtre « Ajouter » : photo d'étiquette, saisie, dégustation, envie. */
@@ -354,7 +357,7 @@ function ShellInner() {
         <main className="page" id="contenu">
           {seg[0] === undefined && <ResumeTour />}
           <LegalNotice />
-          {page}
+          <Suspense fallback={<InlineLoading />}>{page}</Suspense>
         </main>
         {!['assistant', 'admin', 'reglages', 'scanner', 'legal'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">

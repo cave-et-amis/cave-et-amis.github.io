@@ -150,24 +150,24 @@ export function StoreProvider({
     online,
   };
 
-  // Mises à jour : retour sur l'application, réseau, toutes les deux minutes si visible.
+  // Mises à jour : retour sur l'application, réseau, toutes les deux minutes si visible. Les données rechargées depuis
+  // peu (après une action, par exemple) ne sont pas redemandées : chaque rechargement relit toute la cave.
   const reloadRef = useRef(reload);
   reloadRef.current = reload;
+  const loadedAt = useRef(Date.now());
   useEffect(() => {
+    loadedAt.current = Date.now();
+  }, [snapshot]);
+  useEffect(() => {
+    const olderThan = (ms: number) => Date.now() - loadedAt.current > ms;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const soon = () => {
       clearTimeout(timer);
       timer = setTimeout(() => void reloadRef.current().catch(() => undefined), 300);
     };
-    const onVisible = () => document.visibilityState === 'visible' && soon();
+    const onVisible = () => document.visibilityState === 'visible' && olderThan(10_000) && soon();
     // Changement d'écran : données rafraîchies si elles datent de plus de 10 secondes (réponses des amis, invitations…).
-    let last = Date.now();
-    const onRoute = () => {
-      if (Date.now() - last > 10_000) {
-        last = Date.now();
-        soon();
-      }
-    };
+    const onRoute = () => olderThan(10_000) && soon();
     window.addEventListener('hashchange', onRoute);
     const onOnline = () => {
       setOnline(true);
@@ -177,7 +177,7 @@ export function StoreProvider({
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
-    const poll = setInterval(() => document.visibilityState === 'visible' && soon(), 120_000);
+    const poll = setInterval(() => document.visibilityState === 'visible' && olderThan(110_000) && soon(), 120_000);
     return () => {
       clearTimeout(timer);
       clearInterval(poll);
