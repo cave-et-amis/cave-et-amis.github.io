@@ -1,18 +1,28 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus, UtensilsCrossed } from 'lucide-react';
+import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, UtensilsCrossed, Wine } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
-import { buildRows, colorBreakdown, pastWindow, readyToDrink } from '../../domain/cellar';
+import { bottlesByEntryMonth, buildRows, colorBreakdown, dayPick, pastWindow, readyToDrink, type WineRow } from '../../domain/cellar';
 import { tasteSummary } from '../../domain/tasteProfile';
-import { currentYear, dateShort, eventDate, money, moneyRange, relativeDays } from '../../domain/format';
+import { currentYear, dateShort, eventDate, money, moneyRange } from '../../domain/format';
 import { valuation, coverageText } from '../../domain/valuation';
-import { EVENT_KINDS, label } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
-import { Button, EmptyState, Notice, StarsView } from '../../ui/kit';
+import { Avatar, Button, EmptyState, Notice, StarsView } from '../../ui/kit';
+import { usePhotoUrl } from '../../data/photos';
 import { TAP } from '../../ui/motion';
-import { WineItem } from '../../ui/WineItem';
 import { PairingSheet } from '../cellar/PairingSheet';
 import { go } from '../../ui/router';
+
+/** Photo de la bouteille (bouteille ou étiquette de la fiche), sinon la bouteille générique, sur fond de bois. */
+function BottlePhoto({ row, large }: { row: WineRow; large?: boolean }) {
+  const { api } = useStore();
+  const url = usePhotoUrl(api, row.wine.bottle_photo ?? row.wine.label_photo);
+  return (
+    <span className={`dash-photo${large ? ' large' : ''}${url ? ' own' : ''}`} aria-hidden>
+      <img src={url ?? '/img/bouteille-generique.webp'} alt="" loading="lazy" decoding="async" />
+    </span>
+  );
+}
 
 export function Home() {
   const { snapshot, me, userId, profileName } = useStore();
@@ -30,6 +40,9 @@ export function Home() {
     forGroups > 0 ? `${forGroups} pour mes groupes` : null,
   ].filter(Boolean);
   const ready = readyToDrink(rows, 5);
+  const toTaste = readyToDrink(rows, 1000).length;
+  // Recommandation du jour : une bouteille prête et libre, choisie sur l'appareil (la même toute la journée), sans IA.
+  const pick = dayPick(readyToDrink(rows.filter((r) => r.wine.owner_id === userId), 1000));
   // Mes bouteilles seulement (une cave gérée à plusieurs montre aussi celles de son propriétaire).
   const mine = rows.filter((r) => r.wine.owner_id === userId);
   const urgent = pastWindow(mine);
@@ -43,23 +56,63 @@ export function Home() {
   const upcoming = snapshot.events
     .filter((e) => e.status === 'planned' && myEvents.some((p) => p.event_id === e.id) && new Date(e.starts_at).getTime() > Date.now() - 6 * 3600_000)
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
-  const next = upcoming[0];
   const myRsvp = (id: string) => myEvents.find((p) => p.event_id === id)?.rsvp;
   const toConfirm = snapshot.myEventWines.filter((w) => w.status === 'proposed' && w.proposed_by !== userId);
   const firstName = me.display_name.split(' ')[0];
+  const stats = useMemo(() => bottlesByEntryMonth(snapshot.lots, userId), [snapshot.lots, userId]);
+  const maxStat = Math.max(1, ...stats.series.map((m) => m.bottles));
+  const friendsCount = snapshot.friendships.length;
 
   const purchase = Object.entries(value.purchase.totals);
   const market = Object.entries(value.market.totals);
 
   return (
     <>
-      <section className="hero" data-tour="accueil">
-        <h2>Bonjour {firstName}</h2>
-        <p>
-          {bottles > 0
-            ? `${bottles} bouteille${bottles > 1 ? 's' : ''} en cave, ${inStock.length} vin${inStock.length > 1 ? 's' : ''} différent${inStock.length > 1 ? 's' : ''}.`
-            : 'Votre cave, vos amis, la bonne bouteille au bon moment.'}
-        </p>
+      <section className="dash-hello" data-tour="accueil">
+        <Avatar name={me.display_name} seed={me.id} />
+        <div className="dash-hello-text">
+          <h2>Bonjour {firstName} !</h2>
+          <p>Voici votre aperçu du jour</p>
+        </div>
+        <div className="dash-hello-actions">
+          <a className="dash-round" href="#/assistant" aria-label="Demander à Lia">
+            <Sparkles aria-hidden />
+          </a>
+          <a className="dash-round" href="#/notifications" aria-label="Notifications">
+            <Bell aria-hidden />
+            {snapshot.notifications.some((n) => !n.read_at) && <span className="dash-dot" />}
+          </a>
+        </div>
+      </section>
+
+      <section className="dash-tiles" aria-label="En bref">
+        <m.a className="dash-tile" href="#/cave" whileTap={TAP}>
+          <BottleWine aria-hidden className="ink" />
+          <span>
+            <b>{bottles}</b>
+            {bottles > 1 ? 'Bouteilles' : 'Bouteille'}
+          </span>
+        </m.a>
+        <m.a className="dash-tile" href="#/cave?tri=maturite" whileTap={TAP}>
+          <Wine aria-hidden className="gold" />
+          <span>
+            <b>{toTaste}</b>À déguster
+          </span>
+        </m.a>
+        <m.a className="dash-tile" href="#/evenements" whileTap={TAP}>
+          <CalendarHeart aria-hidden className="accent" />
+          <span>
+            <b>{upcoming.length}</b>
+            {upcoming.length > 1 ? 'Événements' : 'Événement'}
+          </span>
+        </m.a>
+        <m.a className="dash-tile" href="#/amis" whileTap={TAP}>
+          <Users aria-hidden className="blue" />
+          <span>
+            <b>{friendsCount}</b>
+            {friendsCount > 1 ? 'Amis' : 'Ami'}
+          </span>
+        </m.a>
       </section>
 
       {rows.length === 0 && (
@@ -82,6 +135,108 @@ export function Home() {
           <a href="#/cave?tri=maturite">à ouvrir sans tarder</a>.
         </Notice>
       )}
+
+      <div className="dash-grid">
+        <section className="card" aria-labelledby="h-ready">
+          <div className="section-title">
+            <h2 id="h-ready">À ouvrir bientôt</h2>
+            <a href="#/cave?tri=maturite">Tout voir</a>
+          </div>
+          {ready.length === 0 ? (
+            <p className="muted small">Aucune bouteille prête pour l’instant : les périodes de vos fiches s’afficheront ici.</p>
+          ) : (
+            ready.slice(0, 2).map((r) => (
+              <div key={r.wine.id} className="dash-wine">
+                <BottlePhoto row={r} />
+                <div>
+                  <strong>
+                    {r.wine.name}
+                    {r.wine.vintage ? ` ${r.wine.vintage}` : ''}
+                  </strong>
+                  <span className="small muted">
+                    {r.wine.region || r.wine.appellation || 'Votre cave'}
+                    {r.maturity === 'past' ? ' · À ouvrir sans tarder' : r.maturity === 'soon' ? ' · Bientôt à son apogée' : ' · Prêt à boire'}
+                    {r.window?.approximate ? ' (≈)' : ''}
+                  </span>
+                  <a className="dash-pill" href={`#/cave/vin/${r.wine.id}`}>
+                    Voir
+                  </a>
+                </div>
+              </div>
+            ))
+          )}
+        </section>
+
+        <section className="card" aria-labelledby="h-reco">
+          <div className="section-title">
+            <h2 id="h-reco">
+              <img className="dash-lia" src="/img/lia-avatar.webp" alt="" />
+              Recommandation du jour
+              <small>par Lia, parmi vos bouteilles prêtes</small>
+            </h2>
+          </div>
+          {pick ? (
+            <div className="dash-reco">
+              <BottlePhoto row={pick} large />
+              <div>
+                <strong>Parfait pour ce soir !</strong>
+                <p className="small muted">
+                  {pick.wine.name}
+                  {pick.wine.vintage ? ` ${pick.wine.vintage}` : ''} est prêt à boire{pick.wine.pairings ? ` : ${pick.wine.pairings}` : '.'}
+                </p>
+                <Button onClick={() => setPairing(true)}>Voir les accords</Button>
+              </div>
+            </div>
+          ) : (
+            <p className="muted small">Ajoutez des bouteilles avec une période de dégustation : Lia vous en proposera une chaque jour.</p>
+          )}
+        </section>
+
+        <section className="card" aria-labelledby="h-next">
+          <div className="section-title">
+            <h2 id="h-next">Vos prochains événements</h2>
+            <a href="#/evenements">Événements</a>
+          </div>
+          {upcoming.length === 0 ? (
+            <EmptyState icon="🥂" title="Aucun événement prévu" action={<Button variant="secondary" icon={<CalendarHeart />} onClick={() => go('/evenements?nouveau=1')}>Organiser un dîner</Button>}>
+              Invitez vos amis et choisissez ensemble les bouteilles.
+            </EmptyState>
+          ) : (
+            upcoming.slice(0, 3).map((e) => (
+              <m.a key={e.id} className="dash-event" href={`#/evenements/${e.id}`} whileTap={TAP}>
+                <Avatar name={e.organizer_id === userId ? me.display_name : profileName(e.organizer_id)} seed={e.organizer_id} size="sm" />
+                <span>
+                  <strong>{e.title}</strong>
+                  <span className="small muted">
+                    {eventDate(e.starts_at)} · {snapshot.participants.filter((p) => p.event_id === e.id).length} participant(s)
+                    {myRsvp(e.id) === 'pending' ? ' · Répondez à l’invitation' : ''}
+                  </span>
+                </span>
+              </m.a>
+            ))
+          )}
+        </section>
+
+        <section className="card" aria-labelledby="h-stats">
+          <div className="section-title">
+            <h2 id="h-stats">
+              Vos statistiques
+              <small>Bouteilles en cave, par mois d’entrée</small>
+            </h2>
+          </div>
+          <div className="dash-bars" role="img" aria-label={`Bouteilles par mois d’entrée : ${stats.series.map((m) => `${m.month} : ${m.bottles}`).join(', ')}`}>
+            {stats.series.map((m, i) => (
+              <i key={m.month} className={i >= stats.series.length - 2 ? 'recent' : ''} style={{ height: `${Math.max(6, (m.bottles / maxStat) * 100)}%` }} />
+            ))}
+          </div>
+          <p className="small muted">
+            <strong className="dash-up">
+              +{stats.lastQuarter} bouteille{stats.lastQuarter > 1 ? 's' : ''}
+            </strong>{' '}
+            ce trimestre
+          </p>
+        </section>
+      </div>
 
       <section aria-labelledby="h-shortcuts">
         <h2 id="h-shortcuts" className="sr-only">
@@ -175,55 +330,6 @@ export function Home() {
           )}
         </section>
       )}
-
-      {ready.length > 0 && (
-        <section aria-labelledby="h-ready">
-          <div className="section-title">
-            <h2 id="h-ready">À ouvrir prochainement</h2>
-            <a href="#/cave?tri=maturite">Tout voir</a>
-          </div>
-          <div className="list">
-            {ready.map((r, i) => (
-              <WineItem key={r.wine.id} row={r} index={i} />
-            ))}
-          </div>
-          <p className="small faint" style={{ marginTop: 6 }}>
-            Périodes indicatives : celles de vos fiches, sinon un repère général très approximatif (marqué « ≈ »).
-          </p>
-        </section>
-      )}
-
-      <section aria-labelledby="h-next">
-        <div className="section-title">
-          <h2 id="h-next">Prochain événement</h2>
-          <a href="#/evenements">Événements</a>
-        </div>
-        {next ? (
-          <m.a className="card" href={`#/evenements/${next.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }} whileTap={TAP}>
-            <div className="between">
-              <span className="pill gold">
-                {EVENT_KINDS.find((k) => k.value === next.kind)?.icon} {label(EVENT_KINDS, next.kind)}
-              </span>
-              <span className="small muted">{relativeDays(next.starts_at)}</span>
-            </div>
-            <h3 className="title-font" style={{ fontSize: '1.25rem', marginTop: 8 }}>
-              {next.title}
-            </h3>
-            <p className="muted">
-              {eventDate(next.starts_at)}
-              {next.place ? ` · ${next.place}` : ''}
-            </p>
-            <p className="small" style={{ marginTop: 6 }}>
-              {next.organizer_id === userId ? 'Vous organisez' : `Organisé par ${profileName(next.organizer_id)}`}
-              {myRsvp(next.id) === 'pending' && <strong style={{ color: 'var(--primary)' }}> · Répondez à l’invitation</strong>}
-            </p>
-          </m.a>
-        ) : (
-          <EmptyState icon="🥂" title="Aucun événement prévu" action={<Button variant="secondary" icon={<CalendarHeart />} onClick={() => go('/evenements?nouveau=1')}>Organiser un dîner</Button>}>
-            Invitez vos amis, choisissez ensemble les bouteilles, et gardez le souvenir des vins dégustés.
-          </EmptyState>
-        )}
-      </section>
 
       {recent.length > 0 && (
         <section aria-labelledby="h-recent">

@@ -280,7 +280,8 @@ test('dégustation au restaurant : le stock ne change pas', async () => {
   await toast(bruno, 'Dégustation enregistrée');
   await expect(bruno.getByRole('heading', { name: /Pouilly-Fumé/ })).toBeVisible();
   await goto(bruno, '/');
-  await expect(bruno.locator('.hero')).toContainText('bouteilles en cave');
+  // Tableau de bord de la maquette : la tuile « Bouteilles » compte toujours le stock (la dégustation au restaurant n'y touche pas).
+  await expect(bruno.locator('.dash-tile').first()).toContainText(/\d+\s*Bouteilles?/);
   await goto(bruno, '/cave');
   await expect(bruno.locator('.row').filter({ hasText: 'Château Test' })).toContainText('8');
 });

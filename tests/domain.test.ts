@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generalAeration, generalServingTemperature, suggestServiceOrder } from '../src/domain/advice.ts';
-import { applyFilters, buildRows, cellarCsv, colorBreakdown, EMPTY_FILTERS, lotSplit, pastWindow, splitText } from '../src/domain/cellar.ts';
+import { applyFilters, bottlesByEntryMonth, buildRows, cellarCsv, colorBreakdown, EMPTY_FILTERS, lotSplit, pastWindow, splitText } from '../src/domain/cellar.ts';
 import { AppError, toMessage } from '../src/domain/errors.ts';
 import { deName, fromLocalInput, toLocalInput } from '../src/domain/format.ts';
 import { maturity, maturityOf, windowOf } from '../src/domain/maturity.ts';
@@ -123,6 +123,25 @@ describe('valeur de la cave', () => {
 
 describe('inventaire et export', () => {
   const cellars = [{ id: 'c', name: 'Cave', storage: 'cave' } as Cellar];
+  it('tableau de bord : bouteilles par mois d’entrée (date d’achat, sinon d’ajout), les miennes seulement', () => {
+    const now = new Date(2026, 9, 28);
+    const lots = [
+      lot({ owner_id: 'moi', quantity: 3, purchase_date: '2026-10-02', created_at: '2026-10-05T10:00:00Z' }),
+      lot({ owner_id: 'moi', quantity: 2, purchase_date: null, created_at: '2026-09-12T10:00:00Z' }),
+      lot({ owner_id: 'moi', quantity: 0, purchase_date: '2026-10-01', created_at: '2026-10-01T10:00:00Z' }),
+      lot({ owner_id: 'autre', quantity: 9, purchase_date: '2026-10-01', created_at: '2026-10-01T10:00:00Z' }),
+      lot({ owner_id: 'moi', quantity: 4, purchase_date: '2025-01-01', created_at: '2025-01-01T10:00:00Z' }),
+    ];
+    const r = bottlesByEntryMonth(lots, 'moi', 4, now);
+    expect(r.series).toEqual([
+      { month: '2026-07', bottles: 0 },
+      { month: '2026-08', bottles: 0 },
+      { month: '2026-09', bottles: 2 },
+      { month: '2026-10', bottles: 3 },
+    ]);
+    expect(r.lastQuarter).toBe(5);
+  });
+
   it('tableau de bord : répartition par couleur et vins dont la période est passée', () => {
     const wines = [
       wine({ id: 'a', color: 'rouge', vintage: 2020, drink_from: 2021, drink_until: 2023, window_source: 'personal' }),

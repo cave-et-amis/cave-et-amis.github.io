@@ -27,7 +27,7 @@ test('thème « Clair-Obscur » par défaut ; le thème clair choisi est gardé 
   await expect(page.getByRole('navigation', { name: 'Navigation principale' }).first()).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'clair');
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
   await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Sombre' }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
 });
@@ -59,7 +59,7 @@ test('mes goûts : déclarer, retrouver, effacer', async () => {
   // Thème sombre par défaut, fenêtre de confirmation ouverte (bouton rouge) : aucun défaut d'accessibilité grave.
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
-  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
   await page.getByRole('alertdialog').getByRole('button', { name: 'Effacer' }).click();
   await toast(page, 'Profil effacé');
   await expect(page.getByLabel('J’aime (séparez par des virgules)')).toHaveValue('');

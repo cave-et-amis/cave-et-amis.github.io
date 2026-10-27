@@ -2,7 +2,9 @@
    Seuls les fichiers de l'application sont mis en cache, jamais les données : les appels à Supabase
    (autre origine) passent toujours directement par le réseau. */
 const VERSION = 'cave-amis-v1';
-const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png'];
+const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png',
+  // Images de l'interface (cave en fond, logo, bouteille par défaut, Lia) : environ 95 Ko, disponibles hors ligne.
+  './img/fond-cave-flou.webp', './img/logo-cave.webp', './img/bouteille-generique.webp', './img/lia-avatar.webp'];
 
 async function cacheBuild() {
   try {

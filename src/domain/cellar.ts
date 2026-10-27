@@ -221,3 +221,30 @@ export function colorBreakdown(rows: WineRow[]) {
 export function pastWindow(rows: WineRow[]) {
   return rows.filter((r) => r.available > 0 && r.maturity === 'past');
 }
+
+/**
+ * Accueil, « Vos statistiques » : bouteilles en cave par mois d'entrée (date d'achat, sinon date d'ajout), sur les
+ * `months` derniers mois, du plus ancien au plus récent. Ce sont les bouteilles encore là, pas les achats passés.
+ */
+export function bottlesByEntryMonth(lots: Lot[], owner: string, months = 8, now = new Date()) {
+  const keys: string[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    keys.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  const counts = new Map(keys.map((k) => [k, 0]));
+  for (const l of lots) {
+    if (l.owner_id !== owner || l.quantity <= 0) continue;
+    const k = (l.purchase_date ?? l.created_at).slice(0, 7);
+    if (counts.has(k)) counts.set(k, counts.get(k)! + l.quantity);
+  }
+  const series = keys.map((month) => ({ month, bottles: counts.get(month)! }));
+  return { series, lastQuarter: series.slice(-3).reduce((s, m) => s + m.bottles, 0) };
+}
+
+/** Un élément de la liste, le même toute la journée (selon la date), différent d'un jour à l'autre ; null si vide. */
+export function dayPick<T>(items: T[], now = new Date()): T | null {
+  if (!items.length) return null;
+  const day = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86_400_000);
+  return items[day % items.length];
+}

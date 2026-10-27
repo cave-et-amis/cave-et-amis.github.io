@@ -53,8 +53,8 @@
    « de base » sont celles des cartes ; le cadre (page, barres, menu) les redéfinit plus bas. */
 :root[data-theme='sombre'] {
   color-scheme: dark;
-  --card: #fafaf9;
-  --card-2: #f0f1ef;
+  --card: #ffffff;
+  --card-2: #f7f6f8;
   --card-line: #e4e1de;
   --card-line-strong: #d2cdc8;
   --card-ink: #281f20;
@@ -64,17 +64,18 @@
   --accent-strong: #8e2a4a;
   --accent-soft: #f5d4de;
   --shell-bg: #0c0b0c;
-  --shell-panel: #1e1a1e;
-  --shell-panel-2: #2a2427;
+  --shell-panel: #1a1d28;
+  --shell-panel-2: #262a37;
   --shell-line: rgba(255, 240, 235, 0.09);
   --shell-line-strong: rgba(255, 240, 235, 0.18);
-  --shell-ink: #f6f1ee;
-  --shell-ink-2: #c9bfc1;
-  --shell-ink-3: #a99ea1;
+  --shell-ink: #eef0f6;
+  --shell-ink-2: #b4b8c6;
+  --shell-ink-3: #9da2b2;
   --shell-accent: #ef9fb3;
 
   --bg: var(--shell-bg);
   --bg-deep: #e9e6e3;
+  --board: #f3f2f4;
   --surface: var(--card);
   --surface-2: var(--card-2);
   --border: var(--card-line);
@@ -96,14 +97,15 @@
   --success-fill: #2ab57a;
   --success-soft: #dcf3e7;
   --wood: #623a20;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 2px rgba(40, 31, 32, 0.06), 0 6px 18px rgba(40, 31, 32, 0.08);
+  --shadow-board: 0 30px 80px rgba(0, 0, 0, 0.55);
   --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.55);
   --radius: 18px;
   --radius-sm: 12px;
 }
 
 /* Le cadre (page, barre du haut, menu, barre du bas) : textes clairs sur fond sombre. */
-:root[data-theme='sombre'] :is(.page, .topbar, .sidenav, .tabbar) {
+:root[data-theme='sombre'] :is(.topbar, .sidenav, .tabbar, .auth) {
   --ink: var(--shell-ink);
   --ink-2: var(--shell-ink-2);
   --ink-3: var(--shell-ink-3);
@@ -121,7 +123,7 @@
 }
 
 /* Le contenu : cartes, listes, tuiles, formulaires, fenêtres, champs posés sur le cadre. */
-:root[data-theme='sombre'] :is(.card, .list, .tile, .shortcut, .notice, .empty, .form, .bubble, .search, .input, .sheet, .dialog, .hero, .suggestions, .auth-card, .segmented, .stars) {
+:root[data-theme='sombre'] :is(.card, .list, .tile, .shortcut, .notice, .empty, .form, .bubble, .search, .input, .sheet, .dialog, .hero, .suggestions, .segmented, .stars) {
   --ink: var(--card-ink);
   --ink-2: var(--card-ink-2);
   --ink-3: var(--card-ink-3);
@@ -213,6 +215,35 @@ a {
 
 :root[data-theme='sombre'] body {
   color: var(--shell-ink);
+  background: var(--shell-bg);
+}
+:root[data-theme='sombre'] body::before {
+  content: '';
+  position: fixed;
+  inset: -12px;
+  z-index: -1;
+  background: radial-gradient(ellipse at 15% 85%, rgba(208, 138, 44, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(12, 11, 12, 0.3), rgba(12, 11, 12, 0.5)), url('/img/fond-cave-flou.webp') center / cover no-repeat;
+  filter: blur(3px) saturate(1.15);
+}
+/* Tableau de bord clair (la page), qui flotte au-dessus de la cave. */
+:root[data-theme='sombre'] .page {
+  background: var(--board);
+  color: var(--ink);
+}
+:root[data-theme='sombre'] .topbar {
+  background: rgba(12, 11, 12, 0.94);
+  border-bottom-color: var(--shell-line);
+}
+:root[data-theme='sombre'] .tabbar {
+  left: 10px;
+  right: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
+  border-radius: 20px;
+  background: rgba(26, 29, 40, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  padding-bottom: 0;
 }
 
 .title-font {
@@ -446,29 +477,57 @@ a {
     background: var(--primary-soft);
     color: var(--primary);
   }
-  /* Maquette : menu sombre étroit, entrée active en pastille claire, textes clairs. */
+  /* Maquette : menu bleu nuit flottant et arrondi, tableau de bord clair arrondi, la cave tout autour. */
   :root[data-theme='sombre'] .app {
-    padding-left: 216px;
+    padding: 0 34px 26px calc(34px + 210px + 22px);
   }
   :root[data-theme='sombre'] .sidenav {
-    width: 216px;
-    padding: 20px 12px;
-    background: var(--shell-panel);
+    top: 26px;
+    bottom: 26px;
+    left: 34px;
+    width: 210px;
+    padding: 18px 12px;
+    border-radius: 22px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(26, 29, 40, 0.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
   :root[data-theme='sombre'] .sidenav a,
   :root[data-theme='sombre'] .sidenav button.navlink {
     color: var(--shell-ink-2);
-    font-weight: 550;
-    font-size: 0.95rem;
+    font-weight: 500;
+    font-size: 0.92rem;
     padding: 10px 12px;
   }
   :root[data-theme='sombre'] .sidenav a[aria-current='page'] {
     background: var(--shell-panel-2);
     color: var(--shell-ink);
+    font-weight: 650;
   }
   :root[data-theme='sombre'] .sidenav .brand-small {
+    font-family: var(--font);
     color: var(--shell-ink);
-    font-size: 1.2rem;
+    font-size: 1rem;
+    font-weight: 650;
+  }
+  :root[data-theme='sombre'] .sidenav .brand-small img {
+    border-radius: 50%;
+  }
+  :root[data-theme='sombre'] .topbar {
+    background: transparent;
+    border-bottom: 0;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :root[data-theme='sombre'] .topbar-inner,
+  :root[data-theme='sombre'] .page {
+    max-width: 1180px;
+  }
+  :root[data-theme='sombre'] .page {
+    border-radius: 22px;
+    padding: 22px;
+    box-shadow: var(--shadow-board);
   }
   .sidenav .add-btn {
     margin: 4px 0 14px;
@@ -2585,4 +2644,255 @@ details.help-topic:not([open]) > summary::after {
   height: 10px;
   border-radius: 50%;
   display: inline-block;
+}
+
+/* ───────────── Accueil Cave & Amis 2.0 (maquette, panneau 1) ───────────── */
+
+.dash-hello {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 4px 4px;
+}
+.dash-hello .avatar {
+  width: 60px;
+  height: 60px;
+  font-size: 1.6rem;
+  outline: 3px solid #fff;
+  box-shadow: 0 4px 14px rgba(108, 42, 59, 0.28);
+}
+.dash-hello-text h2 {
+  font-size: 1.65rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.dash-hello-text p {
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  margin-top: 2px;
+}
+.dash-hello-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 8px;
+}
+.dash-round {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--primary);
+  box-shadow: var(--shadow);
+}
+.dash-round svg {
+  width: 19px;
+  height: 19px;
+}
+.dash-dot {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--fill);
+  border: 2px solid #fff;
+}
+:root[data-theme='sombre'] .page:has(.dash-hello) {
+  background: linear-gradient(120deg, #ffffff 0%, #fbeef3 18%, #ece6f6 34%, var(--board) 46%) top / 100% 260px no-repeat, var(--board);
+}
+
+.dash-tiles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.dash-tile {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius);
+  background: var(--card, var(--surface));
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+.dash-tile svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 1.5;
+  flex: none;
+}
+.dash-tile svg.ink { color: var(--ink); }
+.dash-tile svg.gold { color: #b8741f; }
+.dash-tile svg.accent { color: var(--primary); }
+.dash-tile svg.blue { color: #3b6fd8; }
+.dash-tile span {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+}
+.dash-tile b {
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 14px;
+}
+.dash-grid > .card {
+  border: 0;
+  margin: 0;
+}
+.dash-grid .section-title h2 small {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.dash-lia {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+  vertical-align: -6px;
+  margin-right: 8px;
+}
+.dash-wine {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  padding: 8px 0;
+}
+.dash-wine strong {
+  display: block;
+  font-size: 1rem;
+}
+.dash-wine .small {
+  display: block;
+  margin: 2px 0 8px;
+}
+.dash-photo {
+  width: 100px;
+  height: 122px;
+  flex: none;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: url('/img/bois-casier.webp') center / cover;
+}
+.dash-photo img {
+  height: 94%;
+  width: auto;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+.dash-photo.own img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: none;
+}
+.dash-photo.large {
+  width: 112px;
+  height: 220px;
+  background: radial-gradient(ellipse at 50% 92%, rgba(40, 31, 32, 0.16), transparent 60%);
+}
+.dash-pill {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 20px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+  font-weight: 650;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.dash-reco {
+  display: grid;
+  grid-template-columns: 112px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.dash-reco p {
+  margin: 6px 0 14px;
+  line-height: 1.55;
+}
+.dash-event {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  text-decoration: none;
+  color: var(--ink);
+}
+.dash-event + .dash-event {
+  margin-top: 8px;
+}
+.dash-event strong {
+  display: block;
+  font-size: 0.95rem;
+}
+.dash-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 9px;
+  height: 110px;
+  margin: 4px 0 10px;
+  padding: 0 4px;
+}
+.dash-bars i {
+  flex: 1;
+  border-radius: 4px 4px 2px 2px;
+  background: var(--fill);
+}
+.dash-bars i.recent {
+  background: linear-gradient(180deg, rgba(168, 54, 90, 0.35), rgba(168, 54, 90, 0.8));
+}
+.dash-up {
+  color: var(--success);
+}
+
+@media (max-width: 767px) {
+  .dash-tiles {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+  .dash-hello-text h2 {
+    font-size: 1.4rem;
+  }
+  /* Téléphone : en-tête photo sombre et immersif, « Bonjour » en clair. */
+  :root[data-theme='sombre'] .page:has(.dash-hello) {
+    background: linear-gradient(180deg, rgba(12, 11, 12, 0.15), rgba(12, 11, 12, 0.78)) top / 100% 250px no-repeat,
+      url('/img/fond-cave-flou.webp') top / 100% 250px no-repeat, var(--board);
+  }
+  :root[data-theme='sombre'] .dash-hello {
+    padding-top: 26px;
+    padding-bottom: 14px;
+  }
+  :root[data-theme='sombre'] .dash-hello-text h2,
+  :root[data-theme='sombre'] .dash-hello-text p {
+    color: #fff;
+  }
+}
+
+/* Écrans publics (connexion, documents) : la cave en photo derrière, textes clairs, formulaires sur cartes claires. */
+:root[data-theme='sombre'] .auth {
+  background: transparent;
 }

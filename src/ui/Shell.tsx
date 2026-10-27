@@ -319,7 +319,7 @@ function ShellInner() {
         </a>
         <nav className="sidenav" aria-label="Navigation principale">
           <div className="brand-small">
-            <img src="./icon.svg" alt="" width={34} height={34} />
+            <img src="/img/logo-cave.webp" alt="" width={34} height={34} />
             Cave &amp; Amis
           </div>
           <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
