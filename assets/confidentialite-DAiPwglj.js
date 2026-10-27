@@ -88,7 +88,9 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 
 ### Les e-mails de connexion
 
-- La réinitialisation du mot de passe par e-mail n'est pas encore disponible.
+- Pour un mot de passe oublié, la confirmation de votre adresse à l'inscription et le changement d'adresse, Cave & Amis vous envoie un e-mail avec un lien à usage unique, depuis cocon.cave@gmail.com, par le service Brevo. Données : votre adresse e-mail (l'ancienne et la nouvelle pour un changement), votre adresse dans le message, et le lien lui-même. Aucun autre e-mail ne vous est envoyé.
+- À quoi ils servent : protéger l'accès à votre compte.
+- Base légale : l'exécution du contrat (les conditions d'utilisation). [À VALIDER : base légale des e-mails de connexion]
 
 ### Les preuves de vos choix
 
@@ -123,6 +125,7 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 - **Anthropic** (Anthropic Ireland, Limited, Dublin, pour les clients de l'Espace économique européen) : intelligence artificielle de Lia (assistant, lecture d'étiquette, scanner, prix). Son contrat de sous-traitance fait partie de ses conditions commerciales : https://www.anthropic.com/legal/data-processing-addendum
 - **Les services de notification** de votre navigateur (Google, Apple, Mozilla ou Microsoft), si vous activez les notifications : ils reçoivent l'adresse d'abonnement de l'appareil et le texte chiffré, qu'ils ne peuvent pas lire.
 - **Open Food Facts** (association loi 1901, Saint-Maur-des-Fossés, France ; serveurs en France) : recherche de produits et de photos officielles par code-barres ou par nom, et affichage des vignettes depuis son site. Selon sa politique, Open Food Facts garde 3 ans les journaux de visite (adresse IP).
+- **Brevo** (BREVO SAS, 17 rue de Salneuve, 75017 Paris, France ; RCS Paris 498 019 298) : envoi des e-mails de connexion (votre adresse e-mail et le contenu du message). Son contrat de sous-traitance est l'annexe 3 de ses conditions d'utilisation. D'après Brevo, ses données sont hébergées chez OVH (France) et Google Cloud (Union européenne). [À VALIDER : informations relevées le 27/10/2026 sur les pages officielles de Brevo par la session Cocon, à relire ; durée de conservation des journaux d'envoi non trouvée]
 - **Nous (application Cocon)**, si vous reliez vos comptes : même responsable de traitement.
 - **Les messageries que vous choisissez** pour envoyer un lien d'invitation : Cave & Amis ne leur envoie rien lui-même.
 
@@ -135,6 +138,7 @@ Certaines données peuvent être traitées hors de l'Union européenne, avec ces
 - **GitHub** : adhésion au cadre de protection des données UE–États-Unis (« Data Privacy Framework ») et clauses contractuelles types.
 - **Google** (notifications de Chrome et d'Android) et **Microsoft** : adhésion au « Data Privacy Framework ».
 - **Apple** et **Mozilla** : clauses contractuelles types.
+- **Brevo** : d'après Brevo, données hébergées dans l'Union européenne ; son hébergeur Google Cloud adhère au « Data Privacy Framework ». [À VALIDER : absence de transfert hors de l'Union européenne pour Brevo]
 
 Adhésions au « Data Privacy Framework » vérifiées le 27/10/2026 sur la liste officielle : https://www.dataprivacyframework.gov/list
 
@@ -179,7 +183,7 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 Vous disposez des droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données, et du droit de retirer votre consentement.
 
 - **Accès et portabilité** : Réglages › Confidentialité et mes données › « Télécharger toutes mes données » vous donne une archive avec toutes vos données (fichier JSON, lisible par d'autres logiciels) et vos photos.
-- **Rectification** : vous corrigez vous-même vos fiches, notes, événements, votre prénom et votre devise. Pour changer d'adresse e-mail, écrivez à l'adresse de contact.
+- **Rectification** : vous corrigez vous-même vos fiches, notes, événements, votre prénom, votre devise et votre adresse e-mail (Réglages › Mon profil : un lien est envoyé à l'ancienne et à la nouvelle adresse, et le changement se fait quand les deux sont ouverts).
 - **Effacement** : vous supprimez vous-même chaque élément, ou votre compte entier (Réglages › Confidentialité et mes données).
 - **Retrait du consentement** : à tout moment, sans effet sur ce qui a été fait avant : apparaître dans la recherche (Réglages), agenda Nous (délier), notifications (désactiver).
 - **Opposition et limitation** : écrivez à l'adresse de contact.
