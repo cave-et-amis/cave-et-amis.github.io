@@ -11,7 +11,9 @@ import { normalizeBarcode } from '../../domain/barcode';
 import type { AdviceSource, BottlePhotoSource, Color, Visibility, Wine, WineType } from '../../domain/types';
 import { Advanced, Button, Check, Field, Notice, Origin, Sheet, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
+import type { LwinWine } from '../../domain/lwin';
 import { ColorChips, PhotoField, Stepper, Uncertain, VisibilityField } from './fields';
+import { LwinSuggest } from './LwinSuggest';
 import { OfficialPhoto, PhotoCredit } from './OfficialPhoto';
 import { StudioPanel } from './studio/StudioPanel';
 
@@ -104,6 +106,20 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
     setTouched((t) => new Set([...t, ...Object.keys(patch)]));
   };
   const isUncertain = (k: string) => uncertain.has(k) && !touched.has(k);
+
+  // Suggestion du dictionnaire des vins (LWIN) : remplit ce qu'elle connaît, laisse le reste tel quel.
+  const [picked, setPicked] = useState<string | null>(null);
+  function pickLwin(w: LwinWine) {
+    const patch: Partial<Form> = { name: w.name, country: 'France' };
+    if (w.cuvee) patch.cuvee = w.cuvee;
+    if (w.appellation) patch.appellation = w.appellation;
+    if (w.region) patch.region = w.region;
+    if (w.color) patch.color = w.color;
+    if (w.wine_type) patch.wine_type = w.wine_type;
+    set(patch);
+    const filled = [w.cuvee && 'cuvée', w.appellation && 'appellation', w.region && 'région', w.color && 'couleur', w.wine_type && 'type'].filter(Boolean);
+    setPicked(filled.length ? filled.join(', ') : 'nom');
+  }
 
   // Lot (création seulement)
   const [quantity, setQuantity] = useState(1);
@@ -322,8 +338,23 @@ export function WineFormSheet({ wine, prefill, onClose }: { wine?: Wine; prefill
         )}
         <Field label="Nom du vin" htmlFor="w-name" hint="Château, domaine ou nom de la cuvée, tel qu’il figure sur l’étiquette.">
           <Uncertain show={isUncertain('name')}>
-            <input id="w-name" className={`input ${isUncertain('name') ? 'uncertain' : ''}`} value={f.name} onChange={(e) => set({ name: e.target.value })} maxLength={120} required data-autofocus={!prefill?.wine || undefined} />
+            <input
+              id="w-name"
+              className={`input ${isUncertain('name') ? 'uncertain' : ''}`}
+              value={f.name}
+              onChange={(e) => (set({ name: e.target.value }), setPicked(null))}
+              maxLength={120}
+              required
+              autoComplete="off"
+              data-autofocus={!prefill?.wine || undefined}
+            />
           </Uncertain>
+          <LwinSuggest query={f.name} active={touched.has('name') && !picked} onPick={pickLwin} />
+          {picked && (
+            <p className="small muted" role="status" style={{ margin: 0 }}>
+              Complété d’après le dictionnaire des vins : {picked}. Tout reste modifiable dans « Plus de détails ».
+            </p>
+          )}
         </Field>
         <div className="field-row">
           <Field label="Millésime" htmlFor="w-vintage">
