@@ -321,6 +321,17 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
   pas de lecteur intégré ; aucune image n'est envoyée ailleurs.
 - « Ajouter à ma cave » copie la photo d'étiquette dans le dossier privé de la personne ; annuler le formulaire la supprime.
 
+## Mémoire des goûts et alertes de maturité (lot 1 de Cave & Amis 2.0)
+
+- **Profil de goûts** (`taste_profiles`) : préférences déclarées, traits écartés, budget, note. Lisible et modifiable par la
+  personne seule (règles d'accès et double authentification), lu par Lia avec ses droits (`get_my_taste`), jamais
+  partagé ; « Effacer mon profil » supprime la ligne ; supprimé avec le compte ; inclus dans l'export des données. Ce que le
+  carnet laisse deviner n'est jamais stocké : il est recalculé à partir des seules dégustations notées de la personne.
+- **Alertes de maturité** : désactivées par défaut (préférence du compte). `maturity_alerts()`, réservée au serveur et
+  lancée chaque jour par pg_cron (`supabase/sql/maturite-cron.sql`), ne crée qu'une alerte par vin et par type chaque
+  année, seulement pour les périodes notées sur la fiche et s'il reste une bouteille libre.
+- **Accords mets et vins** : présélection calculée sur l'appareil, sans IA ; rien n'est envoyé à Lia sans demande.
+
 ## Notifications push
 
 - **Standard Web Push**, celui de la bibliothèque PHP minishlink/web-push, écrit dans la fonction serveur (TypeScript,

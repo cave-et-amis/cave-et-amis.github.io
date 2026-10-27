@@ -179,6 +179,15 @@ Notez un vin goûté n'importe où : note sur 5, commentaire, observations guid�
 plat, prix payé (au verre, bouteille au restaurant, achat en boutique), photo, « à racheter ». Vos notes sont **privées** sauf
 si vous les partagez avec un événement. Le stock ne change que si vous cochez « La bouteille vient de ma cave ».
 
+**Mes goûts** (en haut du carnet) : ce que votre carnet laisse deviner (un trait revient dans au moins deux dégustations
+notées, 4/5 ou plus en moyenne pour « vous aimez », 2,5/5 ou moins pour « vous aimez moins » ; calculé sur le téléphone,
+sans IA) et ce que vous déclarez (j'aime, j'aime moins, budget habituel, une note). Écartez un trait qui ne vous ressemble
+pas, modifiez vos préférences, ou effacez tout. Lia lit ce profil pour vous conseiller ; personne d'autre ne le voit.
+
+**Que boire avec…** (raccourci de l'accueil) : tapez votre plat, l'application présélectionne vos bouteilles libres qui
+s'y prêtent, par des règles simples (couleur, type, accord noté sur la fiche, maturité). « Demander à Lia » prépare la
+question avec cette présélection.
+
 ## Prix et valeur
 
 La fiche d'un vin sépare : **votre prix d'achat**, les **prix payés** (carnet) et le **prix de marché**. « Rechercher le prix
@@ -255,10 +264,17 @@ ce qui n'existe pas ou ce qui vous est interdit, et ne voit jamais les données 
 
 iPhone : Partager › « Sur l'écran d'accueil ». Android : menu ⋮ › « Installer l'application ».
 
+**Apparence** : thème sombre « Clair-Obscur » par défaut ; thème clair ou « comme le téléphone » dans Réglages › Affichage
+(gardé avec votre compte, sur tous vos appareils).
+
 ## Notifications sur le téléphone
 
 La cloche, en haut de l'écran, rassemble les demandes de contact et d'accès à votre cave, les invitations (événement,
 groupe, cave à plusieurs), les personnes arrivées grâce à vos liens et les caves qui vous sont ouvertes.
+
+**Alertes de maturité** (facultatives, Réglages › Préférences) : une alerte quand un vin de votre cave entre dans sa période
+de dégustation, et l'année où elle se termine, une fois par an et par vin. Seulement pour les vins dont la fiche indique une
+période (la vôtre, une source, ou une estimation de Lia : l'alerte précise laquelle) ; jamais pour le repère général « ≈ ».
 
 - **Les recevoir sur l'appareil**, même application fermée : **Réglages › Notifications sur cet appareil › « Activer »**,
   puis acceptez la demande du téléphone. Toucher une notification ouvre le bon écran. « Envoyer une notification
