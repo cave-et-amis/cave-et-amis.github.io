@@ -88,7 +88,7 @@ Vous restez responsable des contenus que vous ajoutez et partagez. Vous pouvez b
 
 - Cave & Amis est fourni tel quel. L'éditeur fait de son mieux pour qu'il fonctionne, sans garantir qu'il soit toujours disponible ni exempt d'erreurs. Il peut être interrompu, par exemple pour une maintenance.
 - Les fonctions peuvent évoluer, être ajoutées ou retirées.
-- En cas d'arrêt définitif du service, vous êtes prévenu à l'avance [À COMPLÉTER : délai de préavis avant l'arrêt définitif du service, par exemple 30 jours], pour avoir le temps de télécharger vos données.
+- En cas d'arrêt définitif du service, vous êtes prévenu au moins 30 jours à l'avance, pour avoir le temps de télécharger vos données.
 - Gardez une copie de vos données importantes : Réglages › Confidentialité et mes données › Télécharger toutes mes données.
 
 ## Responsabilité

@@ -137,6 +137,8 @@ photos. Les fichiers des photos ne sont pas copiés. Les données ne sont jamais
 - Chiffrer une ancienne sauvegarde restée en clair :
   `powershell -ExecutionPolicy Bypass -File scripts\sauvegarde.ps1 -Chiffrer "<chemin du fichier>"`. Le script vérifie la
   copie chiffrée, puis vous supprimez vous-même l'original.
+- Durée de garde : 3 mois au plus (politique de confidentialité). À chaque nouvelle sauvegarde, supprimez vous-même les
+  dossiers de `B:\Claude Project\sauvegardes\` vieux de plus de 3 mois.
 - Chiffrement : AES-256 avec authentification (HMAC-SHA256), clés tirées du mot de passe par PBKDF2 (600 000 tours). Un mauvais
   mot de passe ou un fichier modifié sont refusés.
 

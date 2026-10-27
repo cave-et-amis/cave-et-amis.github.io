@@ -15,8 +15,7 @@ Ils décrivent aussi la liaison avec l'agenda Nous durcie (migration `2026110100
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.
 
-- **Politique de confidentialité** : la durée de conservation des sauvegardes, et celle des journaux de Supabase et de GitHub (leurs pages ne la donnent pas).
-- **Conditions d'utilisation** : le délai de préavis avant un arrêt définitif du service.
+Les trois emplacements ont été complétés le 27/10/2026 : préavis de 30 jours avant un arrêt du service (conditions d'utilisation), sauvegardes gardées 3 mois au plus, journaux des hébergeurs (Supabase : « Log retention (API & Database) : 1 day » sur https://supabase.com/pricing pour l'offre gratuite ; GitHub : aucune durée publiée, d'après https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement, consultés le 27/10/2026). Il n'en reste plus.
 
 L'adresse de contact dédiée, commune aux deux applications, est cocon.cave@gmail.com (confirmée par l'éditeur le 26/10/2026). Les dénominations, adresses, contrats de sous-traitance, garanties de transfert et la conservation chez Anthropic sont déjà repris des pages officielles des prestataires, relevées le 26/10/2026 dans la note `prestataires-infos-officielles.md` (hors du dépôt, avec l'adresse de chaque page). Revérifiez-les au moment de publier : ces pages changent. Aucun des hébergeurs ne publie de numéro de téléphone (point à valider pour la LCEN).
 
@@ -34,6 +33,7 @@ Chaque mention « [À VALIDER : …] » signale une clause à faire vérifier. R
 - **Absence de délégué** à la protection des données.
 - **Engagement de l'éditeur** sur son accès technique aux données.
 - **Bases légales** de chaque traitement, en particulier pour les données d'autres personnes envoyées à Anthropic et à Nous.
+- **Journaux des hébergeurs** : absence de durée publiée par GitHub, et sens de la durée d'un jour affichée par Supabase (stockage ou consultation).
 - **Durée de 5 ans** de conservation des preuves après la suppression d'un compte.
 - **Comptes inactifs** : durée d'inactivité avant suppression, après avoir prévenu la personne.
 - **Stockage sur l'appareil** : qualification de « strictement nécessaire » (page cookies).

@@ -181,6 +181,8 @@ Contrat complet : `docs/INTEGRATION-NOUS.md`.
 - Chiffrées par un mot de passe que seul le responsable connaît (AES-256 puis HMAC-SHA256, clés PBKDF2-SHA256 à 600 000
   tours, sel et vecteur aléatoires) ; jamais écrites en clair sur le disque ; relues et vérifiées aussitôt.
 - Contenu : tables de l'application, comptes (avec le mot de passe haché) et liste des photos, sans leurs fichiers.
+- Gardées 3 mois au plus (choix du 27/10/2026, annoncé dans la politique de confidentialité), puis supprimées à la main
+  par le responsable.
 
 ## Durées de conservation
 

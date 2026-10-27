@@ -155,8 +155,8 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 - **Photos qui ne servent plus** (plus aucune fiche, dégustation, groupe ou analyse ne les utilise) : effacées chaque mois.
 - **Preuves de vos choix** : tant que le compte existe, puis 5 ans après sa suppression (identifiant, version et date seulement), puis effacées. [À VALIDER : durée de 5 ans]
 - **Comptes inactifs** : aucun compte n'est supprimé automatiquement aujourd'hui. [À VALIDER : durée d'inactivité au-delà de laquelle un compte serait supprimé, après vous avoir prévenu]
-- **Sauvegardes** : une copie chiffrée de la base est faite chaque mois et avant chaque mise à jour importante. [À COMPLÉTER : durée de conservation des sauvegardes]
-- **Journaux techniques des hébergeurs** (adresse IP, navigateur) : [À COMPLÉTER : durées de conservation des journaux de Supabase et de GitHub, que leurs pages officielles ne donnent pas]
+- **Sauvegardes** : une copie chiffrée de la base est faite chaque mois et avant chaque mise à jour importante. Chaque sauvegarde est gardée 3 mois au plus, puis effacée.
+- **Journaux techniques des hébergeurs** (adresse IP, navigateur) : 1 jour chez Supabase, selon sa grille tarifaire pour l'offre utilisée. GitHub ne publie pas de durée : selon sa déclaration de confidentialité, elle dépend de l'objectif et des obligations légales. [À VALIDER : absence de durée publiée par GitHub, et sens exact de la durée affichée par Supabase (stockage ou consultation)]
 
 ### Quand vous supprimez votre compte
 
