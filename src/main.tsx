@@ -1,7 +1,7 @@
 import { createRoot } from 'react-dom/client';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import '@fontsource-variable/fraunces';
-import '@fontsource-variable/source-sans-3';
+import '@fontsource-variable/playfair-display';
+import '@fontsource-variable/inter';
 import './styles.css';
 import { App, ConfigProblem, Framed } from './App';
 import { readConfig } from './config';

@@ -44,79 +44,98 @@
   --radius: 18px;
   --radius-sm: 12px;
   --tabbar-h: 68px;
-  --font: 'Source Sans 3 Variable', 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --font-title: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
+  --font: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-title: 'Playfair Display Variable', 'Playfair Display', Georgia, 'Times New Roman', serif;
 }
 
-/* Clair-Obscur : le thème par défaut (fond de cave, bordeaux pour les gestes qui comptent, ivoire pour lire). */
+/* Thème de la maquette Cave & Amis 2.0 (par défaut) : cadre quasi noir, contenu sur cartes claires, accent framboise.
+   Couleurs mesurées sur la maquette (moyennes des zones unies), ajustées au besoin pour le contraste AA. Les variables
+   « de base » sont celles des cartes ; le cadre (page, barres, menu) les redéfinit plus bas. */
 :root[data-theme='sombre'] {
   color-scheme: dark;
-  --bg: #120a0b;
-  --bg-deep: #0c0607;
-  --surface: #1c1213;
-  --surface-2: #241819;
-  --border: #36272a;
-  --border-strong: #4b383b;
-  --ink: #f7eee7;
-  --ink-2: #d5c5bd;
-  --ink-3: #ad9a93;
-  --primary: #ec9fae;
-  --primary-strong: #f6bcc7;
-  --primary-ink: #2a0d14;
-  --primary-soft: #36171f;
-  --fill: #8f1d36;
-  --fill-strong: #a72a47;
+  --card: #fafaf9;
+  --card-2: #f0f1ef;
+  --card-line: #e4e1de;
+  --card-line-strong: #d2cdc8;
+  --card-ink: #281f20;
+  --card-ink-2: #5f5a5e;
+  --card-ink-3: #625c61;
+  --accent: #a8365a;
+  --accent-strong: #8e2a4a;
+  --accent-soft: #f5d4de;
+  --shell-bg: #0c0b0c;
+  --shell-panel: #1e1a1e;
+  --shell-panel-2: #2a2427;
+  --shell-line: rgba(255, 240, 235, 0.09);
+  --shell-line-strong: rgba(255, 240, 235, 0.18);
+  --shell-ink: #f6f1ee;
+  --shell-ink-2: #c9bfc1;
+  --shell-ink-3: #a99ea1;
+  --shell-accent: #ef9fb3;
+
+  --bg: var(--shell-bg);
+  --bg-deep: #e9e6e3;
+  --surface: var(--card);
+  --surface-2: var(--card-2);
+  --border: var(--card-line);
+  --border-strong: var(--card-line-strong);
+  --ink: var(--card-ink);
+  --ink-2: var(--card-ink-2);
+  --ink-3: var(--card-ink-3);
+  --primary: var(--accent);
+  --primary-strong: var(--accent-strong);
+  --primary-ink: #ffffff;
+  --primary-soft: var(--accent-soft);
+  --fill: var(--accent);
+  --fill-strong: var(--accent-strong);
   --fill-ink: #ffffff;
-  --gold: #d3b06c;
-  --gold-ink: #e3c47f;
-  --gold-soft: #33291a;
-  --success: #7cc98f;
-  --success-soft: #1a2f22;
-  --danger: #f28b7f;
-  --danger-soft: #3d1c19;
-  --warn: #e8bb62;
-  --warn-soft: #362a12;
-  --info: #8ab4e8;
-  --info-soft: #1a2839;
-  --wine-rouge: #c4495d;
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --gold: #bb854c;
+  --gold-ink: #7a5420;
+  --gold-soft: #f6ead8;
+  --success: #157a4e;
+  --success-fill: #2ab57a;
+  --success-soft: #dcf3e7;
+  --wood: #623a20;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.55);
+  --radius: 18px;
+  --radius-sm: 12px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='auto'] {
-    color-scheme: dark;
-    --bg: #120a0b;
-    --bg-deep: #0c0607;
-    --surface: #1c1213;
-    --surface-2: #241819;
-    --border: #36272a;
-    --border-strong: #4b383b;
-    --ink: #f7eee7;
-    --ink-2: #d5c5bd;
-    --ink-3: #ad9a93;
-    --primary: #ec9fae;
-    --primary-strong: #f6bcc7;
-    --primary-ink: #2a0d14;
-    --primary-soft: #36171f;
-    --fill: #8f1d36;
-    --fill-strong: #a72a47;
-    --fill-ink: #ffffff;
-    --gold: #d3b06c;
-    --gold-ink: #e3c47f;
-    --gold-soft: #33291a;
-    --success: #7cc98f;
-    --success-soft: #1a2f22;
-    --danger: #f28b7f;
-    --danger-soft: #3d1c19;
-    --warn: #e8bb62;
-    --warn-soft: #362a12;
-    --info: #8ab4e8;
-    --info-soft: #1a2839;
-    --wine-rouge: #c4495d;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.55);
-  }
+/* Le cadre (page, barre du haut, menu, barre du bas) : textes clairs sur fond sombre. */
+:root[data-theme='sombre'] :is(.page, .topbar, .sidenav, .tabbar) {
+  --ink: var(--shell-ink);
+  --ink-2: var(--shell-ink-2);
+  --ink-3: var(--shell-ink-3);
+  --primary: var(--shell-accent);
+  --primary-strong: #f6bcc7;
+  --primary-soft: #3a1a22;
+  --surface: var(--shell-panel);
+  --surface-2: var(--shell-panel-2);
+  --border: var(--shell-line);
+  --border-strong: var(--shell-line-strong);
+  --gold: #d3b06c;
+  --gold-ink: #e3c47f;
+  --danger: #f28b7f;
+  color: var(--ink);
+}
+
+/* Le contenu : cartes, listes, tuiles, formulaires, fenêtres, champs posés sur le cadre. */
+:root[data-theme='sombre'] :is(.card, .list, .tile, .shortcut, .notice, .empty, .form, .bubble, .search, .input, .sheet, .dialog, .hero, .suggestions, .auth-card, .segmented, .stars) {
+  --ink: var(--card-ink);
+  --ink-2: var(--card-ink-2);
+  --ink-3: var(--card-ink-3);
+  --primary: var(--accent);
+  --primary-strong: var(--accent-strong);
+  --primary-soft: var(--accent-soft);
+  --surface: var(--card);
+  --surface-2: var(--card-2);
+  --border: var(--card-line);
+  --border-strong: var(--card-line-strong);
+  --gold: #bb854c;
+  --gold-ink: #7a5420;
+  --danger: #b42318;
+  color: var(--ink) !important;
 }
 
 * {
@@ -190,6 +209,10 @@ a {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+:root[data-theme='sombre'] body {
+  color: var(--shell-ink);
 }
 
 .title-font {
@@ -423,6 +446,30 @@ a {
     background: var(--primary-soft);
     color: var(--primary);
   }
+  /* Maquette : menu sombre étroit, entrée active en pastille claire, textes clairs. */
+  :root[data-theme='sombre'] .app {
+    padding-left: 216px;
+  }
+  :root[data-theme='sombre'] .sidenav {
+    width: 216px;
+    padding: 20px 12px;
+    background: var(--shell-panel);
+  }
+  :root[data-theme='sombre'] .sidenav a,
+  :root[data-theme='sombre'] .sidenav button.navlink {
+    color: var(--shell-ink-2);
+    font-weight: 550;
+    font-size: 0.95rem;
+    padding: 10px 12px;
+  }
+  :root[data-theme='sombre'] .sidenav a[aria-current='page'] {
+    background: var(--shell-panel-2);
+    color: var(--shell-ink);
+  }
+  :root[data-theme='sombre'] .sidenav .brand-small {
+    color: var(--shell-ink);
+    font-size: 1.2rem;
+  }
   .sidenav .add-btn {
     margin: 4px 0 14px;
   }
@@ -619,7 +666,7 @@ a {
 
 .section-title h2,
 h2.section {
-  font-family: var(--font-title);
+  font-family: var(--font);
   font-size: 1.2rem;
   font-weight: 650;
 }
@@ -835,7 +882,7 @@ hr.sep {
 }
 
 .tile .value {
-  font-family: var(--font-title);
+  font-family: var(--font);
   font-size: 1.5rem;
   font-weight: 650;
   line-height: 1.15;
@@ -921,15 +968,12 @@ hr.sep {
 }
 
 :root[data-theme='sombre'] .hero {
-  background: linear-gradient(140deg, #5a1a29 0%, #2a0c13 100%);
-  color: #f8ece6;
+  background: var(--card);
+  color: var(--card-ink);
+  box-shadow: var(--shadow);
 }
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='auto'] .hero {
-    background: linear-gradient(140deg, #5a1a29 0%, #2a0c13 100%);
-    color: #f8ece6;
-  }
+:root[data-theme='sombre'] .hero::after {
+  display: none;
 }
 
 /* Pastilles */

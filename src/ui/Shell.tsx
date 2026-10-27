@@ -325,17 +325,14 @@ function ShellInner() {
           <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
             Ajouter un vin
           </Button>
-          {tabs.map((t) => (
+          {/* Ordre de la maquette : Accueil, Ma cave, Lia, Événements, Amis… (libellés courts). */}
+          {[tabs[0], tabs[1], { path: '/assistant', label: 'Lia (IA)', icon: <Sparkles /> } as Tab, tabs[3], tabs[2], ...tabs.slice(4)].map((t) => (
             <a key={t.path} href={`#${t.path}`} aria-current={activeTab === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
               {t.icon}
-              {t.label}
+              {t.short ?? t.label}
               {!!t.badge && <span className="pill primary" style={{ marginLeft: 'auto' }}>{t.badge}</span>}
             </a>
           ))}
-          <a href="#/assistant" aria-current={activeTab === '/assistant' ? 'page' : undefined}>
-            <Sparkles />
-            Assistant
-          </a>
           <div className="spacer" />
           {me.is_admin && (
             <a href="#/admin" aria-current={activeTab === '/admin' ? 'page' : undefined}>
