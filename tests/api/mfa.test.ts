@@ -189,7 +189,7 @@ describe('double authentification de l’administrateur', () => {
     expect(await publish(bruno.api)).toMatch(/^[0-9a-f-]{36}$/);
   });
 
-  it('retrait : refusé sans le code et pour un autre compte ; ensuite, le mot de passe suffit de nouveau', async () => {
+  it('retrait : refusé sans le code et pour un autre compte ; ensuite, le mot de passe suffit de nouveau, sauf pour administrer', async () => {
     const bruno = await account('Bruno');
     const claire = await account('Claire');
     const e = await activate(bruno);
@@ -208,7 +208,8 @@ describe('double authentification de l’administrateur', () => {
     const later = await signIn(bruno);
     expect(await level(later.sb)).toMatchObject({ currentLevel: 'aal1', nextLevel: 'aal1' });
     expect(await later.api.mfaRequired(await token(later.sb))).toBe(false);
-    expect(await later.api.adminLegalPublish('cookies', 'Cookies', 'Texte de test.', '', false)).toMatch(/^[0-9a-f-]{36}$/);
+    // L'administration, elle, demande d'activer de nouveau un code (20261102000001).
+    expect(await failure(later.api.adminLegalPublish('cookies', 'Cookies', 'Texte de test.', '', false))).toBe('admin_mfa_required');
     // La session vérifiée par le code retiré redescend au niveau du mot de passe à son rafraîchissement.
     await bruno.sb.auth.refreshSession();
     expect(await claims(bruno.sb)).toMatchObject({ aal: 'aal1' });

@@ -2,7 +2,7 @@
 --
 -- LECTURE SEULE : ce script ne modifie ni ne supprime rien, et ne montre que des nombres (jamais le contenu). À exécuter
 -- dans Supabase › SQL Editor avant de poser les purges (supabase/sql/conservation.sql), puis à tout moment pour
--- contrôler. Mêmes règles que retention_purge (migration 20261101000001_documents_legaux.sql), que les analyses du
+-- contrôler. Mêmes règles que retention_purge (migration 20261102000001_alignement_cocon.sql), que les analyses du
 -- scanner et les photos supprimées par cave-api, et que rate_purge (migration 20261101000004_durcissements.sql) ; un test
 -- vérifie qu'il annonce exactement ce que la purge efface (tests/sql/documents-legaux.test.ts).
 select cle, donnees, a_effacer from (values
@@ -18,8 +18,7 @@ select cle, donnees, a_effacer from (values
   (5, 'price_checks', 'Relevés de prix (24 mois)',
     (select count(*)::int from public.price_checks where created_at < now() - interval '24 months')),
   (6, 'invites', 'Liens d''invitation expirés ou annulés (90 jours)',
-    (select count(*)::int from public.friend_invites i where i.expires_at < now() - interval '90 days'
-       or (i.status = 'revoked' and coalesce(i.responded_at, i.created_at) < now() - interval '90 days'))),
+    (select count(*)::int from public.friend_invites i where least(i.expires_at, i.revoked_at) < now() - interval '90 days')),
   (7, 'friend_requests', 'Demandes de contact refusées (6 mois)',
     (select count(*)::int from public.friend_requests r
        where r.status = 'declined' and coalesce(r.responded_at, r.created_at) < now() - interval '6 months')),
@@ -39,6 +38,8 @@ select cle, donnees, a_effacer from (values
   (13, 'rate_hits', 'Compteurs des limites de fréquence (1 jour)',
     (select count(*)::int from public.rate_hits where at < now() - interval '1 day')),
   (14, 'photos', 'Photos de plus de 30 jours que rien ne cite (le 1er du mois, 2 000 par passage ; comptées jusqu''à 5 000)',
-    (select count(*)::int from public.retention_orphan_photos(5000)))
+    (select count(*)::int from public.retention_orphan_photos(5000))),
+  (15, 'admin_audit', 'Journal des actions de l''administrateur (12 mois)',
+    (select count(*)::int from public.admin_audit_log where at < now() - interval '12 months'))
 ) as t(ordre, cle, donnees, a_effacer)
 order by ordre;

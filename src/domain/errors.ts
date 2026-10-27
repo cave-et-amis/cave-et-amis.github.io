@@ -53,6 +53,8 @@ const DB_MESSAGES: Record<string, string> = {
   legal_invalid: 'Document incomplet : type, titre et texte sont obligatoires (seules les conditions d’utilisation demandent une acceptation).',
   legal_immutable: 'Un document publié ne se modifie plus : publiez une nouvelle version.',
   mfa_required: 'Cette action demande votre code de double authentification : déconnectez-vous, puis reconnectez-vous avec votre code.',
+  admin_mfa_required: 'L’administration demande la double authentification : activez-la dans Réglages › Double authentification, puis revenez ici.',
+  audit_immutable: 'Le journal de l’administration ne se modifie pas.',
 };
 
 const AUTH_MESSAGES: Record<string, string> = {

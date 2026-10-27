@@ -178,7 +178,8 @@ Cave retire la liaison.
   - lot 4 : la purge `participants_vins_cave_30_jours` efface la ligne `cave_event_details` 30 jours après `ends_at`,
     et Nous ne garde plus ces listes pour un événement terminé depuis plus de 30 jours, même si Cave les renvoie. Purge
     désactivée tant que l'éditeur ne l'a pas activée lui-même.
-  Rien ne change côté Cave : le contenu d'`event.upsert` reste le même.
+  Côté Cave (migration `20261102000001_alignement_cocon`, même règle) : 30 jours après la fin estimée de l'événement,
+  `event.upsert` envoie `participants` et `wines` vides ; le reste de l'événement est toujours envoyé.
 
 ## 6. Synchronisation Nous → Cave (réponse seulement)
 

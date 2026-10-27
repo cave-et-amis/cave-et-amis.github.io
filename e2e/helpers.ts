@@ -1,4 +1,7 @@
-import { expect, type Page } from '@playwright/test';
+import { createHmac } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 /** Identifiant de la série de tests (fixé par playwright.config.ts, commun à tous les fichiers). */
 export const RUN = process.env.E2E_RUN ?? 'local';
@@ -64,7 +67,59 @@ export async function signIn(page: Page, name: string) {
   await page.getByLabel('Adresse e-mail').fill(email(name));
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Se connecter' }).last().click();
-  await expect(page.getByRole('heading', { name: `Bonjour ${name}` })).toBeVisible();
+  const hello = page.getByRole('heading', { name: `Bonjour ${name}` });
+  await answerCode(page, hello);
+  await expect(hello).toBeVisible();
+}
+
+/** Code à 6 chiffres d'une application d'authentification (RFC 6238 : HMAC-SHA1, pas de 30 s). */
+export function totp(key: string, at = Date.now()) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = [...key.replace(/\s/g, '').toUpperCase()].map((c) => alphabet.indexOf(c).toString(2).padStart(5, '0')).join('');
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(at / 30_000)));
+  const mac = createHmac('sha1', Buffer.from((bits.match(/.{8}/g) ?? []).map((b) => parseInt(b, 2)))).update(counter).digest();
+  const offset = mac[mac.length - 1] & 15;
+  return String((mac.readUInt32BE(offset) & 0x7fffffff) % 1_000_000).padStart(6, '0');
+}
+
+/**
+ * Clé de la double authentification de Bruno, obligatoire pour administrer : lue à l'écran à son activation (parcours),
+ * gardée le temps de la série pour que les fichiers suivants calculent son code, comme son application le ferait.
+ */
+const ADMIN_KEY_FILE = join(process.cwd(), '.local', `e2e-cle-administrateur-${RUN}.txt`);
+export function saveAdminKey(key: string) {
+  mkdirSync(dirname(ADMIN_KEY_FILE), { recursive: true });
+  writeFileSync(ADMIN_KEY_FILE, key);
+}
+export function adminKey() {
+  return existsSync(ADMIN_KEY_FILE) ? readFileSync(ADMIN_KEY_FILE, 'utf8').trim() : '';
+}
+
+/** Après « Se connecter » : si l'écran du code apparaît (au lieu de `next`), saisit le code de l'administrateur. */
+export async function answerCode(page: Page, next: Locator) {
+  const code = page.getByRole('heading', { name: 'Code de double authentification' });
+  await expect(code.or(next).first()).toBeVisible();
+  if (!(await code.isVisible())) return;
+  await page.getByLabel('Code à 6 chiffres').fill(totp(adminKey()));
+  await page.getByRole('button', { name: 'Valider' }).click();
+}
+
+/** Réglages › « Activer la double authentification » : QR code, clé lue à l'écran, premier code. Renvoie la clé. */
+export async function enableCode(page: Page) {
+  await goto(page, '/reglages');
+  const section = page.getByRole('region', { name: 'Double authentification', exact: true });
+  await section.getByRole('button', { name: 'Activer la double authentification' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Activer la double authentification' });
+  await expect(sheet.getByRole('img', { name: /QR code de la double authentification/ })).toBeVisible();
+  const key = (await sheet.getByLabel('Clé à recopier dans l’application d’authentification').innerText()).replace(/\s/g, '');
+  expect(key).toMatch(/^[A-Z2-7]{32}$/);
+  await sheet.getByLabel('Code à 6 chiffres').fill(totp(key));
+  await sheet.getByRole('button', { name: 'Activer', exact: true }).click();
+  await toast(page, 'Double authentification activée');
+  await expect(sheet).toBeHidden();
+  await expect(section).toContainText('Activée depuis le');
+  return key;
 }
 
 /**

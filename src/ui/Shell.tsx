@@ -27,6 +27,7 @@ import { AssistantPage } from '../features/assistant/AssistantPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 import { CellarsPage } from '../features/settings/CellarsPage';
 import { WhoSeesPage } from '../features/settings/WhoSeesPage';
+import { AdminJournal } from '../features/admin/AdminJournal';
 import { AdminPage } from '../features/admin/AdminPage';
 import { LegalAdmin } from '../features/admin/LegalAdmin';
 import { LegalNotice } from '../features/legal/LegalGate';
@@ -259,6 +260,7 @@ function ShellInner() {
         <>
           <LegalAdmin />
           <AdminPage />
+          <AdminJournal />
         </>
       ) : (
         <EmptyState icon="🔒" title="Espace réservé à l’administrateur" />

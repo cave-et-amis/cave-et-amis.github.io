@@ -18,7 +18,7 @@ Ce fichier est public : il décrit l'application, jamais une personne. Il ne con
 | Personnes concernées | Les personnes inscrites (famille et amis, 18 ans et plus, de 20 à 100 comptes avec Cocon). Les personnes sans compte citées par une personne inscrite (note « Pour qui ? », description d'un événement, commentaire). Les visiteurs du site. |
 | Mineurs | Aucun : l'application est réservée aux 18 ans et plus (case à cocher à l'inscription). |
 | Ventes, publicité, profilage | Aucun. Aucun outil de suivi, aucun script extérieur. |
-| Mesures de sécurité communes | Règles d'accès appliquées par la base de données elle-même (RLS sur toutes les tables). Échanges chiffrés (HTTPS). Photos dans un espace privé, liens temporaires d'une heure. Mot de passe de 8 caractères au moins (une lettre et un chiffre), redemandé pour le changer ou supprimer le compte. Clé Anthropic lue seulement par le serveur. Export du site contrôlé (aucun secret). Double authentification possible pour l'administrateur (pas encore activée au 27/10/2026). Détail : `docs/SECURITE.md`. |
+| Mesures de sécurité communes | Règles d'accès appliquées par la base de données elle-même (RLS sur toutes les tables). Échanges chiffrés (HTTPS). Photos dans un espace privé, liens temporaires d'une heure. Mot de passe de 8 caractères au moins (une lettre et un chiffre), redemandé pour le changer ou supprimer le compte. Clé Anthropic lue seulement par le serveur. Export du site contrôlé (aucun secret). Double authentification proposée à tous les comptes et obligatoire pour administrer (migration 20261102000001, pas encore en ligne au 27/10/2026) ; avec un code activé, rien n'est lisible tant que la session n'est pas vérifiée. Actions de l'administrateur notées dans un journal inaltérable (T14). Détail : `docs/SECURITE.md`. |
 
 ## Les traitements
 
@@ -47,7 +47,7 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Données** : contacts, demandes envoyées et reçues, blocages, réglages d'accès, liens d'invitation (type, date de fin, note « Pour qui ? », personnes qui les ont utilisés), choix d'apparaître dans la recherche (désactivé au départ). Page d'invitation lisible sans compte : premier mot du prénom de la personne qui invite, type de lien, nom du groupe ou titre et date de l'événement.
 - **Base légale** : exécution du contrat ; consentement pour la recherche ; intérêt légitime de l'auteur d'un lien pour la note « Pour qui ? » et la page d'invitation.
 - **Destinataires** : la personne et ses contacts ; toute personne qui a le lien d'une invitation (page publique limitée) ; Supabase.
-- **Durée** : tant que le compte existe ; liens expirés ou annulés 90 jours ; demandes refusées 6 mois.
+- **Durée** : tant que le compte existe ; liens expirés ou annulés : 90 jours après l'expiration ou l'annulation ; demandes refusées 6 mois.
 
 ### T4. Groupes et événements
 
@@ -95,7 +95,7 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Données** : à la liaison, prénom, e-mail, identifiants dans les deux applications, choix d'ouvrir Cave depuis Nous sans mot de passe ; ensuite, pour chaque événement : type, titre, état, dates, lieu, description, thème, prénom de l'organisateur, prénoms et réponses de tous les participants, vins prévus. En retour, la réponse de la personne.
 - **Base légale** : consentement (liaison), retiré en déliant. [À VALIDER : base légale pour les données des autres participants envoyées à Nous]
 - **Destinataires** : Nous, même responsable de traitement. Prévu dans Nous (constat R3, accord de l'éditeur le 27/10/2026, **pas encore en ligne**) : participants et vins lisibles par la seule personne liée, même sur un événement partagé avec le foyer ; le foyer voit le type, le titre, l'état, les dates, le lieu, la description, le thème, le prénom de l'organisateur et la réponse de la personne liée.
-- **Durée** : tant que la liaison existe ; à la suppression du compte ou à la déliaison, les événements vont à la corbeille de Nous (effacés 30 jours après). Prévu dans Nous, **pas encore en ligne** : participants et vins effacés 30 jours après la fin de l'événement (purge à activer par l'éditeur).
+- **Durée** : tant que la liaison existe ; à la suppression du compte ou à la déliaison, les événements vont à la corbeille de Nous (effacés 30 jours après). Prévu dans Nous, **pas encore en ligne** : participants et vins effacés 30 jours après la fin de l'événement (purge à activer par l'éditeur) ; Cave ne les envoie plus passé ce délai (migration 20261102000001, pas encore en ligne).
 
 ### T10. Preuves d'acceptation et consentements
 
@@ -130,6 +130,14 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Destinataires** : l'éditeur ; la CNIL pour un incident à notifier.
 - **Où** : hors du dépôt public, dans `B:\Claude Project\conformite\`.
 - **Durée** : [À VALIDER : durée de conservation du suivi des demandes et du cahier des incidents]
+
+### T14. Journal de l'administration
+
+- **Finalité** : garder la trace des actions de l'administrateur (sécurité, preuve de ce qui a été publié ou réglé), comme Cocon.
+- **Données** : date, compte de l'administrateur, action (publication d'un document légal avec son type, sa version, son titre et son empreinte ; réglages de l'assistant changés ; limites d'un compte, avec le compte visé).
+- **Base légale** : [À VALIDER : intérêt légitime de l'éditeur ?]
+- **Destinataires** : l'administrateur seul, avec la double authentification ; Supabase.
+- **Durée** : 12 mois, puis effacé par la purge de chaque nuit ; impossible à modifier avant (migration 20261102000001, pas encore en ligne au 27/10/2026).
 
 ## Sous-traitants et transferts hors de l'Union européenne
 

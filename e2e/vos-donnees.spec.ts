@@ -8,7 +8,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
-import { email, goto, PASSWORD, signIn, signUp, toast } from './helpers';
+import { answerCode, email, goto, PASSWORD, signIn, signUp, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 
@@ -25,12 +25,13 @@ test.afterAll(async () => {
   contexts = [];
 });
 
-/** Connexion sans attendre l'accueil : la fenêtre des conditions peut s'ouvrir avant. */
+/** Connexion sans attendre l'accueil : la fenêtre des conditions peut s'ouvrir avant (après le code de l'administrateur). */
 async function logIn(page: Page, name: string) {
   await page.goto('/');
   await page.getByLabel('Adresse e-mail').fill(email(name));
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);
   await page.getByRole('button', { name: 'Se connecter' }).last().click();
+  if (name === 'Bruno') await answerCode(page, page.getByRole('heading', { name: 'Conditions d’utilisation' }));
 }
 
 /** Lit une archive ZIP sans compression (celle de l'export) : nom → contenu. */
@@ -53,13 +54,13 @@ function unzip(buf: Buffer) {
 }
 
 async function publish(page: Page, title: string, text: string) {
-  await page.locator('.row', { hasText: title }).getByRole('button', { name: 'Nouvelle version' }).click();
+  await page.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: title }).getByRole('button', { name: 'Nouvelle version' }).click();
   const sheet = page.getByRole('dialog', { name: `${title} : nouvelle version` });
   await sheet.getByLabel(/Texte \(Markdown/).fill(text);
   await sheet.getByRole('button', { name: 'Publier' }).click();
   await page.getByRole('alertdialog', { name: 'Publier ce document ?' }).getByRole('button', { name: 'Publier' }).click();
   await toast(page, 'Document publié');
-  await expect(page.locator('.row', { hasText: title })).toContainText('Version 1');
+  await expect(page.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: title })).toContainText('Version 1');
 }
 
 test('documents : lisibles sans compte, publiés par l’administrateur, jamais avec un emplacement à compléter', async ({ browser }) => {
@@ -74,7 +75,7 @@ test('documents : lisibles sans compte, publiés par l’administrateur, jamais 
   await goto(bruno, '/admin');
   await expect(bruno.getByRole('heading', { name: 'Documents légaux' })).toBeVisible();
   // Le projet de docs/legal se charge sans emplacement ; un texte qui en contient un ne se publie pas.
-  await bruno.locator('.row', { hasText: 'Mentions légales' }).getByRole('button', { name: 'Nouvelle version' }).click();
+  await bruno.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: 'Mentions légales' }).getByRole('button', { name: 'Nouvelle version' }).click();
   const sheet = bruno.getByRole('dialog', { name: 'Mentions légales : nouvelle version' });
   await sheet.getByRole('button', { name: 'Charger le projet (docs/legal)' }).click();
   const text = sheet.getByLabel(/Texte \(Markdown/);
@@ -88,7 +89,7 @@ test('documents : lisibles sans compte, publiés par l’administrateur, jamais 
   await publish(bruno, 'Mentions légales', '## Éditeur\n\nTexte de test des mentions légales.');
   await publish(bruno, 'Politique de confidentialité', '## Vos données\n\nTexte de test de la politique.\n\n- Conversations : 12 mois.');
   await publish(bruno, 'Conditions d’utilisation', '## Objet\n\nConditions de test de Cave & Amis.\n\n## Âge minimum\n\nRéservé aux personnes de 18 ans et plus.');
-  await expect(bruno.locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('0 acceptation');
+  await expect(bruno.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('0 acceptation');
 
   await visitor.reload();
   await expect(visitor.getByText('Conditions de test de Cave & Amis.')).toBeVisible();
@@ -189,5 +190,5 @@ test('l’administrateur accepte à son tour les conditions qu’il a publiées'
   await bruno.getByRole('button', { name: 'J’ai lu' }).click();
   await expect(bruno.getByText(/La politique de confidentialité a été mise à jour/)).toHaveCount(0);
   await goto(bruno, '/admin');
-  await expect(bruno.locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('acceptations');
+  await expect(bruno.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('acceptations');
 });

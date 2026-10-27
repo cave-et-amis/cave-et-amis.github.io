@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { MIGRATIONS_DIR, addWine, as, asService, befriend, createDb, createUser, expectError, one, type Db } from '../helpers/db.ts';
+import { MIGRATIONS_DIR, addWine, as, asAdmin, asService, befriend, createDb, createUser, expectError, one, type Db } from '../helpers/db.ts';
 
 let db: Db;
 let bruno: string; // premier compte : administrateur
@@ -14,14 +14,15 @@ beforeEach(async () => {
   claire = await createUser(db, 'Claire');
 });
 
+// Publication avec le code de double authentification, obligatoire pour administrer (20261102000001).
 const publish = (kind: string, o: { title?: string; content?: string; summary?: string; required?: boolean; who?: string } = {}) =>
-  one<{ id: string }>(db, o.who ?? bruno, `select admin_legal_publish($1, $2, $3, $4, $5) as id`, [
+  asAdmin<{ id: string }>(db, o.who ?? bruno, `select admin_legal_publish($1, $2, $3, $4, $5) as id`, [
     kind,
     o.title ?? `Titre ${kind}`,
     o.content ?? `Texte ${kind}`,
     o.summary ?? '',
     o.required ?? false,
-  ]).then((r) => r.id);
+  ]).then((r) => r[0].id);
 const pending = (who: string) =>
   as<{ kind: string; version: number; mode: string }>(db, who, `select kind, version, mode from legal_pending() order by kind`);
 const accept = (who: string, doc: string, action = 'acceptation', context = 'connexion') =>
@@ -67,15 +68,21 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
     await expectError(asService(db, `delete from legal_documents where id = $1`, [v1]), /legal_immutable/);
   });
 
-  it('double authentification : dès qu’elle est activée, la publication demande une session vérifiée par le code', async () => {
+  it('double authentification obligatoire : sans code activé, pas de publication ; avec un code, une session vérifiée', async () => {
+    const attempt = (aal: 'aal1' | 'aal2', text = 'Texte') =>
+      withClaims(bruno, { aal }, `select admin_legal_publish('cookies', 'Cookies', $1, '', false) as id`, [text]);
+    await expectError(attempt('aal2'), /admin_mfa_required/);
+    // Un code commencé mais pas vérifié ne compte pas.
     await db.query(`insert into auth.mfa_factors (user_id, status) values ($1, 'unverified')`, [bruno]);
-    expect(await publish('cookies')).toBeTruthy();
+    await expectError(attempt('aal2'), /admin_mfa_required/);
     await db.query(`insert into auth.mfa_factors (user_id, status) values ($1, 'verified')`, [bruno]);
-    await expectError(publish('cookies'), /mfa_required/);
-    await expectError(withClaims(bruno, { aal: 'aal1' }, `select admin_legal_publish('cookies', 'Cookies', 'Texte', '', false)`), /mfa_required/);
-    const rows = await withClaims(bruno, { aal: 'aal2' }, `select admin_legal_publish('cookies', 'Cookies', 'Texte 2', '', false) as id`);
-    expect(rows).toHaveLength(1);
-    expect(await count(`legal_documents where kind = 'cookies'`)).toBe(2);
+    await expectError(attempt('aal1'), /mfa_required/);
+    await expectError(as(db, bruno, `select admin_legal_publish('cookies', 'Cookies', 'Texte', '', false)`), /mfa_required/);
+    expect(await attempt('aal2', 'Texte 2')).toHaveLength(1);
+    expect(await count(`legal_documents where kind = 'cookies'`)).toBe(1);
+    // Les statistiques aussi.
+    await expectError(withClaims(bruno, { aal: 'aal1' }, `select * from admin_legal_stats()`), /mfa_required/);
+    expect(await withClaims(bruno, { aal: 'aal2' }, `select kind from admin_legal_stats()`)).toEqual([{ kind: 'cookies' }]);
   });
 
   it('comptes existants : conditions à accepter, politique à lire ; le silence ne vaut pas acceptation', async () => {
@@ -122,7 +129,7 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
       ['cgu', 1, 'acceptation'],
       ['cgu', 1, 'prise_de_connaissance'],
     ]);
-    const stats = await as<{ kind: string; version: number; acceptances: number; acknowledgments: number }>(
+    const stats = await asAdmin<{ kind: string; version: number; acceptances: number; acknowledgments: number }>(
       db,
       bruno,
       `select kind, version, acceptances, acknowledgments from admin_legal_stats() where kind = 'cgu' order by version`,
@@ -283,14 +290,19 @@ describe('durées de conservation (validées le 26/10/2026)', () => {
          ($1, $2, 750, 'unverified', ${ago('25 months')}), ($1, $2, 750, 'unverified', ${ago('23 months')})`,
       [claire, wineId],
     );
-    // Invitations : expirées ou révoquées depuis plus de 90 jours.
-    for (const [status, expires] of [
-      ['pending', ago('91 days')],
-      ['pending', ago('89 days')],
-      ['revoked', 'now() + interval \'10 days\''],
+    // Invitations : expirées ou annulées depuis plus de 90 jours. Les 90 jours d'un lien annulé comptent depuis son
+    // annulation, pas depuis sa création (lien créé il y a 100 jours, annulé il y a 10 jours : gardé).
+    for (const [status, expires, revoked] of [
+      ['pending', ago('91 days'), 'null'],
+      ['pending', ago('89 days'), 'null'],
+      ['revoked', 'now() + interval \'10 days\'', ago('91 days')],
+      ['revoked', 'now() + interval \'10 days\'', ago('10 days')],
     ] as const) {
       const r = await one<{ r: { id: string } }>(db, claire, `select create_invite('discovery') as r`);
-      await db.query(`update friend_invites set status = $2, expires_at = ${expires}, created_at = ${ago('100 days')} where id = $1`, [r.r.id, status]);
+      await db.query(
+        `update friend_invites set status = $2, expires_at = ${expires}, revoked_at = ${revoked}, created_at = ${ago('100 days')} where id = $1`,
+        [r.r.id, status],
+      );
     }
     // Demandes refusées : 6 mois.
     await db.query(
@@ -335,7 +347,7 @@ describe('durées de conservation (validées le 26/10/2026)', () => {
     expect(await count(`ai_usage where user_id = $1`, [claire])).toBe(1);
     expect(await count(`ai_errors where user_id = $1`, [claire])).toBe(1);
     expect(await count(`price_checks where user_id = $1`, [claire])).toBe(1);
-    expect(await count(`friend_invites where inviter_id = $1`, [claire])).toBe(1);
+    expect(await count(`friend_invites where inviter_id = $1`, [claire])).toBe(2);
     expect((await db.query(`select 1 from friend_requests`)).rows).toHaveLength(1);
     expect((await db.query(`select 1 from cellar_access_requests`)).rows).toHaveLength(0);
     expect(await as(db, claire, `select store_name from scan_visits`)).toEqual([{ store_name: 'Cave B' }]);

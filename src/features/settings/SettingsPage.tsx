@@ -88,7 +88,7 @@ export function SettingsPage() {
         </Button>
       </section>
 
-      {me.is_admin && <MfaSection />}
+      <MfaSection admin={me.is_admin} />
 
       <section className="card form" aria-labelledby="h-prefs">
         <h2 id="h-prefs" className="section">
