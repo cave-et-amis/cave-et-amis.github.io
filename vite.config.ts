@@ -9,8 +9,9 @@ function assetManifest(): Plugin {
     apply: 'build',
     generateBundle(_options, bundle) {
       const files = Object.keys(bundle)
-        // Le moteur du studio photo (.wasm, .mjs) n'est pas préchargé : il n'est téléchargé que si l'on s'en sert.
-        .filter((f) => f.startsWith('assets/') && !/\.(wasm|mjs)$/.test(f))
+        // Le moteur du studio photo (.wasm, .mjs) et le dictionnaire des vins (lwin-fr) ne sont pas préchargés : ils ne
+        // sont téléchargés que si l'on s'en sert.
+        .filter((f) => f.startsWith('assets/') && !/\.(wasm|mjs)$/.test(f) && !/^assets\/lwin-fr-/.test(f))
         .sort();
       this.emitFile({ type: 'asset', fileName: 'asset-manifest.json', source: JSON.stringify({ files }) });
     },

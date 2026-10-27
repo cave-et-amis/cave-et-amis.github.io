@@ -6,9 +6,9 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 381 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes) | ✔ 381/381 |
+| Vitest : 390 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN) | ✔ 390/390 |
 | Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 45 parcours téléphone + 3 ordinateur | ✔ 48/48 |
+| Playwright (Microsoft Edge) sur l'export de production : 46 parcours téléphone + 3 ordinateur | ✔ 49/49 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
@@ -28,7 +28,7 @@ utilisateur, droits par défaut des futures migrations.
 | Critère | Tests |
 | --- | --- |
 | Création d'un compte et reconnexion | e2e « création de compte… reconnexion » ; profil, première cave et premier administrateur : `tests/sql/smoke` |
-| Ajout manuel d'un vin | e2e (formulaire court) |
+| Ajout manuel d'un vin | e2e (formulaire court) ; saisie assistée par le dictionnaire des vins : e2e « saisie assistée… (LWIN) » (mots dans le désordre, mention de la licence, champs remplis, suggestions qui reviennent) et `tests/lwin` (conversion des lignes LWIN : producteur, cuvée, appellation et classement, régions en français, accents, effervescents, lignes écartées ; recherche sans accents ni ordre ; fichier produit) |
 | Identification d'une photo avec validation | e2e (champs incertains surlignés, correction avant enregistrement) ; `tests/ai/assistant` (rien n'est enregistré, photo d'un autre refusée) |
 | Plusieurs lots d'un même vin | e2e (second lot, doublon détecté) ; `tests/sql/stock` |
 | Partage sélectif avec un ami | e2e (prix masqué, vin privé invisible) ; `tests/sql/sharing` (masques prix / quantité / notes) |

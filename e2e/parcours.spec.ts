@@ -76,6 +76,29 @@ test('création de compte, ajout manuel, plusieurs lots du même vin, reconnexio
   await expect(bruno.locator('.row').filter({ hasText: 'Château Test' })).toContainText('9');
 });
 
+test('saisie assistée par le dictionnaire des vins (LWIN), sans l’assistant', async () => {
+  await goto(bruno, '/');
+  await bruno.getByRole('button', { name: /Saisir un vin/ }).first().click();
+  // Mots dans le désordre, sans majuscule : la suggestion arrive, avec la mention de la licence.
+  await bruno.getByLabel('Nom du vin').fill('condrieu guigal');
+  const suggestion = bruno.getByRole('listitem').filter({ hasText: 'E. Guigal' }).filter({ hasText: 'Condrieu' }).first();
+  await expect(suggestion).toBeVisible();
+  await expect(bruno.getByText(/base LWIN de Liv-ex, sous licence CC BY 4\.0/)).toBeVisible();
+  await shot(bruno, '02b-suggestions-lwin');
+  await suggestion.click();
+  await expect(bruno.getByLabel('Nom du vin')).toHaveValue('E. Guigal');
+  await expect(bruno.getByText(/Complété d’après le dictionnaire des vins/)).toBeVisible();
+  await expect(bruno.getByRole('listitem').filter({ hasText: 'E. Guigal' })).toHaveCount(0);
+  await bruno.getByText('Plus de détails (facultatif)').click();
+  await expect(bruno.getByLabel('Appellation')).toHaveValue('Condrieu');
+  await expect(bruno.getByLabel('Région')).toHaveValue('Vallée du Rhône');
+  await expect(bruno.getByLabel('Pays')).toHaveValue('France');
+  // Retoucher le nom fait revenir les suggestions ; rien n'est enregistré sans « Ajouter à ma cave ».
+  await bruno.getByLabel('Nom du vin').fill('E. Guigal Cote Rotie');
+  await expect(bruno.getByRole('listitem').filter({ hasText: /Côte.Rôtie/ }).first()).toBeVisible();
+  await bruno.getByRole('button', { name: 'Annuler' }).click();
+});
+
 test('photo d’étiquette identifiée par l’assistant, vérifiée puis corrigée', async () => {
   await goto(bruno, '/');
   await bruno.getByRole('button', { name: /Photographier une étiquette/ }).first().click();

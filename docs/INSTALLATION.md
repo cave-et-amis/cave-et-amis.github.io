@@ -103,6 +103,23 @@ Ouvrez le site et **créez votre compte en premier** : le tout premier compte de
 - Documents légaux : complétez et faites valider les projets de `docs/legal/` (voir son `LISEZMOI.md`), puis publiez-les
   depuis **Administration › Documents légaux**. Rien n'est demandé aux personnes tant qu'aucun document n'est publié.
 
+## Dictionnaire des vins (LWIN, gratuit)
+
+Les suggestions sous « Nom du vin » viennent de la base LWIN de Liv-ex (licence CC BY 4.0 : la mention de la source,
+de la licence et des modifications est affichée avec les suggestions). Seuls les vins français sont gardés, dans
+`src/data/lwin-fr.json` (environ 3,4 Mo, 850 Ko une fois compressé), téléchargé par l'appareil à la première recherche
+seulement ; aucune donnée personnelle, aucun serveur interrogé. Pour le mettre à jour (par exemple chaque trimestre) :
+
+```bash
+curl -L -o LWINdatabase.xlsx https://s3-eu-west-1.amazonaws.com/lwin-dictionary/latest/LWINdatabase.xlsx
+```
+
+```bash
+node scripts/lwin-extract.mjs LWINdatabase.xlsx
+```
+
+puis vérification (`npm run verify`) et mise en ligne du site. Le fichier Excel lui-même n'est pas gardé dans le dépôt.
+
 ## Contrôle anti-robots (Cloudflare Turnstile, gratuit)
 
 1. Cloudflare › Turnstile › « Add widget » : domaine `cave-et-amis.github.io`, mode « Managed » (Cocon a son propre widget).
