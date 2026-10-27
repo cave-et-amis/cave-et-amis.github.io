@@ -73,11 +73,14 @@ test('documents : lisibles sans compte, publiés par l’administrateur, jamais 
   await signIn(bruno, 'Bruno');
   await goto(bruno, '/admin');
   await expect(bruno.getByRole('heading', { name: 'Documents légaux' })).toBeVisible();
-  // Le projet de docs/legal contient des points à compléter ou à faire valider : publication impossible.
+  // Le projet de docs/legal se charge sans emplacement ; un texte qui en contient un ne se publie pas.
   await bruno.locator('.row', { hasText: 'Mentions légales' }).getByRole('button', { name: 'Nouvelle version' }).click();
   const sheet = bruno.getByRole('dialog', { name: 'Mentions légales : nouvelle version' });
   await sheet.getByRole('button', { name: 'Charger le projet (docs/legal)' }).click();
-  await expect(sheet.getByLabel(/Texte \(Markdown/)).toHaveValue(/\[À (COMPLÉTER|VALIDER)/);
+  const text = sheet.getByLabel(/Texte \(Markdown/);
+  await expect(text).toHaveValue(/Hébergement du site/);
+  await expect(text).not.toHaveValue(/\[À (COMPLÉTER|VALIDER)/);
+  await text.fill('## Éditeur\n\nClause de test. [À VALIDER : point de test]');
   await expect(sheet.getByText(/emplacements? à compléter ou à faire valider/)).toBeVisible();
   await expect(sheet.getByRole('button', { name: 'Publier' })).toBeDisabled();
   await sheet.getByRole('button', { name: 'Fermer' }).click();
