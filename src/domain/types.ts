@@ -221,6 +221,8 @@ export type RelationOverview = {
 };
 
 export type Preferences = {
+  /** Apparence choisie (par défaut : sombre). */
+  theme?: 'sombre' | 'clair' | 'auto';
   /** Affiche d'emblée les champs avancés des formulaires. */
   advanced?: boolean;
   /** Visibilité proposée par défaut pour les nouveaux lots (toujours « privé » si absent). */

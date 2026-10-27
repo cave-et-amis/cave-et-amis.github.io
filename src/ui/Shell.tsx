@@ -22,6 +22,7 @@ import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
 import { Avatar, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 import { lazyPage } from './lazyPage';
+import { applyTheme, DEFAULT_THEME, isTheme } from './theme';
 import { PageBoundary } from './PageBoundary';
 
 // Pages chargées à leur première visite (l'accueil et la cave restent dans le premier chargement).
@@ -104,6 +105,12 @@ function ShellInner() {
   );
 
   const pathOnly = route.split('?')[0];
+  // Apparence choisie dans les Réglages ; à la déconnexion, retour au thème par défaut.
+  const theme = isTheme(me.preferences?.theme) ? me.preferences.theme : DEFAULT_THEME;
+  useEffect(() => {
+    applyTheme(theme);
+    return () => applyTheme(DEFAULT_THEME);
+  }, [theme]);
   // Changement d'écran : retour en haut et fondu d'apparition (transparence seule : la page ne bouge pas sous le doigt).
   const pageFade = useAnimationControls();
   useEffect(() => {

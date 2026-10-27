@@ -7,7 +7,10 @@ import { App, ConfigProblem, Framed } from './App';
 import { readConfig } from './config';
 import { Api } from './data/api';
 import { MotionProvider } from './ui/motion';
+import { applyTheme, DEFAULT_THEME } from './ui/theme';
 
+// Thème par défaut dès le premier affichage ; celui du compte s'applique une fois la personne connectée.
+applyTheme(DEFAULT_THEME);
 const root = createRoot(document.getElementById('root')!);
 
 function boot() {

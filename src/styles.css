@@ -1,7 +1,8 @@
-/* Cave & Amis — styles. Crème et bordeaux, touches dorées discrètes. Pensé pour le téléphone :
+/* Cave & Amis — styles. Thème « Clair-Obscur » par défaut (sombre, bordeaux, ivoire), thème clair crème et bordeaux au choix. Pensé pour le téléphone :
    grands boutons (44 px minimum), textes lisibles, contrastes AA ; agréable sur ordinateur (navigation latérale). */
 
-:root {
+:root,
+:root[data-theme='clair'] {
   color-scheme: light;
   --bg: #f8f3ea;
   --bg-deep: #f1e8d9;
@@ -16,6 +17,9 @@
   --primary-strong: #5e1426;
   --primary-ink: #ffffff;
   --primary-soft: #f4e2e4;
+  --fill: #7b1e34;
+  --fill-strong: #5e1426;
+  --fill-ink: #ffffff;
   --gold: #b08a3e;
   --gold-ink: #7a5a1c;
   --gold-soft: #f5ebd3;
@@ -42,36 +46,74 @@
   --font-title: 'Fraunces Variable', 'Fraunces', Georgia, 'Times New Roman', serif;
 }
 
+/* Clair-Obscur : le thème par défaut (fond de cave, bordeaux pour les gestes qui comptent, ivoire pour lire). */
+:root[data-theme='sombre'] {
+  color-scheme: dark;
+  --bg: #120a0b;
+  --bg-deep: #0c0607;
+  --surface: #1c1213;
+  --surface-2: #241819;
+  --border: #36272a;
+  --border-strong: #4b383b;
+  --ink: #f7eee7;
+  --ink-2: #d5c5bd;
+  --ink-3: #ad9a93;
+  --primary: #ec9fae;
+  --primary-strong: #f6bcc7;
+  --primary-ink: #2a0d14;
+  --primary-soft: #36171f;
+  --fill: #8f1d36;
+  --fill-strong: #a72a47;
+  --fill-ink: #ffffff;
+  --gold: #d3b06c;
+  --gold-ink: #e3c47f;
+  --gold-soft: #33291a;
+  --success: #7cc98f;
+  --success-soft: #1a2f22;
+  --danger: #f28b7f;
+  --danger-soft: #3d1c19;
+  --warn: #e8bb62;
+  --warn-soft: #362a12;
+  --info: #8ab4e8;
+  --info-soft: #1a2839;
+  --wine-rouge: #c4495d;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.55);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root[data-theme='auto'] {
     color-scheme: dark;
-    --bg: #1a1214;
-    --bg-deep: #140d0f;
-    --surface: #241a1c;
-    --surface-2: #2b2023;
-    --border: #3b2d30;
-    --border-strong: #4d3b3f;
-    --ink: #f5ece4;
-    --ink-2: #d0c0b7;
-    --ink-3: #ab9890;
-    --primary: #e08a9b;
-    --primary-strong: #f0a5b3;
+    --bg: #120a0b;
+    --bg-deep: #0c0607;
+    --surface: #1c1213;
+    --surface-2: #241819;
+    --border: #36272a;
+    --border-strong: #4b383b;
+    --ink: #f7eee7;
+    --ink-2: #d5c5bd;
+    --ink-3: #ad9a93;
+    --primary: #ec9fae;
+    --primary-strong: #f6bcc7;
     --primary-ink: #2a0d14;
-    --primary-soft: #3d1f27;
-    --gold: #d8b26a;
+    --primary-soft: #36171f;
+    --fill: #8f1d36;
+    --fill-strong: #a72a47;
+    --fill-ink: #ffffff;
+    --gold: #d3b06c;
     --gold-ink: #e3c47f;
-    --gold-soft: #3a2f1a;
+    --gold-soft: #33291a;
     --success: #7cc98f;
-    --success-soft: #1d3324;
+    --success-soft: #1a2f22;
     --danger: #f28b7f;
-    --danger-soft: #3f1e1a;
+    --danger-soft: #3d1c19;
     --warn: #e8bb62;
-    --warn-soft: #3a2c12;
+    --warn-soft: #362a12;
     --info: #8ab4e8;
-    --info-soft: #1b2a3c;
+    --info-soft: #1a2839;
     --wine-rouge: #c4495d;
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 20px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.5);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 14px 44px rgba(0, 0, 0, 0.55);
   }
 }
 
@@ -127,8 +169,8 @@ a {
   z-index: 1000;
   padding: 10px 14px;
   border-radius: 10px;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   font-weight: 700;
   transform: translateY(-200%);
 }
@@ -282,8 +324,8 @@ a {
   height: 18px;
   padding: 0 5px;
   border-radius: 9px;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   font-size: 0.7rem;
   font-weight: 800;
   display: grid;
@@ -302,8 +344,8 @@ a {
   padding: 0 22px 0 18px;
   border-radius: 28px;
   border: 0;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   font-weight: 750;
   font-size: 1rem;
   box-shadow: var(--shadow-lg);
@@ -429,12 +471,12 @@ a {
 }
 
 .btn-primary {
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: var(--primary-strong);
+  background: var(--fill-strong);
 }
 
 .btn-secondary {
@@ -845,8 +887,8 @@ hr.sep {
 
 /* Héros d'accueil */
 .hero {
-  background: linear-gradient(140deg, var(--primary) 0%, var(--primary-strong) 100%);
-  color: var(--primary-ink);
+  background: linear-gradient(140deg, var(--fill) 0%, var(--fill-strong) 100%);
+  color: var(--fill-ink);
   border-radius: var(--radius);
   padding: 20px 18px;
   position: relative;
@@ -876,9 +918,14 @@ hr.sep {
   margin-top: 4px;
 }
 
+:root[data-theme='sombre'] .hero {
+  background: linear-gradient(140deg, #5a1a29 0%, #2a0c13 100%);
+  color: #f8ece6;
+}
+
 @media (prefers-color-scheme: dark) {
-  .hero {
-    background: linear-gradient(140deg, #5a1a29 0%, #3a1019 100%);
+  :root[data-theme='auto'] .hero {
+    background: linear-gradient(140deg, #5a1a29 0%, #2a0c13 100%);
     color: #f8ece6;
   }
 }
@@ -1115,9 +1162,9 @@ textarea.input {
 }
 
 .chip[aria-pressed='true'] {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  border-color: var(--fill);
+  color: var(--fill-ink);
 }
 
 .segmented {
@@ -1495,9 +1542,9 @@ details.advanced .form {
 .subtabs [aria-current='true'],
 .subtabs [aria-pressed='true'],
 .subtabs [aria-selected='true'] {
-  background: var(--primary);
-  color: var(--primary-ink);
-  border-color: var(--primary);
+  background: var(--fill);
+  color: var(--fill-ink);
+  border-color: var(--fill);
 }
 
 /* ───────────── Fiche de vin ───────────── */
@@ -1621,8 +1668,8 @@ details.advanced .form {
 
 .bubble.user {
   align-self: flex-end;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   border-bottom-right-radius: 6px;
   white-space: pre-wrap;
 }
@@ -1887,7 +1934,7 @@ details.advanced .form {
 .meter > span {
   display: block;
   height: 100%;
-  background: var(--primary);
+  background: var(--fill);
   border-radius: 6px;
 }
 
@@ -1979,8 +2026,8 @@ table.data th {
   height: 17px;
   padding: 0 4px;
   border-radius: 9px;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   font-size: 11px;
   font-weight: 800;
   line-height: 17px;
@@ -2199,7 +2246,7 @@ details.fold:not([open]) > summary::after {
 .tour-progress span {
   display: block;
   height: 100%;
-  background: var(--primary);
+  background: var(--fill);
   transition: width 0.25s;
 }
 .tour-actions {
@@ -2303,7 +2350,7 @@ details.help-topic:not([open]) > summary::after {
   cursor: pointer;
 }
 .dots button[aria-current='true'] {
-  background: var(--primary);
+  background: var(--fill);
   width: 22px;
   border-radius: 5px;
 }
@@ -2394,8 +2441,8 @@ details.help-topic:not([open]) > summary::after {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--primary);
-  color: var(--primary-ink);
+  background: var(--fill);
+  color: var(--fill-ink);
   font-weight: 700;
 }
 .cmp-facts {

@@ -5,7 +5,8 @@ import { toMessage } from '../../domain/errors';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
-import { Button, Check, Field, Notice, Sheet, useConfirm, useToast } from '../../ui/kit';
+import { Button, Check, Field, Notice, Segmented, Sheet, useConfirm, useToast } from '../../ui/kit';
+import { applyTheme, DEFAULT_THEME, THEMES, type Theme } from '../../ui/theme';
 import { go } from '../../ui/router';
 import { useCaptcha } from '../auth/Captcha';
 import { useAiStatus } from '../cellar/LabelScan';
@@ -110,6 +111,15 @@ export function SettingsPage() {
         <h2 id="h-display" className="section">
           Affichage
         </h2>
+        <Segmented<Theme>
+          label="Apparence"
+          options={THEMES}
+          value={prefs.theme ?? DEFAULT_THEME}
+          onChange={(theme) => {
+            applyTheme(theme);
+            void savePrefs({ theme });
+          }}
+        />
         <Check
           checked={showShared}
           onChange={async (v) => {
