@@ -1,6 +1,6 @@
 # Projets de documents juridiques de Cave & Amis
 
-Ces quatre textes sont des **projets**, préparés après l'audit de sécurité et RGPD du 26 octobre 2026 et les réponses de l'éditeur aux questions communes avec Cocon. Ce ne sont pas des avis juridiques : ils doivent être complétés, puis relus par un juriste avant toute publication.
+Ces quatre textes sont des **projets**, préparés après l'audit de sécurité et RGPD du 26 octobre 2026 et les réponses de l'éditeur aux questions communes avec Cocon. Ce ne sont pas des avis juridiques. Ils ont été complétés, et leurs points juridiques décidés par l'éditeur lui-même le 27/10/2026, sans relecture par un juriste (voir plus bas).
 
 - `cgu.md` : conditions d'utilisation (acceptation demandée, case jamais cochée d'avance, 18 ans au moins).
 - `confidentialite.md` : politique de confidentialité (simple information, jamais un « consentement »).
@@ -19,32 +19,28 @@ Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l
 
 Les trois emplacements ont été complétés le 27/10/2026 : préavis de 30 jours avant un arrêt du service (conditions d'utilisation), sauvegardes gardées 3 mois au plus, journaux des hébergeurs (Supabase : « Log retention (API & Database) : 1 day » sur https://supabase.com/pricing pour l'offre gratuite ; GitHub : aucune durée publiée, d'après https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement, consultés le 27/10/2026). Il n'en reste plus.
 
-L'adresse de contact dédiée, commune aux deux applications, est cocon.cave@gmail.com (confirmée par l'éditeur le 26/10/2026). Les dénominations, adresses, contrats de sous-traitance, garanties de transfert et la conservation chez Anthropic sont déjà repris des pages officielles des prestataires, relevées le 26/10/2026 dans la note `prestataires-infos-officielles.md` (hors du dépôt, avec l'adresse de chaque page). Revérifiez-les au moment de publier : ces pages changent. Aucun des hébergeurs ne publie de numéro de téléphone (point à valider pour la LCEN).
+L'adresse de contact dédiée, commune aux deux applications, est cocon.cave@gmail.com (confirmée par l'éditeur le 26/10/2026). Les dénominations, adresses, contrats de sous-traitance, garanties de transfert et la conservation chez Anthropic sont déjà repris des pages officielles des prestataires, relevées le 26/10/2026 dans la note `prestataires-infos-officielles.md` (hors du dépôt, avec l'adresse de chaque page). Revérifiez-les au moment de publier : ces pages changent. Aucun des hébergeurs ne publie de numéro de téléphone : les mentions légales le disent.
 
-## Ce qu'il faut faire valider par un juriste
+## Points juridiques : décidés par l'éditeur, sans juriste
 
-Chaque mention « [À VALIDER : …] » signale une clause à faire vérifier. Retirez-la une fois le point validé, avant la publication.
+Le 27/10/2026, l'éditeur a choisi de ne pas attendre un juriste. Les 27 mentions « [À VALIDER] » des quatre textes ont été passées en revue une par une avec lui, risque par risque, et retirées seulement sur sa décision. **Aucun de ces points n'a été vérifié par un juriste** : ce choix ne rend pas l'application conforme. La liste complète reste dans `questions-pour-le-juriste.md`, pour une relecture plus tard.
 
-- **Option d'anonymat** de la LCEN pour un éditeur non professionnel (mentions légales), et son articulation avec l'article 13 du RGPD (identité du responsable dans la politique de confidentialité).
-- **Hébergeurs** : entité de GitHub à citer, et absence de numéro de téléphone publié par GitHub et Supabase.
-- **Contrats et garanties** : contrat de sous-traitance de GitHub (« GitHub Customer Agreement » signé par l'éditeur le 27/10/2026 dans les paramètres de l'organisation `cave-et-amis`, alors que GitHub présente cette formule « Corporate » comme destinée aux entreprises et la formule « Standard » aux particuliers : valider que ce choix convient à un éditeur personne physique, et le nom de l'entité signataire), rôle des services de notification, fiches du « Data Privacy Framework » à contrôler dans un navigateur, formulation sur la conservation chez Anthropic.
-- **Gratuité** et caractère non commercial du service.
-- **Âge minimum** de 18 ans et message sanitaire sur l'alcool.
-- **Limitation de responsabilité**, dans les limites permises par la loi.
-- **Droit applicable** et juridiction compétente.
-- **Absence de délégué** à la protection des données.
-- **Engagement de l'éditeur** sur son accès technique aux données.
-- **Bases légales** de chaque traitement, en particulier pour les données d'autres personnes envoyées à Anthropic et à Nous.
-- **Journaux des hébergeurs** : absence de durée publiée par GitHub, et sens de la durée d'un jour affichée par Supabase (stockage ou consultation).
-- **Durée de 5 ans** de conservation des preuves après la suppression d'un compte.
-- **Comptes inactifs** : durée d'inactivité avant suppression, après avoir prévenu la personne.
-- **Stockage sur l'appareil** : qualification de « strictement nécessaire » (page cookies).
-- **Directives après le décès** (loi Informatique et Libertés).
-- **Prestataires à venir** : ajouter Brevo (e-mails) et Cloudflare Turnstile (anti-robots) s'ils sont en place au moment de la publication.
+Décisions prises (27/10/2026) :
+
+- Mentions légales : anonymat gardé (identité enregistrée chez GitHub et Supabase, selon l'éditeur) ; directeur de la publication « l'éditeur, personne physique » ; GitHub, Inc. et Supabase cités avec « ne publie pas de numéro de téléphone ».
+- Cookies : aucun bandeau, budget du scanner et propositions de Lia compris.
+- Politique : responsable anonyme joignable par e-mail ; aucun délégué ; bases légales gardées, avec l'intérêt légitime ajouté pour les données des autres personnes envoyées à Anthropic et à Nous ; formulation prudente sur Anthropic ; contrat GitHub signé ; services de notification décrits sans contrat ; Data Privacy Framework de GitHub, Google LLC et Microsoft Corporation vérifié actif sur la liste officielle le 27/10/2026 ; preuves 5 ans ; aucune suppression automatique des comptes inactifs ; journaux des hébergeurs tels que publiés ; directives après le décès par e-mail.
+- Conditions : gratuité et usage entre proches ; 18 ans par case à cocher ; message sanitaire gardé ; « dans les limites permises par la loi » ajouté à la clause de responsabilité ; droit français, sans tribunal désigné.
+
+À refaire plus tard :
+
+- **Brevo et Cloudflare Turnstile** ne sont pas cités : publiez une nouvelle version de la politique **avant** d'activer l'un ou l'autre.
+- **Comptes inactifs** : y revenir quand les e-mails marcheront (prévenir avant de supprimer).
+- **Data Privacy Framework** : les adhésions se renouvellent chaque année ; revérifiez-les à chaque nouvelle version.
 
 ## Comment publier
 
-1. Complétez les emplacements et faites valider les clauses ci-dessus.
+1. Vérifiez qu'aucun emplacement ne reste (c'est le cas au 27/10/2026) et que les conditions ci-dessus (priorité 2, liaison Nous, lots 2 et 4 de Cocon) sont remplies.
 2. Dans Cave & Amis : Administration › Documents légaux › « Nouvelle version » du document.
 3. Cliquez sur « Charger le projet (docs/legal) » : le texte de ce dossier s'affiche. Remplacez chaque emplacement ; le bouton « Aperçu » montre le rendu. Tant qu'il reste un « [À COMPLÉTER » ou un « [À VALIDER », la publication est refusée (par l'application et par la base).
 4. Indiquez en quelques mots ce qui change (pour la première version : « Première version »).
