@@ -104,6 +104,12 @@ export function SettingsPage() {
             ))}
           </select>
         </Field>
+        <Check
+          checked={Boolean(prefs.maturity_alerts)}
+          onChange={(maturity_alerts) => void savePrefs({ maturity_alerts })}
+          label="M’alerter quand un vin de ma cave entre dans sa période de dégustation (et l’année où elle se termine)"
+          hint="Seulement pour les vins dont la fiche indique une période (la vôtre, une source ou une estimation de Lia) ; l’alerte précise laquelle. Une fois par an et par vin, dans les notifications et sur vos appareils si vous les avez activés."
+        />
         <Check checked={Boolean(prefs.advanced)} onChange={(advanced) => void savePrefs({ advanced })} label="Ouvrir d’emblée les champs avancés des formulaires" hint="Pour les amateurs qui renseignent tout (domaine, cépages, conseils…)." />
       </section>
 

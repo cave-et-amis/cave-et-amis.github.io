@@ -44,7 +44,10 @@ export type AppNotification = {
     | 'cellar_opened'
     | 'cellar_access_request'
     /** Compte relié à un agenda Nous (actor_name : prénom du compte Nous). */
-    | 'nous_linked';
+    | 'nous_linked'
+    /** Alertes de maturité (actor_name : nom du vin ; ref_id : le vin). */
+    | 'maturity_ready'
+    | 'maturity_last';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;
@@ -221,6 +224,8 @@ export type RelationOverview = {
 };
 
 export type Preferences = {
+  /** Alertes de maturité demandées (désactivées par défaut). */
+  maturity_alerts?: boolean;
   /** Apparence choisie (par défaut : sombre). */
   theme?: 'sombre' | 'clair' | 'auto';
   /** Affiche d'emblée les champs avancés des formulaires. */

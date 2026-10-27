@@ -38,6 +38,11 @@ export function notificationText(n: Source): { text: string; href: string } {
         text: `Votre compte est relié à ${n.actor_name ? `l’agenda Nous de ${n.actor_name}` : 'un agenda Nous'}. Ce n’est pas vous ? Déliez-le dans les Réglages.`,
         href: '#/reglages',
       };
+    // Alertes de maturité (facultatives) : le nom du vin est figé dans actor_name, le vin dans ref_id.
+    case 'maturity_ready':
+      return { text: `${n.actor_name || 'Un vin de votre cave'} entre dans sa période de dégustation, d’après sa fiche`, href: n.ref_id ? `#/cave/vin/${n.ref_id}` : '#/cave?tri=maturite' };
+    case 'maturity_last':
+      return { text: `${n.actor_name || 'Un vin de votre cave'} : dernière année de sa période de dégustation, d’après sa fiche`, href: n.ref_id ? `#/cave/vin/${n.ref_id}` : '#/cave?tri=maturite' };
     default:
       return { text: 'Vous avez une nouvelle notification', href: '#/notifications' };
   }

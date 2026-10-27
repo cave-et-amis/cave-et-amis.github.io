@@ -3,13 +3,20 @@
  * d'invitation utilisé, cave ouverte, compte relié à un agenda Nous. Marquées lues à l'ouverture.
  */
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Bell, CalendarHeart, CalendarPlus, Eye, KeyRound, Link2, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
+import { Bell, CalendarHeart, Hourglass, CalendarPlus, Eye, KeyRound, Link2, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
 import { notificationText, type NotificationKind } from '../../domain/notifications';
 import { Button, EmptyState } from '../../ui/kit';
 import { go } from '../../ui/router';
+
+const WINDOW_ORIGINS: Record<string, string> = {
+  ai: '≈ période estimée par Lia',
+  source: 'période indiquée par une source',
+  personal: 'votre période',
+  general: '≈ repère général',
+};
 import { PushOffer } from '../push/PushSettings';
 
 const ICONS: Record<NotificationKind, ReactNode> = {
@@ -24,6 +31,8 @@ const ICONS: Record<NotificationKind, ReactNode> = {
   cellar_opened: <KeyRound />,
   cellar_access_request: <Eye />,
   nous_linked: <Link2 />,
+  maturity_ready: <Hourglass />,
+  maturity_last: <Hourglass />,
 };
 
 function describe(n: AppNotification): { text: string; href: string; icon: ReactNode } {
@@ -32,6 +41,12 @@ function describe(n: AppNotification): { text: string; href: string; icon: React
 
 export function NotificationsPage() {
   const { snapshot, api, run, relation } = useStore();
+  // Alerte de maturité : d'où vient la période (estimation ou information de la fiche).
+  const origin = (n: AppNotification) => {
+    if (n.kind !== 'maturity_ready' && n.kind !== 'maturity_last') return null;
+    const source = snapshot.wines.find((w) => w.id === n.ref_id)?.window_source;
+    return source ? WINDOW_ORIGINS[source] : null;
+  };
   const unread = snapshot.notifications.some((n) => !n.read_at);
   const marked = useRef(false);
 
@@ -106,7 +121,10 @@ export function NotificationsPage() {
             </span>
             <span className="row-main">
               <span className="row-title">{d.text}</span>
-              <span className="row-sub">{dateShort(n.created_at)}</span>
+              <span className="row-sub">
+                {dateShort(n.created_at)}
+                {origin(n) ? ` · ${origin(n)}` : ''}
+              </span>
             </span>
             {!n.read_at && <span className="pill primary">Nouveau</span>}
           </a>
