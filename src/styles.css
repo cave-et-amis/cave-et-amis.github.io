@@ -120,6 +120,25 @@ a {
   outline-offset: 2px;
 }
 
+.skip-link {
+  position: fixed;
+  top: calc(8px + env(safe-area-inset-top));
+  left: 8px;
+  z-index: 1000;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--primary-ink);
+  font-weight: 700;
+  transform: translateY(-200%);
+}
+.skip-link:focus {
+  transform: none;
+}
+#contenu:focus {
+  outline: none;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
@@ -1486,7 +1505,8 @@ details.advanced .form {
 }
 
 .subtabs [aria-current='true'],
-.subtabs [aria-pressed='true'] {
+.subtabs [aria-pressed='true'],
+.subtabs [aria-selected='true'] {
   background: var(--primary);
   color: var(--primary-ink);
   border-color: var(--primary);

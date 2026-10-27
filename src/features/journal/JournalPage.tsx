@@ -89,7 +89,7 @@ export function JournalPage() {
       </FirstTip>
       <div className="subtabs" role="tablist" aria-label="Sections du carnet">
         {TABS.map((t) => (
-          <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} aria-pressed={tab === t.value} onClick={() => setTab(t.value)}>
+          <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}>
             {t.label}
           </button>
         ))}

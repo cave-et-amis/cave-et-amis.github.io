@@ -16,6 +16,7 @@ import { TastingFormSheet, type TastingPrefill } from '../features/journal/Tasti
 import { WishFormSheet, type WishPrefill } from '../features/journal/WishForm';
 import { LegalNotice } from '../features/legal/LegalGate';
 import { LegalPage } from '../features/legal/LegalViews';
+import { PrivacyPage } from '../features/legal/PrivacyPage';
 import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
 import { Avatar, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
@@ -37,7 +38,6 @@ const CellarsPage = lazyPage(() => import('../features/settings/CellarsPage'), '
 const WhoSeesPage = lazyPage(() => import('../features/settings/WhoSeesPage'), 'WhoSeesPage');
 const AdminPage = lazyPage(() => import('../features/admin/AdminPage'), 'AdminPage');
 const LegalAdmin = lazyPage(() => import('../features/admin/LegalAdmin'), 'LegalAdmin');
-const PrivacyPage = lazyPage(() => import('../features/legal/PrivacyPage'), 'PrivacyPage');
 const ScannerPage = lazyPage(() => import('../features/scanner/ScannerPage'), 'ScannerPage');
 const ScanPage = lazyPage(() => import('../features/scanner/ScanPage'), 'ScanPage');
 const ScanHistory = lazyPage(() => import('../features/scanner/ScanHistory'), 'ScanHistory');
@@ -287,6 +287,17 @@ function ShellInner() {
   return (
     <ActionsContext.Provider value={actions}>
       <div className="app">
+        {/* Clavier : passer directement au contenu (le lien ne change pas d'écran). */}
+        <a
+          className="skip-link"
+          href="#contenu"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('contenu')?.focus();
+          }}
+        >
+          Aller au contenu
+        </a>
         <nav className="sidenav" aria-label="Navigation principale">
           <div className="brand-small">
             <img src="./icon.svg" alt="" width={34} height={34} />
@@ -354,7 +365,7 @@ function ShellInner() {
             </span>
           </div>
         </header>
-        <main className="page" id="contenu">
+        <main className="page" id="contenu" tabIndex={-1}>
           {seg[0] === undefined && <ResumeTour />}
           <LegalNotice />
           <Suspense fallback={<InlineLoading />}>{page}</Suspense>
