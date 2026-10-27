@@ -6,7 +6,7 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 409 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN, garde-fous de la base) | ✔ 409/409 |
+| Vitest : 416 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN, garde-fous de la base) | ✔ 416/416 |
 | Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
 | Playwright (Microsoft Edge) sur l'export de production : 50 parcours téléphone + 3 ordinateur, dont l'accessibilité (axe-core) | ✔ 53/53 |
 
