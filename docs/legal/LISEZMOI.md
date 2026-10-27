@@ -34,7 +34,7 @@ Décisions prises (27/10/2026) :
 
 À refaire plus tard :
 
-- **Brevo et Cloudflare Turnstile** ne sont pas cités : publiez une nouvelle version de la politique **avant** d'activer l'un ou l'autre.
+- **Brevo** a été activé le 27/10/2026 (e-mails de connexion) avant la publication de la politique : le projet de politique le cite désormais (« Les e-mails de connexion », prestataires, transferts), avec des points « [À VALIDER] » à relire avant de la publier. **Cloudflare Turnstile** n'est pas cité : publiez une nouvelle version de la politique **avant** de l'activer.
 - **Comptes inactifs** : y revenir quand les e-mails marcheront (prévenir avant de supprimer).
 - **Data Privacy Framework** : les adhésions se renouvellent chaque année ; revérifiez-les à chaque nouvelle version.
 

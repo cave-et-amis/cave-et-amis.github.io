@@ -29,10 +29,20 @@ Durée : environ 45 minutes, sans écrire de code. Trois services :
    équipe Supabase. En ligne : Brevo (`smtp-relay.brevo.com`, port 587, clé SMTP « Cave », expéditeur
    cocon.cave@gmail.com, nom « Cave & Amis »). Un expéditeur Gmail passe mal chez Gmail : premiers e-mails trouvés
    dans la corbeille ; une adresse sur un nom de domaine à soi serait plus sûre.
-7. **Authentication › Emails › Templates › Reset Password** : remplacez le modèle par celui de
-   `docs/emails/reinitialisation.html` (sujet : « Cave & Amis : choisir un nouveau mot de passe »), après la mise en ligne
-   d'un site qui sait lire ce lien (`?auth=recovery&token_hash=…`). Ce lien est vérifié par l'application : il marche sur
-   n'importe quel appareil, alors que le lien par défaut de Supabase ne marche que dans le navigateur de la demande.
+7. **Authentication › Emails › Templates** : remplacez les modèles par ceux de `docs/emails/`, après la mise en ligne
+   d'un site qui sait lire leurs liens (`?auth=<type>&token_hash=…`). Ces liens sont vérifiés par l'application : ils
+   marchent sur n'importe quel appareil, alors que le lien par défaut de Supabase ne marche que dans le navigateur de la
+   demande.
+
+   | Modèle Supabase | Fichier | Sujet |
+   | --- | --- | --- |
+   | Reset Password | `reinitialisation.html` | Cave & Amis : choisir un nouveau mot de passe |
+   | Confirm signup | `confirmation-inscription.html` | Cave & Amis : confirmez votre adresse e-mail |
+   | Change Email Address | `changement-adresse.html` | Cave & Amis : changement d'adresse e-mail |
+
+8. **Authentication › Sign In / Providers › Email** : *Confirm email* activé (sinon, on peut s'inscrire avec l'adresse
+   de quelqu'un d'autre) ; *Secure email change* activé (le changement d'adresse demande les deux liens). Les comptes
+   déjà inscrits ne sont pas touchés.
 
 ## 2. Fonction serveur de l'assistant
 

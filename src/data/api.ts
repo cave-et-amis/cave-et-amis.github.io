@@ -179,6 +179,43 @@ export class Api {
     return error ? null : data.session;
   }
 
+  /** Lien de confirmation d'inscription : ouvre la session du compte confirmé ; null si le lien n'est plus valable. */
+  async verifySignup(tokenHash: string): Promise<Session | null> {
+    const { data, error } = await this.sb.auth.verifyOtp({ type: 'email', token_hash: tokenHash });
+    return error ? null : data.session;
+  }
+
+  /**
+   * Lien de changement d'adresse. « done » : changement fait (session à jour) ; « other » : lien accepté, il reste à ouvrir
+   * celui envoyé à l'autre adresse (les deux sont exigés) ; « expired » : lien plus valable.
+   */
+  async verifyEmailChange(tokenHash: string): Promise<{ result: 'done'; session: Session } | { result: 'other' | 'expired' }> {
+    const { data, error } = await this.sb.auth.verifyOtp({ type: 'email_change', token_hash: tokenHash });
+    if (error) return { result: 'expired' };
+    return data.session ? { result: 'done', session: data.session } : { result: 'other' };
+  }
+
+  /**
+   * Changer d'adresse e-mail : Supabase envoie un lien à la nouvelle adresse et un à l'actuelle ; le changement se fait
+   * quand les deux sont ouverts. Rien ne change d'ici là.
+   */
+  async changeEmail(newEmail: string) {
+    const { error } = await this.sb.auth.updateUser({ email: newEmail.trim() });
+    if (error) throw error;
+  }
+
+  /** Nouvelle adresse en attente de confirmation (null : aucune). */
+  async pendingEmail(): Promise<string | null> {
+    const { data } = await this.sb.auth.getUser();
+    return (data.user as { new_email?: string | null } | null)?.new_email ?? null;
+  }
+
+  /** Nouveau lien de confirmation d'inscription (adresse pas encore confirmée). */
+  async resendConfirmation(email: string, captchaToken?: string | null) {
+    const { error } = await this.sb.auth.resend({ type: 'signup', email: email.trim(), options: this.captcha(captchaToken) });
+    if (error) throw error;
+  }
+
   /** Prénom affiché du compte connecté (null s'il n'a pas pu être lu). */
   async displayName(userId: string): Promise<string | null> {
     const { data } = await this.sb.from('profiles').select('display_name').eq('id', userId).maybeSingle();

@@ -6,9 +6,9 @@ Commande unique : `npm run verify` (rapport `reports/verification.json`). Derni�
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 395 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN) | ✔ 395/395 |
+| Vitest : 397 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN) | ✔ 397/397 |
 | Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 47 parcours téléphone + 3 ordinateur | ✔ 50/50 |
+| Playwright (Microsoft Edge) sur l'export de production : 48 parcours téléphone + 3 ordinateur | ✔ 51/51 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
