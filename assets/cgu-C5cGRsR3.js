@@ -6,7 +6,7 @@ Cave & Amis est une application web pour gérer sa cave à vin et la partager av
 
 Ces conditions fixent les règles d'utilisation de Cave & Amis entre vous et l'éditeur, présenté dans les mentions légales.
 
-Cave & Amis est mis à disposition gratuitement, sans publicité, pour un usage personnel entre proches. [À VALIDER : gratuité et caractère non commercial du service]
+Cave & Amis est mis à disposition gratuitement, sans publicité, pour un usage personnel entre proches.
 
 ## Acceptation des conditions
 
@@ -17,8 +17,8 @@ Cave & Amis est mis à disposition gratuitement, sans publicité, pour un usage 
 
 ## Âge minimum
 
-- Cave & Amis est consacré au vin : il est réservé aux personnes de 18 ans et plus. En créant un compte ou en acceptant ces conditions, vous déclarez avoir 18 ans ou plus. [À VALIDER : âge minimum de 18 ans et façon de le vérifier]
-- L'abus d'alcool est dangereux pour la santé. À consommer avec modération. [À VALIDER : opportunité de ce message sanitaire pour une application sans publicité]
+- Cave & Amis est consacré au vin : il est réservé aux personnes de 18 ans et plus. En créant un compte ou en acceptant ces conditions, vous déclarez avoir 18 ans ou plus.
+- L'abus d'alcool est dangereux pour la santé. À consommer avec modération.
 
 ## Accès au service
 
@@ -88,13 +88,13 @@ Vous restez responsable des contenus que vous ajoutez et partagez. Vous pouvez b
 
 - Cave & Amis est fourni tel quel. L'éditeur fait de son mieux pour qu'il fonctionne, sans garantir qu'il soit toujours disponible ni exempt d'erreurs. Il peut être interrompu, par exemple pour une maintenance.
 - Les fonctions peuvent évoluer, être ajoutées ou retirées.
-- En cas d'arrêt définitif du service, vous êtes prévenu à l'avance [À COMPLÉTER : délai de préavis avant l'arrêt définitif du service, par exemple 30 jours], pour avoir le temps de télécharger vos données.
+- En cas d'arrêt définitif du service, vous êtes prévenu au moins 30 jours à l'avance, pour avoir le temps de télécharger vos données.
 - Gardez une copie de vos données importantes : Réglages › Confidentialité et mes données › Télécharger toutes mes données.
 
 ## Responsabilité
 
 - Vous êtes responsable de l'utilisation que vous faites de Cave & Amis et des contenus que vous y mettez.
-- L'éditeur n'est pas responsable des dommages indirects, d'une perte de données due à une mauvaise utilisation ou à la perte de votre mot de passe, des réponses de l'assistant, des prix et avis du scanner, ni du fonctionnement des services extérieurs (Anthropic, Open Food Facts, Nous…). [À VALIDER : clause de limitation de responsabilité, dans les limites permises par la loi]
+- Dans les limites permises par la loi, l'éditeur n'est pas responsable des dommages indirects, d'une perte de données due à une mauvaise utilisation ou à la perte de votre mot de passe, des réponses de l'assistant, des prix et avis du scanner, ni du fonctionnement des services extérieurs (Anthropic, Open Food Facts, Nous…).
 
 ## Suppression du compte
 
@@ -111,7 +111,7 @@ Vous restez responsable des contenus que vous ajoutez et partagez. Vous pouvez b
 
 ## Droit applicable et litiges
 
-- Ces conditions sont soumises au droit français. [À VALIDER : droit applicable et juridiction compétente]
+- Ces conditions sont soumises au droit français.
 - En cas de difficulté, contactez d'abord l'éditeur pour trouver une solution amiable.
 
 ## Contact

@@ -5,13 +5,12 @@ Cette politique explique quelles données personnelles Cave & Amis traite, pourq
 ## Qui est responsable de vos données
 
 - Le responsable de traitement est l'éditeur de Cave & Amis : une personne physique, qui édite l'application à titre non professionnel et gratuit. Il est aussi responsable de l'application Cocon et de son agenda Nous.
-- [À VALIDER : identité et coordonnées du responsable à indiquer ici au titre de l'article 13 du RGPD, alors que les mentions légales utilisent l'option d'anonymat de la LCEN]
 - Contact pour toute question ou demande sur vos données : cocon.cave@gmail.com
-- Délégué à la protection des données : aucun n'a été désigné. [À VALIDER : absence de délégué à la protection des données, a priori non obligatoire pour ce service]
+- Délégué à la protection des données : aucun n'a été désigné.
 
 ## Les données traitées et pourquoi
 
-Pour chaque usage : les données, à quoi elles servent, et sur quelle base légale. [À VALIDER : base légale retenue pour chaque traitement]
+Pour chaque usage : les données, à quoi elles servent, et sur quelle base légale.
 
 ### Votre compte
 
@@ -58,8 +57,8 @@ Lia s'appuie sur Claude, l'intelligence artificielle de la société Anthropic. 
 
 Des autres personnes (amis, membres de vos groupes, participants de vos événements), Lia ne reçoit que leur prénom et ces informations simples : jamais leurs commentaires ni leurs notes écrites (sur leurs vins, leurs dégustations, leurs envies ou un vin proposé pour un événement), ni leur adresse e-mail ou l'identifiant de leur compte. Seule exception : une cave gérée à plusieurs, que Lia lit comme la vôtre (fiches, notes et prix compris), puisque vous la gérez ensemble. Aucun identifiant de votre compte n'accompagne ces demandes. Vos conversations (messages, réponses et propositions de Lia) sont gardées pour que vous puissiez les relire, puis effacées 12 mois après le dernier message ; vous pouvez les supprimer avant.
 
-- Ce qu'Anthropic garde de ces demandes : d'après ses pages officielles, Anthropic supprime les demandes et les réponses sous 30 jours au plus, sauf si une demande est signalée comme contraire à ses règles d'utilisation (jusqu'à 2 ans) ou si la loi l'exige. Elles ne servent pas à entraîner ses modèles. [À VALIDER : formulation, les pages d'Anthropic ne disant pas toutes la même chose (« supprimées sous 30 jours » ou « non conservées par défaut »)]
-- Base légale : l'exécution du contrat (une fonction que vous demandez). [À VALIDER : base légale pour les données d'autres personnes (amis, membres d'un groupe, participants) envoyées à Anthropic]
+- Ce qu'Anthropic garde de ces demandes : d'après ses pages officielles, Anthropic supprime les demandes et les réponses sous 30 jours au plus, sauf si une demande est signalée comme contraire à ses règles d'utilisation (jusqu'à 2 ans) ou si la loi l'exige. Elles ne servent pas à entraîner ses modèles.
+- Base légale : l'exécution du contrat (une fonction que vous demandez) ; pour les prénoms et informations simples des autres personnes, l'intérêt légitime de la personne qui pose la question.
 
 ### La lecture d'étiquette, le scanner et les prix
 
@@ -82,19 +81,20 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 - Au moment de la liaison : votre prénom et votre adresse e-mail (pour préremplir votre compte Nous), puis vos identifiants dans les deux applications. Un avis s'ajoute alors à vos notifications (« Votre compte est relié à un agenda Nous. Ce n'est pas vous ? Déliez-le dans les Réglages. »).
 - Votre choix d'ouvrir ou non Cave & Amis depuis Nous sans mot de passe (désactivé au départ), gardé avec la liaison.
 - Ensuite, pour chaque événement auquel vous participez : type, titre, état, dates, lieu, description, thème, prénom de l'organisateur, prénoms et réponses de tous les participants, vins prévus (nom, producteur, millésime, couleur, quantité, état, prénom du propriétaire) et lien vers l'événement. Jamais votre budget, vos prix ni votre stock. En retour, Nous envoie votre réponse (oui, peut-être, non).
+- Dans Nous, les prénoms et réponses des participants et les vins prévus ne sont visibles que de vous, même si vous partagez l'événement avec votre foyer. Le foyer voit seulement le type, le titre, l'état, les dates, le lieu, la description, le thème, le prénom de l'organisateur et votre propre réponse.
+- Nous efface les participants et les vins de sa copie 30 jours après la fin de l'événement ; le reste de l'événement demeure dans votre agenda.
 - Nous est l'agenda de l'application Cocon, qui a le même responsable de traitement.
-- Base légale : votre consentement, donné en reliant les comptes et retiré en les déliant. [À VALIDER : base légale pour les données des autres participants envoyées à Nous]
+- Base légale : votre consentement, donné en reliant les comptes et retiré en les déliant ; pour les prénoms et réponses des autres participants, l'intérêt légitime de la personne qui relie son agenda.
 
 ### Les e-mails de connexion
 
 - La réinitialisation du mot de passe par e-mail n'est pas encore disponible.
-- [À VALIDER : à compléter quand le service d'envoi d'e-mails (Brevo) sera en place : données transmises, pays, garanties et durée de conservation de ses journaux ; sinon, retirer cette mention]
 
 ### Les preuves de vos choix
 
 - Les versions des conditions d'utilisation que vous avez acceptées et des politiques que vous avez lues (date, version, moment : inscription, connexion ou réglages), et l'historique de vos choix (apparaître dans la recherche, relier l'agenda Nous). Aucune adresse IP, aucune information sur votre appareil.
 - À quoi elles servent : pouvoir prouver ce qui a été accepté ou choisi, et quand.
-- Base légale : l'intérêt légitime de l'éditeur. [À VALIDER : base légale des preuves]
+- Base légale : l'intérêt légitime de l'éditeur.
 
 ### Les pages d'invitation, sans compte
 
@@ -112,20 +112,19 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 - **Vos contacts et les personnes avec qui vous partagez un événement** voient votre prénom. À ce titre, ils ne voient pas le reste de votre profil : ni votre devise, ni votre date d'inscription, ni vos préférences, ni le fait d'être ou non l'administrateur.
 - **Les personnes inscrites** peuvent trouver votre prénom par la recherche, seulement si vous avez choisi d'y apparaître.
 - **L'administrateur de l'application** voit l'adresse e-mail de chaque compte, sa consommation de l'assistant et les erreurs techniques. Il ne voit pas, dans l'application, le contenu de vos conversations.
-- **L'éditeur**, qui gère l'hébergement technique, peut techniquement accéder à toutes les données enregistrées sur le serveur, y compris les conversations et les photos. Il s'engage à ne le faire que pour la maintenance, la sécurité ou une obligation légale. [À VALIDER : engagement de l'éditeur sur son accès technique aux données]
+- **L'éditeur**, qui gère l'hébergement technique, peut techniquement accéder à toutes les données enregistrées sur le serveur, y compris les conversations et les photos. Il s'engage à ne le faire que pour la maintenance, la sécurité ou une obligation légale.
 - **Les prestataires** ci-dessous, seulement pour ce dont ils ont besoin.
 - Aucune donnée n'est vendue, louée ni utilisée pour de la publicité.
 
 ## Prestataires et autres destinataires
 
 - **Supabase** (Supabase Pte. Ltd., 65 Chulia Street, Singapour) : hébergement de la base de données, des comptes, des photos, de leurs sauvegardes et des fonctions du serveur, dans la région Europe centrale (Francfort, Allemagne). D'après Supabase, certaines opérations ont lieu hors de cette région : gestion du compte de l'éditeur, assistance quand il la demande, journaux techniques (stockés dans l'Union européenne), réseau de diffusion. Son contrat de sous-traitance fait partie de ses conditions : https://supabase.com/legal/dpa
-- **GitHub** (GitHub, Inc., San Francisco, États-Unis), pour GitHub Pages : hébergement des fichiers de l'application. GitHub enregistre l'adresse IP de chaque visiteur pour la sécurité de son service ; les codes d'invitation ne lui sont jamais transmis. [À VALIDER : contrat de sous-traitance de GitHub, qui fait partie du « GitHub Customer Agreement » à accepter dans les paramètres de l'organisation]
+- **GitHub** (GitHub, Inc., San Francisco, États-Unis), pour GitHub Pages : hébergement des fichiers de l'application. GitHub enregistre l'adresse IP de chaque visiteur pour la sécurité de son service ; les codes d'invitation ne lui sont jamais transmis. Son contrat de sous-traitance fait partie du « GitHub Customer Agreement », accepté pour l'organisation de Cave & Amis.
 - **Anthropic** (Anthropic Ireland, Limited, Dublin, pour les clients de l'Espace économique européen) : intelligence artificielle de Lia (assistant, lecture d'étiquette, scanner, prix). Son contrat de sous-traitance fait partie de ses conditions commerciales : https://www.anthropic.com/legal/data-processing-addendum
-- **Les services de notification** de votre navigateur (Google, Apple, Mozilla ou Microsoft), si vous activez les notifications : ils reçoivent l'adresse d'abonnement de l'appareil et le texte chiffré, qu'ils ne peuvent pas lire. [À VALIDER : rôle de ces services (aucun contrat de sous-traitance n'est publié pour l'envoi de notifications Web Push)]
+- **Les services de notification** de votre navigateur (Google, Apple, Mozilla ou Microsoft), si vous activez les notifications : ils reçoivent l'adresse d'abonnement de l'appareil et le texte chiffré, qu'ils ne peuvent pas lire.
 - **Open Food Facts** (association loi 1901, Saint-Maur-des-Fossés, France ; serveurs en France) : recherche de produits et de photos officielles par code-barres ou par nom, et affichage des vignettes depuis son site. Selon sa politique, Open Food Facts garde 3 ans les journaux de visite (adresse IP).
 - **Nous (application Cocon)**, si vous reliez vos comptes : même responsable de traitement.
 - **Les messageries que vous choisissez** pour envoyer un lien d'invitation : Cave & Amis ne leur envoie rien lui-même.
-- [À VALIDER : ajouter Brevo (envoi d'e-mails) et Cloudflare Turnstile (protection contre les robots) s'ils sont en place au moment de la publication, avec les données transmises, leur pays et leurs garanties]
 
 ## Transferts hors de l'Union européenne
 
@@ -137,7 +136,7 @@ Certaines données peuvent être traitées hors de l'Union européenne, avec ces
 - **Google** (notifications de Chrome et d'Android) et **Microsoft** : adhésion au « Data Privacy Framework ».
 - **Apple** et **Mozilla** : clauses contractuelles types.
 
-[À VALIDER : vérifier ces garanties au moment de la publication, notamment les fiches du « Data Privacy Framework » sur https://www.dataprivacyframework.gov/list (lues par un service de rendu, à contrôler dans un navigateur)]
+Adhésions au « Data Privacy Framework » vérifiées le 27/10/2026 sur la liste officielle : https://www.dataprivacyframework.gov/list
 
 ## Combien de temps vos données sont gardées
 
@@ -153,10 +152,10 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 - **Analyses et visites du scanner**, avec leurs photos : 30 jours.
 - **Appareils de notification qui ne répondent plus** : 90 jours.
 - **Photos qui ne servent plus** (plus aucune fiche, dégustation, groupe ou analyse ne les utilise) : effacées chaque mois.
-- **Preuves de vos choix** : tant que le compte existe, puis 5 ans après sa suppression (identifiant, version et date seulement), puis effacées. [À VALIDER : durée de 5 ans]
-- **Comptes inactifs** : aucun compte n'est supprimé automatiquement aujourd'hui. [À VALIDER : durée d'inactivité au-delà de laquelle un compte serait supprimé, après vous avoir prévenu]
-- **Sauvegardes** : une copie chiffrée de la base est faite chaque mois et avant chaque mise à jour importante. [À COMPLÉTER : durée de conservation des sauvegardes]
-- **Journaux techniques des hébergeurs** (adresse IP, navigateur) : [À COMPLÉTER : durées de conservation des journaux de Supabase et de GitHub, que leurs pages officielles ne donnent pas]
+- **Preuves de vos choix** : tant que le compte existe, puis 5 ans après sa suppression (identifiant, version et date seulement), puis effacées.
+- **Comptes inactifs** : aucun compte n'est supprimé automatiquement aujourd'hui.
+- **Sauvegardes** : une copie chiffrée de la base est faite chaque mois et avant chaque mise à jour importante. Chaque sauvegarde est gardée 3 mois au plus, puis effacée.
+- **Journaux techniques des hébergeurs** (adresse IP, navigateur) : 1 jour chez Supabase, selon sa grille tarifaire pour l'offre utilisée. GitHub ne publie pas de durée : selon sa déclaration de confidentialité, elle dépend de l'objectif et des obligations légales.
 
 ### Quand vous supprimez votre compte
 
@@ -184,7 +183,7 @@ Vous disposez des droits d'accès, de rectification, d'effacement, de limitation
 - **Effacement** : vous supprimez vous-même chaque élément, ou votre compte entier (Réglages › Confidentialité et mes données).
 - **Retrait du consentement** : à tout moment, sans effet sur ce qui a été fait avant : apparaître dans la recherche (Réglages), agenda Nous (délier), notifications (désactiver).
 - **Opposition et limitation** : écrivez à l'adresse de contact.
-- **Après votre décès** : vous pouvez définir des directives sur le sort de vos données. [À VALIDER : directives post mortem prévues par la loi Informatique et Libertés, et modalités]
+- **Après votre décès** : vous pouvez définir des directives sur le sort de vos données (conservation, effacement, transmission) en écrivant à cocon.cave@gmail.com.
 
 Pour exercer vos droits : cocon.cave@gmail.com. Une preuve d'identité peut vous être demandée, par exemple écrire depuis l'adresse e-mail de votre compte. Une réponse vous est apportée dans un délai d'un mois.
 

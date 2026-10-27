@@ -42,7 +42,7 @@ Ces informations sont effacées quand vous vous déconnectez.
 
 ## Pourquoi aucun accord ne vous est demandé
 
-Les règles françaises dispensent d'accord le stockage strictement nécessaire au service que vous demandez : la connexion à votre compte, vos invitations, vos préférences, le fonctionnement hors connexion. C'est le seul usage que fait Cave & Amis de votre navigateur. Aucun bandeau ne vous est donc présenté. [À VALIDER : qualification de ces stockages comme strictement nécessaires, notamment le budget habituel du scanner et l'état des propositions de Lia]
+Les règles françaises dispensent d'accord le stockage strictement nécessaire au service que vous demandez : la connexion à votre compte, vos invitations, vos préférences, le fonctionnement hors connexion. C'est le seul usage que fait Cave & Amis de votre navigateur. Aucun bandeau ne vous est donc présenté.
 
 Si Cave & Amis devait un jour utiliser un traceur qui n'est pas strictement nécessaire (mesure d'audience, par exemple), votre accord vous serait demandé avant, et vous pourriez le refuser.
 
