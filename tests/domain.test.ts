@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generalAeration, generalServingTemperature, suggestServiceOrder } from '../src/domain/advice.ts';
-import { applyFilters, bottlesByEntryMonth, buildRows, cellarCsv, colorBreakdown, EMPTY_FILTERS, lotSplit, pastWindow, splitText } from '../src/domain/cellar.ts';
+import { applyFilters, bottlesByEntryMonth, buildRows, maturityBreakdown, regionBreakdown, cellarCsv, colorBreakdown, EMPTY_FILTERS, lotSplit, pastWindow, splitText } from '../src/domain/cellar.ts';
 import { AppError, toMessage } from '../src/domain/errors.ts';
 import { deName, fromLocalInput, toLocalInput } from '../src/domain/format.ts';
 import { maturity, maturityOf, windowOf } from '../src/domain/maturity.ts';
@@ -140,6 +140,24 @@ describe('inventaire et export', () => {
       { month: '2026-10', bottles: 3 },
     ]);
     expect(r.lastQuarter).toBe(5);
+  });
+
+  it('statistiques : par région et par maturité, bouteilles en stock seulement', () => {
+    const wines = [
+      wine({ id: 'a', region: 'Bourgogne', vintage: 2020, drink_from: 2021, drink_until: 2023, window_source: 'personal' }),
+      wine({ id: 'b', region: 'Loire' }),
+      wine({ id: 'c', region: '  ' }),
+      wine({ id: 'd', region: 'Bourgogne' }),
+    ];
+    const rows = buildRows(wines, [lot({ wine_id: 'a', quantity: 3 }), lot({ wine_id: 'b', quantity: 2 }), lot({ wine_id: 'c', quantity: 1 }), lot({ wine_id: 'd', quantity: 0 })], cellars, 2026);
+    expect(regionBreakdown(rows)).toEqual([
+      { region: 'Bourgogne', bottles: 3 },
+      { region: 'Loire', bottles: 2 },
+      { region: 'Région inconnue', bottles: 1 },
+    ]);
+    const m = maturityBreakdown(rows);
+    expect(m.past).toBeGreaterThanOrEqual(3);
+    expect(m.young + m.ready + m.soon + m.past + m.unknown).toBe(6);
   });
 
   it('tableau de bord : répartition par couleur et vins dont la période est passée', () => {

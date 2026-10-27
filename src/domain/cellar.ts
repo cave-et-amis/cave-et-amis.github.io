@@ -248,3 +248,17 @@ export function dayPick<T>(items: T[], now = new Date()): T | null {
   const day = Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86_400_000);
   return items[day % items.length];
 }
+
+/** Statistiques : bouteilles en stock par région (« Région inconnue » à part), les plus nombreuses d'abord. */
+export function regionBreakdown(rows: WineRow[], limit = 6) {
+  const counts = new Map<string, number>();
+  for (const r of rows) if (r.stock > 0) counts.set(r.wine.region?.trim() || 'Région inconnue', (counts.get(r.wine.region?.trim() || 'Région inconnue') ?? 0) + r.stock);
+  return [...counts.entries()].map(([region, bottles]) => ({ region, bottles })).sort((a, b) => b.bottles - a.bottles || a.region.localeCompare(b.region, 'fr')).slice(0, limit);
+}
+
+/** Statistiques : bouteilles en stock par état de maturité (périodes indicatives). */
+export function maturityBreakdown(rows: WineRow[]) {
+  const counts: Record<Maturity, number> = { young: 0, ready: 0, soon: 0, past: 0, unknown: 0 };
+  for (const r of rows) if (r.stock > 0) counts[r.maturity] += r.stock;
+  return counts;
+}
