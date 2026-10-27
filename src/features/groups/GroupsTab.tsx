@@ -1,8 +1,10 @@
 /** Onglet « Groupes » : invitations reçues, mes groupes, création d'un groupe. */
 import { useState } from 'react';
 import { Check as CheckIcon, Plus, X } from 'lucide-react';
+import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { Button, EmptyState } from '../../ui/kit';
+import { rowMotion } from '../../ui/motion';
 import { go } from '../../ui/router';
 import { useActions } from '../../ui/Shell';
 import { FirstTip } from '../tour/Tour';
@@ -29,8 +31,8 @@ export function GroupsTab() {
             <span className="small muted">{invited.length}</span>
           </div>
           <div className="list">
-            {invited.map((g) => (
-              <div key={g.id} className="row static">
+            {invited.map((g, i) => (
+              <m.div key={g.id} className="row static" {...rowMotion(i, false)}>
                 <GroupAvatar group={g} />
                 <span className="row-main">
                   <span className="row-title">{g.name}</span>
@@ -53,7 +55,7 @@ export function GroupsTab() {
                     Refuser
                   </Button>
                 </span>
-              </div>
+              </m.div>
             ))}
           </div>
         </section>
@@ -74,8 +76,8 @@ export function GroupsTab() {
           </EmptyState>
         ) : (
           <div className="list" style={{ marginTop: 10 }}>
-            {mine.map((g) => (
-              <a key={g.id} className="row" href={`#/groupes/${g.id}`}>
+            {mine.map((g, i) => (
+              <m.a key={g.id} className="row" href={`#/groupes/${g.id}`} {...rowMotion(i)}>
                 <GroupAvatar group={g} />
                 <span className="row-main">
                   <span className="row-title">{g.name}</span>
@@ -84,7 +86,7 @@ export function GroupsTab() {
                     {g.available_bottles > 0 ? ` · ${g.available_bottles} bouteille${g.available_bottles > 1 ? 's' : ''} à disposition` : ''} · {ROLE_LABELS[g.my_role]}
                   </span>
                 </span>
-              </a>
+              </m.a>
             ))}
           </div>
         )}

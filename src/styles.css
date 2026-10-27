@@ -394,11 +394,8 @@ a {
   cursor: pointer;
   text-decoration: none;
   line-height: 1.2;
-  transition: background 0.15s, transform 0.05s;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
+  /* L'enfoncement au toucher est animé par Motion (whileTap) : pas de transition CSS sur transform. */
+  transition: background 0.15s;
 }
 
 .btn:disabled {
@@ -1242,18 +1239,11 @@ details.advanced .form {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  animation: fade 0.15s ease-out;
 }
 
 .overlay.center {
   align-items: center;
   padding: 16px;
-}
-
-@keyframes fade {
-  from {
-    opacity: 0;
-  }
 }
 
 @keyframes rise {
@@ -1272,7 +1262,6 @@ details.advanced .form {
   background: var(--surface);
   border-radius: 22px 22px 0 0;
   box-shadow: var(--shadow-lg);
-  animation: rise 0.2s ease-out;
   padding-bottom: env(safe-area-inset-bottom);
 }
 
@@ -1336,7 +1325,6 @@ details.advanced .form {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  animation: rise 0.18s ease-out;
 }
 
 .dialog h2 {
