@@ -120,7 +120,7 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Base légale** : [À VALIDER : base légale, a priori l'intérêt légitime]
 - **Destinataires** : GitHub (GitHub Pages) ; Supabase.
 - **Durée** : Supabase, 1 jour selon sa grille tarifaire pour l'offre gratuite ; GitHub, aucune durée publiée. [À VALIDER : sens de ces durées]
-- **Point ouvert** : d'après la documentation de Supabase (https://supabase.com/docs/guides/auth/audit-logs), les journaux de connexion peuvent aussi être écrits dans la base du projet (`auth.audit_log_entries`), réglage « Write audit logs to the database ». Ce réglage n'a pas été vérifié sur le projet de Cave & Amis, et aucune purge de l'application ne touche cette table.
+- **Journal des connexions dans la base** : d'après la documentation de Supabase (https://supabase.com/docs/guides/auth/audit-logs), les journaux de connexion peuvent aussi être écrits dans la base du projet (`auth.audit_log_entries`), réglage « Write audit logs to the database ». Vérifié le 27/10/2026 dans le tableau de bord, en lecture seule : **désactivé** pour le projet de Cave & Amis. Aucune purge de l'application ne touche cette table : la laisser désactivée, ou prévoir une durée de conservation avant de l'activer. Des lignes plus anciennes, écrites avant la désactivation, n'ont pas été recherchées.
 
 ### T13. Demandes sur les données et incidents
 
