@@ -1,6 +1,7 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowLeft, Bell, BookOpen, CalendarHeart, CircleHelp, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
+import { m, useAnimationControls } from 'motion/react';
 import { useStore } from '../data/store';
 import { pageOfRoute } from '../domain/help';
 import { HelpSheet } from '../features/help/HelpSheet';
@@ -99,9 +100,12 @@ function ShellInner() {
   );
 
   const pathOnly = route.split('?')[0];
+  // Changement d'écran : retour en haut et fondu d'apparition (transparence seule : la page ne bouge pas sous le doigt).
+  const pageFade = useAnimationControls();
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, [pathOnly]);
+    void pageFade.start({ opacity: [0, 1], transition: { duration: 0.18, ease: 'easeOut' } });
+  }, [pathOnly, pageFade]);
 
   // Accès direct « Ajouter une bouteille » (aide, Lia) : la fenêtre s'ouvre, l'adresse redevient celle de la page.
   useEffect(() => {
@@ -353,11 +357,11 @@ function ShellInner() {
             </span>
           </div>
         </header>
-        <main className="page" id="contenu">
+        <m.main className="page" id="contenu" animate={pageFade}>
           {seg[0] === undefined && <ResumeTour />}
           <LegalNotice />
           {page}
-        </main>
+        </m.main>
         {!['assistant', 'admin', 'reglages', 'scanner', 'legal'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
             <Plus aria-hidden />

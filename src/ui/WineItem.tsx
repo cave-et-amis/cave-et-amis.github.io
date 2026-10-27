@@ -1,21 +1,24 @@
 /** Ligne d'un vin dans une liste : vignette, nom, millésime, appellation, maturité, quantité. */
 import { Heart, Users } from 'lucide-react';
+import { m } from 'motion/react';
 import type { WineRow } from '../domain/cellar';
 import { MATURITY_LABELS } from '../domain/maturity';
 import { vintageLabel, wineSubtitle } from '../domain/wine';
 import { useStore } from '../data/store';
 import { usePhotoUrl } from '../data/photos';
 import { Thumb } from './kit';
+import { rowMotion } from './motion';
 
 const MATURITY_TONE = { young: 'info', ready: 'success', soon: 'gold', past: 'warn', unknown: '' } as const;
 
-export function WineItem({ row, onOpen }: { row: WineRow; onOpen?: () => void }) {
+/** `index` : place dans la liste, pour l'apparition en cascade. */
+export function WineItem({ row, onOpen, index = 0 }: { row: WineRow; onOpen?: () => void; index?: number }) {
   const { api } = useStore();
   const w = row.wine;
   const url = usePhotoUrl(api, w.label_photo ?? w.bottle_photo);
   const vintage = vintageLabel(w);
   return (
-    <a className="row" href={`#/cave/vin/${w.id}`} onClick={onOpen}>
+    <m.a className="row" href={`#/cave/vin/${w.id}`} onClick={onOpen} {...rowMotion(index)}>
       <Thumb url={url} color={w.color} />
       <span className="row-main">
         <span className="row-title">
@@ -48,6 +51,6 @@ export function WineItem({ row, onOpen }: { row: WineRow; onOpen?: () => void })
           <small>{row.reserved > 0 ? `dont ${row.reserved} réservée${row.reserved > 1 ? 's' : ''}` : row.stock > 1 ? 'bouteilles' : 'bouteille'}</small>
         </span>
       </span>
-    </a>
+    </m.a>
   );
 }

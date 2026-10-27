@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus } from 'lucide-react';
+import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { buildRows, readyToDrink } from '../../domain/cellar';
 import { currentYear, eventDate, money, moneyRange, relativeDays } from '../../domain/format';
@@ -7,6 +8,7 @@ import { valuation, coverageText } from '../../domain/valuation';
 import { EVENT_KINDS, label } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
 import { Button, EmptyState, Notice } from '../../ui/kit';
+import { TAP } from '../../ui/motion';
 import { WineItem } from '../../ui/WineItem';
 import { go } from '../../ui/router';
 
@@ -109,14 +111,14 @@ export function Home() {
             <a href="#/cave">Inventaire</a>
           </div>
           <div className="tiles">
-            <a className="tile" href="#/cave">
+            <m.a className="tile" href="#/cave" whileTap={TAP}>
               <span className="value">{bottles}</span>
               <span className="label">bouteilles en stock</span>
-            </a>
-            <a className="tile" href="#/cave">
+            </m.a>
+            <m.a className="tile" href="#/cave" whileTap={TAP}>
               <span className="value">{bottles - reserved}</span>
               <span className="label">disponibles{blocked.length ? ` (${blocked.join(', ')})` : ''}</span>
-            </a>
+            </m.a>
             <div className="tile">
               <span className="value">{purchase.length ? purchase.map(([c, v]) => money(v, c)).join(' + ') : '—'}</span>
               <span className="label">
@@ -142,8 +144,8 @@ export function Home() {
             <a href="#/cave?tri=maturite">Tout voir</a>
           </div>
           <div className="list">
-            {ready.map((r) => (
-              <WineItem key={r.wine.id} row={r} />
+            {ready.map((r, i) => (
+              <WineItem key={r.wine.id} row={r} index={i} />
             ))}
           </div>
           <p className="small faint" style={{ marginTop: 6 }}>
@@ -158,7 +160,7 @@ export function Home() {
           <a href="#/evenements">Événements</a>
         </div>
         {next ? (
-          <a className="card" href={`#/evenements/${next.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+          <m.a className="card" href={`#/evenements/${next.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }} whileTap={TAP}>
             <div className="between">
               <span className="pill gold">
                 {EVENT_KINDS.find((k) => k.value === next.kind)?.icon} {label(EVENT_KINDS, next.kind)}
@@ -176,7 +178,7 @@ export function Home() {
               {next.organizer_id === userId ? 'Vous organisez' : `Organisé par ${profileName(next.organizer_id)}`}
               {myRsvp(next.id) === 'pending' && <strong style={{ color: 'var(--primary)' }}> · Répondez à l’invitation</strong>}
             </p>
-          </a>
+          </m.a>
         ) : (
           <EmptyState icon="🥂" title="Aucun événement prévu" action={<Button variant="secondary" icon={<CalendarHeart />} onClick={() => go('/evenements?nouveau=1')}>Organiser un dîner</Button>}>
             Invitez vos amis, choisissez ensemble les bouteilles, et gardez le souvenir des vins dégustés.
@@ -198,13 +200,13 @@ export function Home() {
       )}
 
       {snapshot.wishlist.filter((w) => !w.done).length > 0 && (
-        <a className="card soft between" href="#/carnet?onglet=envies" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <m.a className="card soft between" href="#/carnet?onglet=envies" style={{ textDecoration: 'none', color: 'inherit' }} whileTap={TAP}>
           <span className="inline">
             <Heart aria-hidden style={{ color: 'var(--primary)' }} />
             {snapshot.wishlist.filter((w) => !w.done).length} vin(s) sur votre liste d’envies
           </span>
           <span className="small muted">Voir</span>
-        </a>
+        </m.a>
       )}
     </>
   );

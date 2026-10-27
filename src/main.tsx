@@ -6,6 +6,7 @@ import './styles.css';
 import { App, ConfigProblem, Framed } from './App';
 import { readConfig } from './config';
 import { Api } from './data/api';
+import { MotionProvider } from './ui/motion';
 
 const root = createRoot(document.getElementById('root')!);
 
@@ -35,7 +36,11 @@ function boot() {
         })),
     },
   );
-  root.render(<App api={api} local={config.local} />);
+  root.render(
+    <MotionProvider>
+      <App api={api} local={config.local} />
+    </MotionProvider>,
+  );
 }
 
 /**

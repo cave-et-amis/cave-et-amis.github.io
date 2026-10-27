@@ -150,8 +150,8 @@ export function JournalPage() {
                     Dans ma cave
                   </h2>
                   <div className="list">
-                    {favWines.map((r) => (
-                      <WineItem key={r.wine.id} row={r} />
+                    {favWines.map((r, i) => (
+                      <WineItem key={r.wine.id} row={r} index={i} />
                     ))}
                   </div>
                 </section>
@@ -241,8 +241,8 @@ export function JournalPage() {
             <EmptyState icon="🍾" title="Aucun vin en stock" action={<Button onClick={actions.add}>Ajouter un vin</Button>} />
           ) : (
             <div className="list">
-              {owned.map((r) => (
-                <WineItem key={r.wine.id} row={r} />
+              {owned.map((r, i) => (
+                <WineItem key={r.wine.id} row={r} index={i} />
               ))}
             </div>
           )}

@@ -96,7 +96,7 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 
 - Les versions des conditions d'utilisation que vous avez acceptées et des politiques que vous avez lues (date, version, moment : inscription, connexion ou réglages), et l'historique de vos choix (apparaître dans la recherche, relier l'agenda Nous). Aucune adresse IP, aucune information sur votre appareil.
 - À quoi elles servent : pouvoir prouver ce qui a été accepté ou choisi, et quand.
-- Base légale : l'intérêt légitime de l'éditeur.
+- Base légale : l'obligation de pouvoir démontrer un consentement (article 7 du RGPD) et l'intérêt légitime de l'éditeur à prouver l'acceptation des conditions.
 
 ### Les pages d'invitation, sans compte
 
@@ -128,6 +128,7 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 - **Brevo** (BREVO SAS, 17 rue de Salneuve, 75017 Paris, France ; RCS Paris 498 019 298) : envoi des e-mails de connexion (votre adresse e-mail et le contenu du message). Son contrat de sous-traitance est l'annexe 3 de ses conditions d'utilisation. D'après Brevo, ses données sont hébergées chez OVH (France) et Google Cloud (Union européenne). [À VALIDER : informations relevées le 27/10/2026 sur les pages officielles de Brevo par la session Cocon, à relire ; durée de conservation des journaux d'envoi non trouvée]
 - **Nous (application Cocon)**, si vous reliez vos comptes : même responsable de traitement.
 - **Les messageries que vous choisissez** pour envoyer un lien d'invitation : Cave & Amis ne leur envoie rien lui-même.
+- **Les autorités**, seulement lorsque la loi l'impose.
 
 ## Transferts hors de l'Union européenne
 
@@ -189,7 +190,7 @@ Vous disposez des droits d'accès, de rectification, d'effacement, de limitation
 - **Opposition et limitation** : écrivez à l'adresse de contact.
 - **Après votre décès** : vous pouvez définir des directives sur le sort de vos données (conservation, effacement, transmission) en écrivant à cocon.cave@gmail.com.
 
-Pour exercer vos droits : cocon.cave@gmail.com. Une preuve d'identité peut vous être demandée, par exemple écrire depuis l'adresse e-mail de votre compte. Une réponse vous est apportée dans un délai d'un mois.
+Pour exercer vos droits : cocon.cave@gmail.com. Une preuve d'identité peut vous être demandée, par exemple écrire depuis l'adresse e-mail de votre compte. Une réponse vous est apportée dans un délai d'un mois. Ce délai peut être prolongé de deux mois pour une demande complexe ; vous en êtes alors prévenu.
 
 Si vous estimez que vos droits ne sont pas respectés, vous pouvez adresser une réclamation à la CNIL (www.cnil.fr).
 
@@ -203,5 +204,5 @@ Une personne inscrite peut parler de vous dans Cave & Amis : note « Pour qui ? 
 
 ## Les mises à jour de cette politique
 
-- Une nouvelle version est publiée dans l'application quand le traitement de vos données change. Vous en êtes informé à votre prochaine connexion.
+- Une nouvelle version est publiée dans l'application quand le traitement de vos données change. Vous êtes informé de toute nouvelle version à votre prochaine connexion, avec un résumé de ce qui change.
 - Les versions que vous avez lues sont consultables dans Réglages › Confidentialité et mes données.
