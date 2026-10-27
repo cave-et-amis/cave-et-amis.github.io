@@ -2506,3 +2506,37 @@ details.help-topic:not([open]) > summary::after {
   color: var(--warn);
   font-weight: 600;
 }
+
+/* Accueil : répartition de la cave par couleur */
+.color-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  gap: 2px;
+  background: var(--surface-2);
+}
+.color-bar span {
+  min-width: 6px;
+}
+.color-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+}
+.color-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.color-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}

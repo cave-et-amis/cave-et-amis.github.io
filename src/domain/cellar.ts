@@ -1,7 +1,7 @@
 /** Inventaire : une ligne par vin (stock agrégé de ses lots), recherche, filtres, tri, export. */
 import type { Cellar, Color, GroupShare, Lot, Storage, Wine } from './types.ts';
 import { MATURITY_RANK, maturityOf, windowOf, type Maturity, type WindowInfo } from './maturity.ts';
-import { colorLabel, fold, label, VISIBILITIES, vintageLabel, WINE_TYPES } from './wine.ts';
+import { colorLabel, COLORS, fold, label, VISIBILITIES, vintageLabel, WINE_TYPES } from './wine.ts';
 
 export type WineRow = {
   wine: Wine;
@@ -206,4 +206,18 @@ export function cellarCsv(rows: WineRow[], cellars: Cellar[], locationName: (id:
     }
   }
   return '﻿' + lines.join('\r\n');
+}
+
+/** Tableau de bord : bouteilles en stock par couleur (couleur inconnue rangée dans « Autre »), les plus nombreuses d'abord. */
+export function colorBreakdown(rows: WineRow[]) {
+  const counts = new Map<Color, number>();
+  for (const r of rows) if (r.stock > 0) counts.set(r.wine.color ?? 'autre', (counts.get(r.wine.color ?? 'autre') ?? 0) + r.stock);
+  return COLORS.filter((c) => counts.has(c.value))
+    .map((c) => ({ color: c.value, label: c.label, bottles: counts.get(c.value)! }))
+    .sort((a, b) => b.bottles - a.bottles);
+}
+
+/** Vins dont la période indiquée est passée et qu'il reste à ouvrir (bandeau « à ouvrir sans tarder »). */
+export function pastWindow(rows: WineRow[]) {
+  return rows.filter((r) => r.available > 0 && r.maturity === 'past');
 }

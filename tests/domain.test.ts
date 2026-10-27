@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generalAeration, generalServingTemperature, suggestServiceOrder } from '../src/domain/advice.ts';
-import { applyFilters, buildRows, cellarCsv, EMPTY_FILTERS, lotSplit, splitText } from '../src/domain/cellar.ts';
+import { applyFilters, buildRows, cellarCsv, colorBreakdown, EMPTY_FILTERS, lotSplit, pastWindow, splitText } from '../src/domain/cellar.ts';
 import { AppError, toMessage } from '../src/domain/errors.ts';
 import { deName, fromLocalInput, toLocalInput } from '../src/domain/format.ts';
 import { maturity, maturityOf, windowOf } from '../src/domain/maturity.ts';
@@ -123,6 +123,23 @@ describe('valeur de la cave', () => {
 
 describe('inventaire et export', () => {
   const cellars = [{ id: 'c', name: 'Cave', storage: 'cave' } as Cellar];
+  it('tableau de bord : répartition par couleur et vins dont la période est passée', () => {
+    const wines = [
+      wine({ id: 'a', color: 'rouge', vintage: 2020, drink_from: 2021, drink_until: 2023, window_source: 'personal' }),
+      wine({ id: 'b', color: 'blanc', vintage: 2024 }),
+      wine({ id: 'c', color: null }),
+      wine({ id: 'd', color: 'rouge' }),
+    ];
+    const rows = buildRows(wines, [lot({ wine_id: 'a', quantity: 3 }), lot({ wine_id: 'b', quantity: 2 }), lot({ wine_id: 'c', quantity: 1 }), lot({ wine_id: 'd', quantity: 0 })], cellars, 2026);
+    expect(colorBreakdown(rows)).toEqual([
+      { color: 'rouge', label: 'Rouge', bottles: 3 },
+      { color: 'blanc', label: 'Blanc', bottles: 2 },
+      { color: 'autre', label: 'Autre', bottles: 1 },
+    ]);
+    expect(pastWindow(rows).map((r) => r.wine.id)).toEqual(['a']);
+    expect(colorBreakdown([])).toEqual([]);
+  });
+
   it('filtres par couleur, millésime, prix, maturité et stock', () => {
     const wines = [wine({ id: 'a', name: 'Alpha', color: 'blanc', vintage: 2022 }), wine({ id: 'b', name: 'Beta', vintage: 2010 })];
     const rows = buildRows(wines, [lot({ wine_id: 'a', quantity: 2, purchase_price: 12 }), lot({ wine_id: 'b', quantity: 0 })], cellars, 2026);

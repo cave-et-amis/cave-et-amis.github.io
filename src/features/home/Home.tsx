@@ -2,12 +2,13 @@ import { useMemo } from 'react';
 import { BookOpen, Camera, CalendarHeart, Heart, PenLine, ScanSearch, Sparkles, UserPlus } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
-import { buildRows, readyToDrink } from '../../domain/cellar';
-import { currentYear, eventDate, money, moneyRange, relativeDays } from '../../domain/format';
+import { buildRows, colorBreakdown, pastWindow, readyToDrink } from '../../domain/cellar';
+import { tasteSummary } from '../../domain/tasteProfile';
+import { currentYear, dateShort, eventDate, money, moneyRange, relativeDays } from '../../domain/format';
 import { valuation, coverageText } from '../../domain/valuation';
 import { EVENT_KINDS, label } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
-import { Button, EmptyState, Notice } from '../../ui/kit';
+import { Button, EmptyState, Notice, StarsView } from '../../ui/kit';
 import { TAP } from '../../ui/motion';
 import { WineItem } from '../../ui/WineItem';
 import { go } from '../../ui/router';
@@ -27,6 +28,11 @@ export function Home() {
     forGroups > 0 ? `${forGroups} pour mes groupes` : null,
   ].filter(Boolean);
   const ready = readyToDrink(rows, 5);
+  const urgent = pastWindow(rows);
+  const byColor = colorBreakdown(rows);
+  // Calculés sur l'appareil, sans requête ni IA : dernières dégustations et ce que le carnet dit des goûts.
+  const recent = useMemo(() => [...snapshot.tastings].filter((t) => t.user_id === userId).sort((a, b) => b.tasted_on.localeCompare(a.tasted_on) || b.created_at.localeCompare(a.created_at)).slice(0, 3), [snapshot.tastings, userId]);
+  const taste = useMemo(() => tasteSummary(snapshot.tastings, userId), [snapshot.tastings, userId]);
   const value = useMemo(() => valuation(snapshot.lots, snapshot.prices), [snapshot.lots, snapshot.prices]);
 
   const myEvents = snapshot.participants.filter((p) => p.user_id === userId);
@@ -63,6 +69,13 @@ export function Home() {
         <Notice tone="gold">
           {toConfirm.length === 1 ? 'Une de vos bouteilles est suggérée' : `${toConfirm.length} de vos bouteilles sont suggérées`} pour un événement :{' '}
           <a href={`#/evenements/${toConfirm[0].event_id}`}>confirmez ou refusez</a>.
+        </Notice>
+      )}
+
+      {urgent.length > 0 && (
+        <Notice tone="warn">
+          {urgent.length === 1 ? 'Un vin a passé' : `${urgent.length} vins ont passé`} sa période indiquée (fiche ou repère général) :{' '}
+          <a href="#/cave?tri=maturite">à ouvrir sans tarder</a>.
         </Notice>
       )}
 
@@ -134,6 +147,23 @@ export function Home() {
               </span>
             </div>
           </div>
+          {byColor.length > 1 && (
+            <div className="color-mix" style={{ marginTop: 10 }}>
+              <div className="color-bar" role="img" aria-label={`Répartition : ${byColor.map((c) => `${c.bottles} ${c.label.toLowerCase()}`).join(', ')}`}>
+                {byColor.map((c) => (
+                  <span key={c.color} style={{ flex: c.bottles, background: `var(--wine-${c.color})` }} />
+                ))}
+              </div>
+              <ul className="color-legend" aria-hidden>
+                {byColor.map((c) => (
+                  <li key={c.color}>
+                    <i style={{ background: `var(--wine-${c.color})` }} />
+                    {c.label} <span className="faint">{c.bottles}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 
@@ -185,6 +215,46 @@ export function Home() {
           </EmptyState>
         )}
       </section>
+
+      {recent.length > 0 && (
+        <section aria-labelledby="h-recent">
+          <div className="section-title">
+            <h2 id="h-recent">Dernières dégustations</h2>
+            <a href="#/carnet">Mon carnet</a>
+          </div>
+          <div className="list">
+            {recent.map((t) => (
+              <m.a key={t.id} className="card between" href={`#/carnet/degustation/${t.id}`} style={{ textDecoration: 'none', color: 'inherit' }} whileTap={TAP}>
+                <span>
+                  <strong>{t.wine_name}</strong>
+                  {t.vintage ? ` ${t.vintage}` : ''}
+                  <span className="small muted" style={{ display: 'block' }}>
+                    {dateShort(t.tasted_on)}
+                    {t.place ? ` · ${t.place}` : ''}
+                  </span>
+                </span>
+                <StarsView value={t.rating} />
+              </m.a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {taste.liked.length > 0 && (
+        <m.a className="card soft stack-sm" href="#/carnet/gouts" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }} whileTap={TAP}>
+          <div className="between">
+            <strong>Vos goûts, d’après votre carnet</strong>
+            <span className="small muted">Mes goûts</span>
+          </div>
+          <div className="inline" style={{ flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            {taste.liked.slice(0, 4).map((t) => (
+              <span key={t.key} className="pill">
+                {t.label}
+              </span>
+            ))}
+          </div>
+        </m.a>
+      )}
 
       {snapshot.friendships.length === 0 && rows.length > 0 && (
         <section className="card soft stack">
