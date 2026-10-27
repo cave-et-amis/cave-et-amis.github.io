@@ -22,6 +22,7 @@ import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
 import { Avatar, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 import { lazyPage } from './lazyPage';
+import { PremiumIcon } from './PremiumIcon';
 import { applyTheme, DEFAULT_THEME, isTheme } from './theme';
 import { PageBoundary } from './PageBoundary';
 
@@ -142,11 +143,12 @@ function ShellInner() {
   const unreadNotifications = snapshot.notifications.filter((n) => !n.read_at).length;
 
   const tabs: Tab[] = [
-    { path: '/', label: 'Accueil', icon: <HomeIcon /> },
-    { path: '/cave', label: 'Ma cave', icon: <Wine /> },
-    { path: '/amis', label: 'Amis & Groupes', short: 'Amis', icon: <Users />, badge: incomingRequests },
-    { path: '/evenements', label: 'Événements', icon: <CalendarHeart />, badge: pendingRsvp },
-    { path: '/carnet', label: 'Mon carnet', icon: <BookOpen /> },
+    // Icônes 3D de la maquette (40 px dans le menu, 32 px dans la barre du bas) ; pictogramme au trait en secours.
+    { path: '/', label: 'Accueil', icon: <PremiumIcon name="accueil" fallback={<HomeIcon />} /> },
+    { path: '/cave', label: 'Ma cave', icon: <PremiumIcon name="cave" fallback={<Wine />} /> },
+    { path: '/amis', label: 'Amis & Groupes', short: 'Amis', icon: <PremiumIcon name="amis" fallback={<Users />} />, badge: incomingRequests },
+    { path: '/evenements', label: 'Événements', icon: <PremiumIcon name="evenements" fallback={<CalendarHeart />} />, badge: pendingRsvp },
+    { path: '/carnet', label: 'Mon carnet', icon: <PremiumIcon name="carnet" fallback={<BookOpen />} /> },
   ];
 
   let title = 'Cave & Amis';
@@ -326,7 +328,7 @@ function ShellInner() {
             Ajouter un vin
           </Button>
           {/* Ordre de la maquette : Accueil, Ma cave, Lia, Événements, Amis… (libellés courts). */}
-          {[tabs[0], tabs[1], { path: '/assistant', label: 'Lia (IA)', icon: <Sparkles /> } as Tab, tabs[3], tabs[2], ...tabs.slice(4)].map((t) => (
+          {[tabs[0], tabs[1], { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab, tabs[3], tabs[2], ...tabs.slice(4)].map((t) => (
             <a key={t.path} href={`#${t.path}`} aria-current={activeTab === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
               {t.icon}
               {t.short ?? t.label}
@@ -336,13 +338,13 @@ function ShellInner() {
           <div className="spacer" />
           {me.is_admin && (
             <a href="#/admin" aria-current={activeTab === '/admin' ? 'page' : undefined}>
-              <Shield />
+              <PremiumIcon name="administration" fallback={<Shield />} />
               Administration
             </a>
           )}
           <a href="#/reglages" aria-current={activeTab === '/reglages' ? 'page' : undefined}>
-            <Settings />
-            Réglages
+            <PremiumIcon name="parametres" fallback={<Settings />} />
+            Paramètres
           </a>
         </nav>
         {local && <div className="local-banner">Serveur local de test : rien n’est en ligne</div>}

@@ -2896,3 +2896,64 @@ details.help-topic:not([open]) > summary::after {
 :root[data-theme='sombre'] .auth {
   background: transparent;
 }
+
+/* ───────────── Icônes 3D (PremiumIcon) : états rendus par le style, une seule image ───────────── */
+.premium-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 12px;
+  transition: transform 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+.premium-icon img {
+  display: block;
+  filter: saturate(0.85) brightness(0.92);
+  transition: filter 0.18s ease;
+  pointer-events: none;
+}
+:is(.sidenav a, .tab):hover .premium-icon img {
+  filter: saturate(1) brightness(1.08);
+}
+:is(.sidenav a, .tab):hover .premium-icon {
+  transform: translateY(-1px);
+}
+:is(.sidenav a, .tab)[aria-current='page'] .premium-icon {
+  background: radial-gradient(circle at 40% 30%, #8e2a4a, #5e1426);
+  box-shadow: 0 0 0 1px rgba(232, 200, 140, 0.45), 0 4px 12px rgba(94, 20, 38, 0.55);
+}
+:is(.sidenav a, .tab)[aria-current='page'] .premium-icon img {
+  filter: saturate(1.05) brightness(1.12);
+}
+:is(.sidenav a, .tab)[aria-disabled='true'] .premium-icon img {
+  filter: grayscale(0.4) brightness(0.85);
+}
+@media (prefers-reduced-motion: reduce) {
+  .premium-icon,
+  .premium-icon img {
+    transition: none;
+  }
+  :is(.sidenav a, .tab):hover .premium-icon {
+    transform: none;
+  }
+}
+/* Tailles : 40 px dans le menu (ordinateur), 32 px dans la barre du bas (téléphone). */
+.sidenav .premium-icon {
+  width: 44px !important;
+  height: 44px !important;
+}
+.sidenav .premium-icon img {
+  width: 40px;
+  height: 40px;
+}
+.tab .premium-icon {
+  width: 36px !important;
+  height: 36px !important;
+}
+.tab .premium-icon img {
+  width: 32px;
+  height: 32px;
+}
+:root[data-theme='sombre'] .sidenav a,
+:root[data-theme='sombre'] .sidenav button.navlink {
+  padding: 4px 12px 4px 4px;
+}
