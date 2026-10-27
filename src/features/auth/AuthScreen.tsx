@@ -132,6 +132,7 @@ export function Showcase({ api, code, onChoose, onDiscover }: { api: Api; code: 
           Me connecter
         </Button>
         <p className="small faint center">Gratuit. Vos caves et vos notes sont privées par défaut : vous choisissez ce que vous partagez.</p>
+        <LegalLinks />
       </div>
     </main>
   );
@@ -160,6 +161,7 @@ export function DiscoverScreen({ onChoose, onBack }: { onChoose: (mode: 'signup'
             Revenir à l’invitation
           </Button>
         )}
+        <LegalLinks />
       </div>
     </main>
   );
