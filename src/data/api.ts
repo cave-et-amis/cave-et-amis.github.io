@@ -49,6 +49,7 @@ import type {
   Wine,
   WishItem,
 } from '../domain/types';
+import type { TasteProfile } from '../domain/tasteProfile';
 import { AppError } from '../domain/errors';
 import type { LegalDoc, LegalHistory, LegalKind, LegalPending, LegalStats } from '../domain/legal';
 import { clearDeviceData } from './deviceData';
@@ -961,7 +962,26 @@ export class Api {
   }
   /** Toutes mes données (format « cave-export-v1 ») ; `photos` : les fichiers de mon dossier, à télécharger à part. */
   async exportMyData() {
-    return must(await this.sb.rpc('export_my_data')) as Record<string, unknown> & { photos: string[] };
+    const data = must(await this.sb.rpc('export_my_data')) as Record<string, unknown> & { photos: string[] };
+    // Profil de goûts (lot 1 de Cave & Amis 2.0) : lu avec mes droits et ajouté à l'export.
+    const { data: gouts, error } = await this.sb.from('taste_profiles').select('*').maybeSingle();
+    if (error) throw error;
+    return { ...data, gouts: gouts ?? null };
+  }
+
+  // ───────────── Profil de goûts ─────────────
+  async myTaste(userId: string) {
+    const { data, error } = await this.sb.from('taste_profiles').select('*').eq('user_id', userId).maybeSingle();
+    if (error) throw error;
+    return data as TasteProfile | null;
+  }
+  async saveTaste(userId: string, patch: Partial<Pick<TasteProfile, 'likes' | 'dislikes' | 'ignored' | 'budget_max' | 'note'>>) {
+    // Mise à jour, sinon création (la colonne user_id n'est pas modifiable : pas d'upsert).
+    const updated = must(await this.sb.from('taste_profiles').update(patch).eq('user_id', userId).select('user_id')) as unknown[];
+    if (!updated.length) must(await this.sb.from('taste_profiles').insert({ user_id: userId, ...patch }));
+  }
+  async deleteTaste(userId: string) {
+    must(await this.sb.from('taste_profiles').delete().eq('user_id', userId));
   }
   async photoBlob(path: string) {
     const { data, error } = await this.sb.storage.from('photos').download(path);

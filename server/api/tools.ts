@@ -14,7 +14,8 @@ import type { Meter } from './claude.ts';
 import { compactWine, eventDetails, friendsWines, groupDetails, listTastings, loadCellar, myGroupAllocations, searchWines, wineDetails, type CellarData } from './data.ts';
 import { lookupPrice, type PriceResult } from './price.ts';
 import { computeVerdict, wineKey } from '../../src/domain/scan.ts';
-import type { Scan } from '../../src/domain/types.ts';
+import type { Scan, Tasting } from '../../src/domain/types.ts';
+import { tasteSummary } from '../../src/domain/tasteProfile.ts';
 import { AiFailure, isUuid, sanitize } from './util.ts';
 
 export type PendingAction =
@@ -76,6 +77,7 @@ export const CHAT_TOOLS: Anthropic.Messages.Tool[] = [
     min_rating: nullable(int),
     limit: nullable(int),
   }),
+  tool('get_my_taste', 'Profil de goûts de la personne : ses préférences déclarées (prioritaires) et ce que son carnet laisse deviner (estimation calculée par l’application à partir de ses dégustations notées).', {}),
   tool('search_friends_wines', 'Bouteilles partagées dans les caves que des amis ont ouvertes à la personne, avec les masques choisis par chacun (un simple contact n’en montre aucune).', {
     query: nullable(str),
     color: nullable(colorEnum),
@@ -257,6 +259,20 @@ export class ToolBox {
         return JSON.stringify(await wineDetails(this.user, await this.data(), i.wine_id, this.year, this.userId));
       case 'list_my_tastings':
         return JSON.stringify(await listTastings(this.user, this.userId, { query: text(i.query, 200), min_rating: intIn(i.min_rating, 1, 5), limit: intIn(i.limit, 1, 60) }));
+      case 'get_my_taste': {
+        const [{ data: declared }, { data: rows }] = await Promise.all([
+          this.user.from('taste_profiles').select('likes, dislikes, ignored, budget_max, note').eq('user_id', this.userId).maybeSingle(),
+          this.user.from('tastings').select('*').eq('user_id', this.userId).not('rating', 'is', null).order('tasted_on', { ascending: false }).limit(1000),
+        ]);
+        const d = declared as { likes: string[]; dislikes: string[]; ignored: string[]; budget_max: number | null; note: string | null } | null;
+        const s = tasteSummary((rows ?? []) as Tasting[], this.userId, d?.ignored ?? []);
+        const brief = (t: { label: string; kind: string; count: number; average: number }) => ({ trait: t.label, type: t.kind, tastings: t.count, average_rating: t.average });
+        return JSON.stringify({
+          declared: d ? { likes: d.likes, dislikes: d.dislikes, budget_max: d.budget_max, note: d.note } : null,
+          from_tastings: { rated_tastings: s.rated, likes: s.liked.map(brief), dislikes: s.disliked.map(brief) },
+          rule: 'Les préférences déclarées passent avant ce que le carnet laisse deviner, qui reste une estimation.',
+        });
+      }
       case 'search_friends_wines':
         return JSON.stringify(await friendsWines(this.user, { query: text(i.query, 200), color: text(i.color, 40), limit: intIn(i.limit, 1, 60) }));
       case 'get_event':

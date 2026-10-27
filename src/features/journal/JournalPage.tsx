@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Download, Heart, Plus, Search, Trash2 } from 'lucide-react';
+import { ChevronRight, Download, Heart, Plus, Search, Trash2 } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { buildRows } from '../../domain/cellar';
 import { currentYear, dateShort, money } from '../../domain/format';
@@ -87,6 +87,15 @@ export function JournalPage() {
         Notez les vins goûtés, où que vous soyez, et gardez vos envies d’achat. Vos notes restent privées, sauf si vous les partagez avec un
         événement ou un groupe.
       </FirstTip>
+      <a className="card soft between" href="#/carnet/gouts" style={{ textDecoration: 'none', color: 'inherit' }}>
+        <span>
+          <strong>Mes goûts</strong>
+          <span className="small muted" style={{ display: 'block' }}>
+            Ce que votre carnet dit de vous, et ce que vous dites à Lia.
+          </span>
+        </span>
+        <ChevronRight aria-hidden />
+      </a>
       <div className="subtabs" role="tablist" aria-label="Sections du carnet">
         {TABS.map((t) => (
           <button key={t.value} type="button" role="tab" aria-selected={tab === t.value} onClick={() => setTab(t.value)}>

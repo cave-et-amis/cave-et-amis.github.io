@@ -34,6 +34,7 @@ const InvitePage = lazyPage(() => import('../features/friends/InvitePage'), 'Inv
 const EventsPage = lazyPage(() => import('../features/events/EventsPage'), 'EventsPage');
 const EventPage = lazyPage(() => import('../features/events/EventPage'), 'EventPage');
 const JournalPage = lazyPage(() => import('../features/journal/JournalPage'), 'JournalPage');
+const TastePage = lazyPage(() => import('../features/journal/TastePage'), 'TastePage');
 const TastingPage = lazyPage(() => import('../features/journal/TastingPage'), 'TastingPage');
 const AssistantPage = lazyPage(() => import('../features/assistant/AssistantPage'), 'AssistantPage');
 const SettingsPage = lazyPage(() => import('../features/settings/SettingsPage'), 'SettingsPage');
@@ -205,6 +206,10 @@ function ShellInner() {
         title = 'Dégustation';
         back = '/carnet';
         page = <TastingPage id={seg[2]} />;
+      } else if (seg[1] === 'gouts') {
+        title = 'Mes goûts';
+        back = '/carnet';
+        page = <TastePage />;
       } else {
         title = 'Mon carnet';
         page = <JournalPage />;

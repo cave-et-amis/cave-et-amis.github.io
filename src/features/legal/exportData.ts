@@ -11,7 +11,7 @@ function readme(missing: string[]) {
     '',
     'donnees.json : tout ce que la base garde sur vous, au format JSON (lisible par un tableur, un éditeur de texte ou un autre logiciel).',
     'Principales rubriques : compte et profil, caves, vins, lots, mouvements, prix, dégustations, envies, contacts et accès,',
-    'invitations, notifications, groupes, événements, conversations avec Lia, scanner, appareils de notification,',
+    'invitations, notifications, groupes, événements, conversations avec Lia, scanner, appareils de notification, goûts déclarés,',
     'agenda Nous, documents acceptés et consentements.',
     'Pour les autres personnes, seul ce que l’application vous montre déjà figure (prénom, rôle, réponse).',
     '',
