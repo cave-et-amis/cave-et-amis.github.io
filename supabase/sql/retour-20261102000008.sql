@@ -72,6 +72,37 @@ begin
 end $$;
 
 
+-- Réservations suivantes : la version d'origine (20261019000001).
+create or replace function public.ai_reserve_more(p_usage uuid, p_amount numeric) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  s ai_settings;
+  u ai_usage;
+  v_lim record;
+  v_user_month numeric;
+  v_month numeric;
+begin
+  select * into s from ai_settings where id = 1 for update;
+  select * into u from ai_usage where id = p_usage for update;
+  if not found or u.status <> 'reserved' then
+    return jsonb_build_object('ok', false, 'code', 'invalid_usage');
+  end if;
+  if u.action <> 'admin_test' then
+    select * into v_lim from ai_effective_limits(u.user_id);
+    select coalesce(sum(cost_usd + reserved_usd), 0) into v_user_month from ai_usage
+    where user_id = u.user_id and created_at >= month_start_paris();
+    if v_user_month + p_amount > v_lim.monthly then
+      return jsonb_build_object('ok', false, 'code', 'quota_monthly');
+    end if;
+  end if;
+  select coalesce(sum(cost_usd + reserved_usd), 0) into v_month from ai_usage where created_at >= month_start_paris();
+  if v_month + p_amount > s.monthly_budget_usd then
+    return jsonb_build_object('ok', false, 'code', 'budget_exhausted');
+  end if;
+  update ai_usage set reserved_usd = reserved_usd + p_amount where id = p_usage;
+  return jsonb_build_object('ok', true);
+end $$;
+
 update public.ai_usage set action = 'price' where action = 'price_alert';
 alter table public.ai_usage drop constraint if exists ai_usage_action_check;
 alter table public.ai_usage add constraint ai_usage_action_check
@@ -84,7 +115,7 @@ alter table public.notifications add constraint notifications_kind_check
   check (kind in ('friend_request', 'friend_accepted', 'event_invite', 'group_invite', 'group_joined', 'cellar_invite', 'cellar_joined',
                   'invite_joined', 'cellar_opened', 'cellar_access_request', 'nous_linked', 'maturity_ready', 'maturity_last', 'maturity_many'));
 
-drop function if exists public.record_price_watch(uuid, text, numeric, text);
+drop function if exists public.record_price_watch(uuid, uuid, text, numeric, text);
 drop function if exists public.price_watches_due(integer);
 drop function if exists public.set_price_watch(uuid, integer);
 drop table if exists public.price_watches;

@@ -16,12 +16,17 @@ describe('alerte de baisse de prix : base', () => {
     const { wineId } = await addWine(db, bruno, { name: 'Montus', vintage: 2016 });
     await one(db, bruno, `select set_price_watch($1, 750)`, [wineId]);
     await expectError(one(db, bruno, `select * from price_watches_due(10)`), /permission denied/);
-    await expectError(one(db, bruno, `select record_price_watch($1, 'verified', 1, 'EUR')`, [bruno]), /permission denied/);
+    await expectError(one(db, bruno, `select record_price_watch($1, $2, 'verified', 1, 'EUR')`, [bruno, wineId]), /permission denied/);
+    const rec = async (low: number, currency: string, wine = wineId) =>
+      (await asService<{ s: string | null }>(db, `select record_price_watch($1, $2, 'verified', $3, $4) as s`, [bruno, wine, low, currency]))[0].s;
     // Première vérification sans référence : elle devient la référence, sans alerte.
-    expect((await asService<{ s: string }>(db, `select record_price_watch($1, 'verified', 40, 'EUR') as s`, [bruno]))[0].s).toBe('not_lower');
-    expect((await asService<{ s: string }>(db, `select record_price_watch($1, 'verified', 35, 'EUR') as s`, [bruno]))[0].s).toBe('lower');
+    expect(await rec(40, 'EUR')).toBe('not_lower');
+    expect(await rec(35, 'EUR')).toBe('lower');
     // Autre devise : pas de comparaison.
-    expect((await asService<{ s: string }>(db, `select record_price_watch($1, 'verified', 10, 'CHF') as s`, [bruno]))[0].s).toBe('not_lower');
+    expect(await rec(10, 'CHF')).toBe('not_lower');
+    // Vin changé pendant la vérification : le résultat de l'ancien vin est ignoré.
+    const { wineId: other } = await addWine(db, bruno, { name: 'Madiran', vintage: 2018 });
+    expect(await rec(1, 'EUR', other)).toBeNull();
     const d = (await one<{ d: { alerte_de_prix: { vin: string; reference_price: number } } }>(db, bruno, `select export_my_data() as d`)).d;
     expect(d.alerte_de_prix.vin).toBe('Montus 2016');
     expect(Number(d.alerte_de_prix.reference_price)).toBe(35);
@@ -34,7 +39,14 @@ describe('alerte de baisse de prix : base', () => {
     expect(await begin('price_alert', 0.3)).toMatchObject({ ok: true });
     expect(await begin('price_alert', 0.3)).toMatchObject({ ok: false, code: 'price_alert_budget' });
     // Les autres usages de l'assistant ne sont pas concernés par ce plafond.
-    expect(await begin('price', 0.3)).toMatchObject({ ok: true });
+    const other = (await begin('price', 0.3)) as { ok: boolean; usage_id?: string };
+    expect(other).toMatchObject({ ok: true });
+    // Les appels suivants d'une même alerte : le plafond vaut aussi (0,3 + 0,15 + 0,1 > 0,5).
+    const first = (await asService<{ id: string }>(db, `select id from ai_usage where action = 'price_alert'`))[0].id;
+    const more = async (id: string, amount: number) => (await asService<{ r: { ok: boolean; code?: string } }>(db, `select ai_reserve_more($1, $2) as r`, [id, amount]))[0].r;
+    expect(await more(first, 0.15)).toMatchObject({ ok: true });
+    expect(await more(first, 0.1)).toMatchObject({ ok: false, code: 'price_alert_budget' });
+    expect(await more(other.usage_id!, 0.1)).toMatchObject({ ok: true });
   });
 
   it('retour arrière : état d’avant, export et réservation compris', async () => {

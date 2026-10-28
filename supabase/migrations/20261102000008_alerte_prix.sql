@@ -74,19 +74,20 @@ $$;
 
 -- Serveur seulement : résultat d'une vérification. Prix vérifié plus bas que la référence : notification, et la
 -- référence descend à ce prix. Première vérification sans référence : elle devient la référence, sans alerte.
-create function public.record_price_watch(p_user uuid, p_status text, p_low numeric, p_currency text) returns text
+create function public.record_price_watch(p_user uuid, p_wine uuid, p_status text, p_low numeric, p_currency text) returns text
 language plpgsql security definer set search_path = public as $$
 declare
   w price_watches;
   v_status text := p_status;
   v_name text;
 begin
-  select * into w from price_watches where user_id = p_user for update;
+  -- La personne a pu changer de vin pendant la vérification : le résultat ne vaut que pour le vin vérifié.
+  select * into w from price_watches where user_id = p_user and wine_id = p_wine for update;
   if not found then
     return null;
   end if;
   if p_status = 'verified' then
-    if w.reference_price is not null and (w.currency is null or w.currency = p_currency) and p_low < w.reference_price then
+    if w.reference_price is not null and w.currency = p_currency and p_low < w.reference_price then
       v_status := 'lower';
       select concat_ws(' ', name, vintage::text) into v_name from wines where id = w.wine_id;
       insert into notifications (user_id, kind, actor_name, ref_id) values (p_user, 'price_drop', left(v_name, 40), w.wine_id);
@@ -197,6 +198,45 @@ begin
 end $$;
 
 
+-- Réservations suivantes d'une même demande : version d'origine (20261019000001), avec le même plafond des alertes.
+create or replace function public.ai_reserve_more(p_usage uuid, p_amount numeric) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare
+  s ai_settings;
+  u ai_usage;
+  v_lim record;
+  v_user_month numeric;
+  v_month numeric;
+begin
+  select * into s from ai_settings where id = 1 for update;
+  select * into u from ai_usage where id = p_usage for update;
+  if not found or u.status <> 'reserved' then
+    return jsonb_build_object('ok', false, 'code', 'invalid_usage');
+  end if;
+  if u.action <> 'admin_test' then
+    select * into v_lim from ai_effective_limits(u.user_id);
+    select coalesce(sum(cost_usd + reserved_usd), 0) into v_user_month from ai_usage
+    where user_id = u.user_id and created_at >= month_start_paris();
+    if v_user_month + p_amount > v_lim.monthly then
+      return jsonb_build_object('ok', false, 'code', 'quota_monthly');
+    end if;
+  end if;
+  select coalesce(sum(cost_usd + reserved_usd), 0) into v_month from ai_usage where created_at >= month_start_paris();
+  if v_month + p_amount > s.monthly_budget_usd then
+    return jsonb_build_object('ok', false, 'code', 'budget_exhausted');
+  end if;
+  -- Alertes de prix : le plafond vaut aussi pour les appels suivants d'une même vérification.
+  if u.action = 'price_alert' then
+    select coalesce(sum(cost_usd + reserved_usd), 0) into v_month from ai_usage
+    where action = 'price_alert' and created_at >= month_start_paris();
+    if v_month + p_amount > s.price_alert_budget_usd then
+      return jsonb_build_object('ok', false, 'code', 'price_alert_budget');
+    end if;
+  end if;
+  update ai_usage set reserved_usd = reserved_usd + p_amount where id = p_usage;
+  return jsonb_build_object('ok', true);
+end $$;
+
 -- ───────────── 3. Export « mes données » ─────────────
 
 alter function public.export_my_data() rename to export_my_data_v2;
@@ -216,5 +256,5 @@ end $$;
 
 revoke all on function public.set_price_watch(uuid, integer), public.export_my_data() from public, anon;
 grant execute on function public.set_price_watch(uuid, integer), public.export_my_data() to authenticated;
-revoke all on function public.price_watches_due(integer), public.record_price_watch(uuid, text, numeric, text) from public, anon, authenticated;
+revoke all on function public.price_watches_due(integer), public.record_price_watch(uuid, uuid, text, numeric, text) from public, anon, authenticated;
 grant execute on all functions in schema public to service_role;

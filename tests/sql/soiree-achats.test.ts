@@ -153,6 +153,7 @@ describe('achats groupés', () => {
     await one(db, claire, `select vote_event_wine($1, 4::smallint)`, [w]);
     const d = (await one<{ d: Record<string, unknown[]> }>(db, claire, `select export_my_data() as d`)).d;
     expect(d.achats_groupes_proposes).toHaveLength(1);
+    expect(d.vins_ajoutes_aux_achats_groupes).toEqual([expect.objectContaining({ achat: 'Bourgogne', vin: 'Domaine du Val' })]);
     expect(d.parts_d_achats_groupes).toEqual([expect.objectContaining({ achat: 'Bourgogne', bouteilles: 2, prix_unitaire: 25 })]);
     expect(d.messages_de_soiree).toEqual([expect.objectContaining({ message: 'Santé !' })]);
     expect(d.notes_de_soiree).toEqual([expect.objectContaining({ vin: 'Morgon', note: 4 })]);

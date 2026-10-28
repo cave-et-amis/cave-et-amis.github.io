@@ -442,7 +442,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     let stopped: string | null = null;
     for (const w of watches) {
       const record = (status: string, low: number | null, currency: string | null) =>
-        svc.rpc('record_price_watch', { p_user: w.user_id, p_status: status, p_low: low, p_currency: currency });
+        svc.rpc('record_price_watch', { p_user: w.user_id, p_wine: w.wine_id, p_status: status, p_low: low, p_currency: currency });
       if (stopped) {
         await record('budget', null, null);
         continue;

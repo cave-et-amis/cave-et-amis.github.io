@@ -1,5 +1,7 @@
 -- Cave & Amis — retour arrière de 20261102000007_soiree_achats.sql (seulement en cas de problème).
 --
+-- 0) Si la migration 20261102000008 (alerte de prix) est en place, exécuter d'abord retour-20261102000008.sql :
+--    sinon l'export « mes données » de la migration 8 appellerait une fonction disparue.
 -- 1) Republier d'abord le site d'avant (il n'utilise ni le mode soirée ni les achats groupés).
 -- 2) Puis exécuter CE fichier dans Supabase › SQL Editor. ATTENTION : les soirées en cours, leurs messages et leurs notes,
 --    ainsi que tous les achats groupés (vins et parts) sont effacés. Le reste ne change pas.

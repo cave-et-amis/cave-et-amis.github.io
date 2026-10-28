@@ -1,20 +1,28 @@
 # Tests et limites
 
-Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **27 octobre 2026, tout vert**.
+Commande unique : `npm run verify` (rapport `reports/verification.json`). Dernière exécution : **28 octobre 2026, tout vert** (branche `cave2-design`).
 
 | Étape | Résultat |
 | --- | --- |
 | Fonction serveur regroupée (`supabase/functions/cave-api/index.ts`), sans clé, exécutée telle quelle dans un test | ✔ |
 | Types TypeScript | ✔ |
-| Vitest : 416 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN, garde-fous de la base) | ✔ 416/416 |
+| Vitest : 475 tests (règles, base et droits sur PostgreSQL PGlite, serveur de l'assistant avec un faux Anthropic, aide, QR code, notifications push, mots de passe, liaison avec Nous, documents légaux, export et durées de conservation, double authentification, contrôle anti-robots, durcissements du serveur, sauvegardes, dictionnaire des vins LWIN, garde-fous de la base, photo de profil, radar des goûts, prix, import multiple, défis, mode soirée, achats groupés, alerte de prix) | ✔ 475/475 |
 | Export de production + contrôle des secrets, du code local et de la politique de sécurité du contenu | ✔ |
-| Playwright (Microsoft Edge) sur l'export de production : 50 parcours téléphone + 3 ordinateur, dont l'accessibilité (axe-core) | ✔ 53/53 |
+| Playwright (Microsoft Edge) sur l'export de production : 61 parcours téléphone + 3 ordinateur, dont l'accessibilité (axe-core) | ✔ 64/64 |
+| Concurrence réelle (`npm run test:concurrence`, à part) : PostgreSQL 17 dans Docker, deux sessions simultanées sur les achats groupés et les réservations, plus un témoin sans verrou qui dépasse | ✔ 6/6 |
 
 Les tests d'interface utilisent le **serveur local** (mêmes migrations et règles que Supabase) et, pour l'assistant, un
 **faux serveur Anthropic réservé aux tests** (`e2e/mock-anthropic.mjs`, `tests/helpers/anthropicMock.ts`) : il vérifie le
 comportement de l'application (droits, budget, affichage, confirmations), **pas** la qualité des réponses du vrai Claude.
 
 ## Relecture de sécurité indépendante
+
+**Cave & Amis 2.0 (28/10/2026)** : relecture des migrations 5 à 8 et du serveur, sans faille grave. Corrigés et couverts par
+des tests : plafond des alertes de prix vérifié aussi à chaque réservation supplémentaire (`ai_reserve_more`), résultat
+d'une vérification appliqué au vin vérifié seulement, aucune comparaison entre deux devises, vins ajoutés aux achats
+groupés dans l'export, limites de messages et d'achats sous verrou (et à la réouverture d'un achat), ordre des retours
+arrière précisé. Laissés tels quels, cohérents avec le reste de l'application : un participant qui a répondu « non » peut
+écrire pendant la soirée ; dans un groupe, les parts d'un membre bloqué restent visibles des autres membres.
 
 Une relecture dédiée (droits en base, fonction serveur, budget) a confirmé que les fonctions internes ne sont pas appelables
 par les utilisateurs, que les masques de partage sont appliqués et que la clé ne fuit pas. Elle a relevé des défauts, tous

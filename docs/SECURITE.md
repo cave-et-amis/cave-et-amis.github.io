@@ -332,6 +332,25 @@ planifiées (`supabase/sql/conservation.sql`, à poser après accord : chaque pu
   année, seulement pour les périodes notées sur la fiche et s'il reste une bouteille libre.
 - **Accords mets et vins** : présélection calculée sur l'appareil, sans IA ; rien n'est envoyé à Lia sans demande.
 
+## Cave & Amis 2.0 : photo de profil, soirée, achats groupés, alerte de prix
+
+- **Photo de profil** (`20261102000005`) : dans le dossier privé de la personne, nommée `avatar-….jpg` (contrainte en base) ;
+  lisible par `can_read_photo` seulement pour ceux qui voient déjà le prénom (`profile_names`), jamais une personne bloquée.
+  Recadrée et ré-encodée sur l'appareil (métadonnées retirées).
+- **Mode soirée et achats groupés** (`20261102000007`) : six tables avec RLS et règle `_mfa_ok` ; tout passe par des fonctions
+  qui appellent `require_user()` (double authentification comprise) ; lecture des messages et des notes par
+  `event_live_state`, sans les personnes bloquées. Les parts d'un achat sont prises sous verrou (`set_purchase_part`) : jamais
+  plus que le nombre de bouteilles prévu ; prouvé par un **vrai test de concurrence** (`npm run test:concurrence`, deux
+  sessions PostgreSQL dans Docker, avec un témoin sans verrou qui, lui, dépasse). Aucun paiement dans l'application.
+- **Import multiple** : une photo du dossier de la personne, lue comme une étiquette (même quota, même modèle que le
+  scanner), puis supprimée ; rien n'est ajouté sans confirmation.
+- **Alerte de baisse de prix** (`20261102000008`) : un vin suivi par personne ; tâche du vendredi soir appelée avec le jeton
+  du cron (`price_alerts_run`), qui ne fait rien un autre jour. Plafond mensuel des alertes (`ai_settings.price_alert_budget_usd`,
+  2 $) vérifié par `ai_begin` **et** `ai_reserve_more`, sous le verrou des réglages, en plus du budget global et de la limite
+  de la personne. **Même limite que ci-dessous** (Maîtrise des coûts) : la part des pages lues par la recherche web est une
+  provision estimée, pas un plafond strict ; le plafond de 2 $ porte sur les enveloppes réservées, et le coût réel d'une
+  vérification peut le dépasser légèrement. Pour un plafond absolu, fixez une limite de dépense dans la console Anthropic.
+
 ## Notifications push
 
 - **Standard Web Push**, celui de la bibliothèque PHP minishlink/web-push, écrit dans la fonction serveur (TypeScript,

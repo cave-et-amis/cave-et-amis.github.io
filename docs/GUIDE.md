@@ -1,17 +1,29 @@
 # Mode d'emploi
 
-## Les cinq espaces
+## Les espaces
 
-- **Accueil** : résumé de la cave (bouteilles, disponibles, valeurs), vins à ouvrir prochainement, prochain événement, raccourcis.
-- **Ma cave** : inventaire, recherche, filtres (couleur, maturité, région, millésime, prix, cave, emplacement, favoris, partage), export.
+Sur téléphone, la barre du bas : **Accueil**, **Ma cave**, **Amis**, **Événements**, **Explorer**. Sur ordinateur, le menu de
+gauche ajoute **Lia (IA)**, **Statistiques**, **Administration** (administrateur seulement) et **Paramètres**.
+
+- **Accueil** : résumé de la cave (bouteilles, à déguster, soirées, amis), vins à ouvrir bientôt, prochaine soirée, entrées du
+  trimestre, raccourci « Statistiques et carnet ».
+- **Ma cave** : inventaire, recherche, filtres (couleur, maturité, région, millésime, prix, cave, emplacement, favoris, partage),
+  export, **Vue 2D** ; liens vers Mon carnet et Statistiques.
 - **Amis & Groupes** : chercher, inviter, accepter, bloquer ; vos **amis** et vos **contacts** ; consulter les bouteilles que vos
-  amis partagent ; créer des groupes (famille, soirées entre amis…) et y partager des bouteilles.
-- **Événements** : organiser, répondre, choisir les vins ensemble, garder les souvenirs.
-- **Mon carnet** : dégustations, favoris, liste d'envies, vins possédés.
+  amis partagent ; créer des groupes (famille, soirées entre amis…), y partager des bouteilles et faire des achats groupés.
+- **Événements** : organiser, répondre, choisir les vins ensemble, **mode soirée**, garder les souvenirs.
+- **Explorer** : chercher un vin dans le dictionnaire (plus de 60 000 vins français), appellations à découvrir, défis et
+  découvertes, scanner, photo d'étiquette, caves des amis, accords mets-vins.
+- **Statistiques** : en chiffres, par couleur, par région, maturité, entrées en cave ; onglet **Mon carnet** (dégustations,
+  favoris, liste d'envies, vins possédés).
 
-Le bouton **Ajouter** (en bas à droite sur téléphone, à gauche sur ordinateur) : photographier une étiquette, saisir un vin,
-enregistrer une dégustation, ajouter une envie. L'**assistant** (✦ en haut), l'**aide** (« ? » en haut) et les **réglages**
-(votre initiale) sont toujours accessibles.
+Le bouton **Ajouter** (en bas à droite sur téléphone, à gauche sur ordinateur) : photographier une étiquette, ajouter plusieurs
+bouteilles d'une photo, saisir un vin, enregistrer une dégustation, ajouter une envie. L'**assistant** (✦ en haut), l'**aide**
+(« ? » en haut) et les **réglages** (votre photo ou votre initiale) sont toujours accessibles.
+
+**Photo de profil** (Réglages › Mon profil, facultative) : recadrée en carré sur l'appareil, sans les informations cachées du
+fichier (position, appareil). Elle n'est vue que par les personnes qui voient déjà votre prénom (vos amis et contacts, les
+participants de vos événements), jamais par une personne bloquée. « Retirer » la supprime.
 
 ## Premiers pas : bienvenue, visite guidée, aide
 
@@ -135,6 +147,13 @@ seule fois, et l'activité du groupe le garde. Vous pouvez reprendre vos bouteil
 
 ## La vie d'un groupe
 
+**Achats groupés** (onglet « Achats ») : un membre propose un achat (titre, budget facultatif), les membres y ajoutent des vins
+(prix d'une bouteille, nombre de bouteilles), puis chacun prend sa part avec − et + et la **valide**. L'achat montre le montant
+engagé, le budget et qui a validé. La base refuse une part qui dépasserait le nombre de bouteilles prévu, même si deux
+personnes la prennent en même temps. **Aucun paiement ne passe par l'application** : vous vous arrangez entre vous. Celui qui a
+proposé l'achat (ou un administrateur du groupe) le clôt, l'annule ou le rouvre. Quitter le groupe retire vos parts des achats
+encore ouverts.
+
 La page d'un groupe a six onglets : **Cave**, **Soirées**, **Notes**, **Envies**, **Membres**, **Activité**.
 
 - **Soirées** : « Nouvelle soirée » invite les membres du groupe (même ceux qui ne sont pas vos amis). Chacun peut y
@@ -173,9 +192,17 @@ marquée « cave de … ».
    le stock est mis à jour une seule fois. Notez les vins et partagez vos impressions avec les participants.
 6. Annuler l'événement libère toutes les réservations.
 
+**Mode soirée** (le jour même, à partir de 12 heures avant le début) : « Ouvrir le mode soirée » sur la page de l'événement.
+L'organisateur lance la soirée, à l'aveugle s'il le souhaite, sert les bouteilles confirmées une à une (« Passer ») et les
+révèle (« Révéler ») ; un chronomètre indique depuis quand la bouteille est servie. Les participants suivent la bouteille
+servie, échangent de courts messages (280 caractères), notent chaque bouteille de 1 à 5 et retrouvent les notes partagées
+(« Souvenirs »). La page se met à jour seule toutes les 8 secondes. Une personne bloquée ne voit pas vos messages, ni vous les
+siens. « À l'aveugle » est un jeu : les participants voient déjà les bouteilles confirmées de l'événement.
+
 ## Le carnet
 
-Notez un vin goûté n'importe où : note sur 5, commentaire, observations guidées (robe, nez, bouche, acidité, tanins, longueur),
+Notez un vin goûté n'importe où : note sur 5, commentaire, observations guidées (robe, nez, bouche, acidité, tanins, longueur,
+et quatre repères de 1 à 5 : fruité, puissance, boisé, minéralité),
 plat, prix payé (au verre, bouteille au restaurant, achat en boutique), photo, « à racheter ». Vos notes sont **privées** sauf
 si vous les partagez avec un événement. Le stock ne change que si vous cochez « La bouteille vient de ma cave ».
 
@@ -183,10 +210,17 @@ si vous les partagez avec un événement. Le stock ne change que si vous cochez 
 notées, 4/5 ou plus en moyenne pour « vous aimez », 2,5/5 ou moins pour « vous aimez moins » ; calculé sur le téléphone,
 sans IA) et ce que vous déclarez (j'aime, j'aime moins, budget habituel, une note). Écartez un trait qui ne vous ressemble
 pas, modifiez vos préférences, ou effacez tout. Lia lit ce profil pour vous conseiller ; personne d'autre ne le voit.
+Le **radar** à cinq axes (fruité, puissance, boisé, acidité, minéralité) fait la moyenne de vos repères sur les vins notés
+4/5 ou plus ; il apparaît quand trois axes ont au moins deux notes.
 
-**Que boire avec…** (raccourci de l'accueil) : tapez votre plat, l'application présélectionne vos bouteilles libres qui
-s'y prêtent, par des règles simples (couleur, type, accord noté sur la fiche, maturité). « Demander à Lia » prépare la
-question avec cette présélection.
+**Défis et découvertes** (Explorer) : un défi par mois (par exemple trois appellations de Loire sur cinq) et des découvertes
+(cépages oubliés, toutes les couleurs, tour de France des régions). La progression se calcule sur le téléphone à partir de
+votre carnet : une dégustation compte, même d'un seul verre. Le but est de goûter plus varié, pas de boire plus.
+
+**Que boire avec…** (Explorer › « Accords mets-vins ») : « Plat unique » ou « Menu complet » (entrée, plat, dessert).
+Tapez votre plat : l'application reconnaît sa famille (photo et conseil général) et présélectionne vos bouteilles libres qui
+s'y prêtent, par des règles simples (couleur, type, accord noté sur la fiche, maturité), avec un niveau : « Parfait »,
+« Excellent » ou « Belle alternative ». « Demander à Lia » prépare la question avec cette présélection.
 
 ## Prix et valeur
 
@@ -194,6 +228,27 @@ La fiche d'un vin sépare : **votre prix d'achat**, les **prix payés** (carnet)
 actuel » interroge le web : seuls des liens réellement trouvés sont retenus, avec date, contenance et devise ; vous choisissez
 ensuite d'**enregistrer** le relevé. Sinon : « prix non vérifié ». L'accueil indique la valeur d'achat et la valeur de marché
 estimée de votre stock, avec la part de la cave couverte.
+
+Avec au moins deux relevés de même contenance et même devise, une **courbe** montre leur évolution (6 mois, 1 an, 3 ans ou
+tout), avec l'écart en pour cent sur la période et par rapport à votre prix d'achat ; chaque offre indique son écart à la
+médiane des offres du relevé.
+
+**M'alerter si le prix baisse** (case sur la fiche) : un seul vin suivi à la fois. Le vendredi soir, son prix est recherché
+comme avec « Rechercher le prix actuel » ; s'il est plus bas que le plus bas déjà vu, vous recevez une notification et le
+relevé rejoint la courbe. Ces vérifications ont un plafond de 2 $ par mois pour toute l'application, dans le budget de
+l'assistant : s'il est atteint, la fiche indique « Vérification reportée » et elles reprennent le mois suivant.
+
+## Ma cave en 2D et ajout de plusieurs bouteilles
+
+**Ma cave › Vue 2D** : chaque emplacement (étagère, casier…) est une rangée, chaque bouteille en stock une pastille de la
+couleur du vin ; un liseré doré signale un vin à boire maintenant ou bientôt. Touchez une pastille : le vin, son emplacement,
+sa maturité et sa fiche. « Ajouter une étagère » crée un emplacement.
+
+**+ Ajouter › Ajouter plusieurs bouteilles** (ou « Plusieurs » dans le scanner) : une seule photo d'une rangée, d'un carton
+ou d'une table, jusqu'à 12 bouteilles. Lia les liste ; vous décochez, corrigez le nom ou le millésime (« Millésime à
+vérifier »), puis « Vérifier et ajouter ». Deux bouteilles identiques forment un seul vin de deux bouteilles ; un vin déjà dans
+votre cave reçoit des bouteilles en plus (« Déjà en cave »). La photo est supprimée après la lecture. Elle compte comme une
+lecture d'étiquette dans vos limites de l'assistant.
 
 ## Scanner avant d'acheter
 

@@ -131,6 +131,8 @@ begin
   if not public.is_event_participant(p_event) or not exists (select 1 from event_live where event_id = p_event and ended_at is null) then
     raise exception 'forbidden' using errcode = 'P0001';
   end if;
+  -- Verrou sur l'événement : deux messages simultanés ne dépassent pas la limite.
+  perform 1 from events where id = p_event for update;
   if (select count(*) from event_messages where event_id = p_event) >= 500 then
     raise exception 'event_messages_full' using errcode = 'P0001';
   end if;
@@ -251,6 +253,7 @@ begin
   if not public.is_group_member(p_group) then
     raise exception 'forbidden' using errcode = 'P0001';
   end if;
+  perform 1 from groups where id = p_group for update;
   if (select count(*) from group_purchases where group_id = p_group and status = 'open') >= 20 then
     raise exception 'group_purchases_full' using errcode = 'P0001';
   end if;
@@ -267,6 +270,7 @@ declare
   v_row group_purchase_items;
 begin
   perform public.open_purchase_group(p_purchase);
+  perform 1 from group_purchases where id = p_purchase for update;
   if (select count(*) from group_purchase_items where purchase_id = p_purchase) >= 30 then
     raise exception 'group_purchase_items_full' using errcode = 'P0001';
   end if;
@@ -358,6 +362,13 @@ begin
   if p_status not in ('open', 'closed', 'cancelled') then
     raise exception 'invalid' using errcode = 'P0001';
   end if;
+  -- Rouvrir : même limite de 20 achats ouverts par groupe qu'à la création.
+  if p_status = 'open' and v_row.status <> 'open' then
+    perform 1 from groups where id = v_row.group_id for update;
+    if (select count(*) from group_purchases where group_id = v_row.group_id and status = 'open') >= 20 then
+      raise exception 'group_purchases_full' using errcode = 'P0001';
+    end if;
+  end if;
   update group_purchases set status = p_status, closed_at = case when p_status = 'open' then null else now() end where id = p_purchase;
 end $$;
 
@@ -414,6 +425,10 @@ begin
     'achats_groupes_proposes', coalesce((select jsonb_agg((to_jsonb(g) - 'created_by') || jsonb_build_object(
                          'groupe', (select x.name from groups x where x.id = g.group_id)))
                        from group_purchases g where g.created_by = me), '[]'::jsonb),
+    'vins_ajoutes_aux_achats_groupes', coalesce((select jsonb_agg(jsonb_build_object(
+                         'achat', g.title, 'vin', i.wine_name, 'producteur', i.producer, 'millesime', i.vintage,
+                         'prix_unitaire', i.unit_price, 'bouteilles', i.bottles, 'le', i.created_at))
+                       from group_purchase_items i join group_purchases g on g.id = i.purchase_id where i.created_by = me), '[]'::jsonb),
     'parts_d_achats_groupes', coalesce((select jsonb_agg(jsonb_build_object(
                          'achat', g.title, 'vin', i.wine_name, 'millesime', i.vintage, 'prix_unitaire', i.unit_price,
                          'bouteilles', pp.bottles, 'validee', pp.validated, 'le', pp.updated_at))
