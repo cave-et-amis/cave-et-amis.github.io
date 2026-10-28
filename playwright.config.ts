@@ -51,7 +51,7 @@ export default defineConfig({
       stdout: 'pipe',
     },
     {
-      command: `node --disable-warning=ExperimentalWarning server/local/main.ts --reset --data .local/e2e --port ${API_PORT}`,
+      command: `node --disable-warning=ExperimentalWarning server/local/main.ts --reset --data .local/e2e --port ${API_PORT} --confirm-email-test`,
       url: `http://127.0.0.1:${API_PORT}/rest/v1/`,
       reuseExistingServer: false,
       timeout: 60_000,

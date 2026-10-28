@@ -9,10 +9,14 @@ export const TEST_SERVICE_KEY = 'local-service-key-tests';
 /**
  * Base PostgreSQL neuve + clients Supabase officiels branchés sur le faux serveur (aucun réseau).
  * `captcha` : protection CAPTCHA simulée (les comptes de test sont alors créés avec un jeton).
+ * `confirmEmail` : adresses qui passent par la confirmation par e-mail (comme en ligne).
  */
-export async function makeEnv(functions: Record<string, (req: Request) => Promise<Response>> = {}, o: { captcha?: boolean } = {}) {
+export async function makeEnv(
+  functions: Record<string, (req: Request) => Promise<Response>> = {},
+  o: { captcha?: boolean; confirmEmail?: (email: string) => boolean } = {},
+) {
   const db = await createDb();
-  const fake = createFakeSupabase(db, { serviceKey: TEST_SERVICE_KEY, functions, captcha: o.captcha });
+  const fake = createFakeSupabase(db, { serviceKey: TEST_SERVICE_KEY, functions, captcha: o.captcha, confirmEmail: o.confirmEmail });
   let n = 0;
   const client = (): SupabaseClient =>
     createClient(TEST_URL, TEST_PUBLIC_KEY, {

@@ -90,7 +90,10 @@ if (fresh && flag('demo')) {
 }
 
 const functions: Record<string, (req: Request) => Promise<Response>> = {};
-const fake = createFakeSupabase(db, { serviceKey, functions });
+// Tests d'interface (--confirm-email-test) : les adresses en @confirmation.test passent par la confirmation par e-mail,
+// comme en ligne ; le jeton du lien se lit sur /__test/signup-token. Jamais activé par npm run local.
+const confirmEmailTest = flag('confirm-email-test');
+const fake = createFakeSupabase(db, { serviceKey, functions, confirmEmail: confirmEmailTest ? (e) => e.endsWith('@confirmation.test') : undefined });
 functions['cave-api'] = createApiHandler(
   {
     supabaseUrl: `http://127.0.0.1:${PORT}`,
@@ -159,6 +162,18 @@ const server = createServer(async (req, res) => {
       headers,
       body: req.method === 'GET' || req.method === 'HEAD' ? undefined : body,
     });
+    const testRoute = confirmEmailTest ? /^\/__test\/(signup-token|age-signup)\?email=([^&]+)$/.exec(req.url ?? '') : null;
+    if (testRoute) {
+      const email = decodeURIComponent(testRoute[2]);
+      if (!email.endsWith('@confirmation.test')) {
+        res.writeHead(404, CORS).end();
+        return;
+      }
+      if (testRoute[1] === 'age-signup') await fake.ageSignupMail(email);
+      const token = testRoute[1] === 'signup-token' ? await fake.lastSignupToken(email) : null;
+      res.writeHead(200, { ...CORS, 'Content-Type': 'application/json' }).end(JSON.stringify({ token }));
+      return;
+    }
     const response = await fake.handle(request);
     const out: Record<string, string> = {};
     for (const [k, v] of Object.entries(CORS)) out[k.toLowerCase()] = v;

@@ -1915,6 +1915,56 @@ details.advanced .form {
   font-style: italic;
 }
 
+/* Inscription enregistrée : enveloppe bordeaux cerclée d'or, qui flotte doucement (transform seul). */
+.mail-emblem {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 22px;
+  color: #fbf3e4;
+  background: linear-gradient(160deg, #c2577b 0%, #8e2a4a 45%, #5e1426 100%);
+  box-shadow: 0 0 0 1px rgba(240, 210, 150, 0.7), 0 10px 28px rgba(94, 20, 38, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  animation: mail-float 3.2s ease-in-out infinite;
+}
+.mail-emblem svg {
+  width: 36px;
+  height: 36px;
+}
+@keyframes mail-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(-3deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mail-emblem {
+    animation: none;
+  }
+}
+.sent-to {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--gold-soft, var(--bg-deep));
+  overflow-wrap: anywhere;
+}
+.sent-steps {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+}
+.sent-steps li::marker {
+  color: var(--primary);
+  font-weight: 700;
+}
+
 /* ───────────── Divers ───────────── */
 
 .photo-preview {

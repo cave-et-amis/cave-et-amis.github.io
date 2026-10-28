@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { CalendarHeart, Eye, EyeOff, Users, Wine } from 'lucide-react';
 import type { Api } from '../../data/api';
+import { resendWaitSeconds } from '../../domain/emailLink';
 import { AppError, toMessage } from '../../domain/errors';
 import { deName } from '../../domain/format';
 import { MIN_AGE, type LegalDoc } from '../../domain/legal';
@@ -13,6 +14,7 @@ import { inviteHeadline } from '../friends/invite';
 import { LegalLinks, LegalSheet, useLegalDocs } from '../legal/LegalViews';
 import { useCaptcha } from './Captcha';
 import { Discover } from './Discover';
+import { SignupSent } from './SignupSent';
 
 type Mode = 'login' | 'signup' | 'forgot';
 type InviteInfo = Awaited<ReturnType<Api['inviteInfo']>>;
@@ -186,6 +188,8 @@ export function AuthScreen({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  // Inscription enregistrée, adresse à confirmer : la page « e-mail envoyé » remplace le formulaire.
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(notice ?? null);
   const [info, setInfo] = useState<string | null>(null);
   // Connexion refusée car l'adresse n'est pas encore confirmée : un nouveau lien peut être demandé.
@@ -227,8 +231,10 @@ export function AuthScreen({
           { cgu_version: cgu?.version, confidentialite_version: policy?.version },
           captcha.take(),
         );
-        if (needsConfirmation)
-          setInfo('Compte créé. Ouvrez le lien reçu par e-mail (pensez à regarder dans les indésirables) : il confirme votre adresse et vous connecte.');
+        if (needsConfirmation) {
+          setPassword('');
+          setSentTo(email.trim());
+        }
       } else {
         await api.resetPassword(email, captcha.take());
         setInfo('Si un compte existe avec cette adresse, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe.');
@@ -249,6 +255,20 @@ export function AuthScreen({
       setBusy(false);
     }
   }
+
+  if (sentTo)
+    return (
+      <SignupSent
+        api={api}
+        email={sentTo}
+        onBack={() => {
+          setSentTo(null);
+          setMode('login');
+          setError(null);
+          setInfo(null);
+        }}
+      />
+    );
 
   return (
     <main className="auth">
@@ -337,7 +357,8 @@ export function AuthScreen({
                     setUnconfirmed(false);
                     setInfo('Un nouveau lien de confirmation vient de partir. Pensez à regarder dans les indésirables.');
                   } catch (err) {
-                    setError(toMessage(err));
+                    const wait = resendWaitSeconds(err);
+                    setError(wait ? `Un e-mail vient déjà de partir. Par sécurité, patientez ${wait} s avant d’en demander un autre.` : toMessage(err));
                   }
                 }}
               >

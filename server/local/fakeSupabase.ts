@@ -55,7 +55,16 @@ export type FakeSupabaseOptions = {
    * avec la clé « service ». Seule sa présence est vérifiée : aucun appel à Cloudflare.
    */
   captcha?: boolean;
+  /**
+   * Confirmation de l'adresse simulée (tests), comme un projet Supabase avec « Confirm email » : pour les adresses
+   * choisies, l'inscription ne connecte pas, un lien est « envoyé » (jeton lu par lastSignupToken) et la connexion est
+   * refusée tant qu'il n'est pas ouvert. Adresse déjà inscrite : même réponse qu'une inscription, sans rien envoyer.
+   */
+  confirmEmail?: (email: string) => boolean;
 };
+
+/** Délai entre deux liens de confirmation pour une même adresse, comme le réglage par défaut de Supabase. */
+export const SIGNUP_RESEND_SECONDS = 60;
 
 function b64url(bytes: Uint8Array) {
   let bin = '';
@@ -372,6 +381,8 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
   const magicTokens = new Map<string, string>();
   const recoveryTokens = new Map<string, string>();
   const lastRecovery = new Map<string, string>();
+  // Comptes pas encore confirmés (confirmEmail) : jeton du dernier lien envoyé et heure de l'envoi, par compte.
+  const unconfirmed = new Map<string, { token: string; sentAt: number }>();
   /** Changement d'adresse « sécurisé », comme chez Supabase : un jeton pour l'adresse actuelle, un pour la nouvelle. */
   const emailChanges = new Map<string, { newEmail: string; current: string; next: string; confirmed: Set<'current' | 'next'> }>();
   const newToken = () => Array.from(crypto.getRandomValues(new Uint8Array(28)), (b) => b.toString(16).padStart(2, '0')).join('');
@@ -514,13 +525,26 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       const password = String(body.password ?? '');
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return authError(400, 'validation_failed', 'Unable to validate email address: invalid format');
       if (password.length < 8) return authError(422, 'weak_password', 'Password should be at least 8 characters.');
-      if (await findUser('email = $1', email)) return authError(422, 'user_already_exists', 'User already registered');
+      const confirm = options.confirmEmail?.(email) ?? false;
+      const existing = await findUser('email = $1', email);
+      if (existing && confirm) {
+        // Comme Supabase avec la confirmation : rien ne dit que l'adresse est prise. Compte pas encore confirmé : un
+        // nouveau lien part (délai respecté) ; compte confirmé : un faux compte est renvoyé, aucun e-mail.
+        const pending = unconfirmed.get(existing.id);
+        if (pending && Date.now() - pending.sentAt >= SIGNUP_RESEND_SECONDS * 1000) unconfirmed.set(existing.id, { token: newToken(), sentAt: Date.now() });
+        return respond(200, { ...userJson(existing), id: crypto.randomUUID(), email_confirmed_at: null, confirmed_at: null, user_metadata: {} });
+      }
+      if (existing) return authError(422, 'user_already_exists', 'User already registered');
       const id = crypto.randomUUID();
       await db.query(
         `insert into auth.users (id, email, password_hash, raw_user_meta_data, last_sign_in_at)
          values ($1::uuid, $2, encode(sha256(convert_to($1::text || ':' || $3, 'UTF8')), 'hex'), $4, now())`,
         [id, email, password, JSON.stringify(body.data ?? {})],
       );
+      if (confirm) {
+        unconfirmed.set(id, { token: newToken(), sentAt: Date.now() });
+        return respond(200, { ...userJson((await findUser('id = $1', id))!), email_confirmed_at: null, confirmed_at: null });
+      }
       return respond(200, makeSession(userJson((await findUser('id = $1', id))!), openSession(id, 'password')));
     }
 
@@ -537,6 +561,7 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
           [email, String(body.password ?? '')],
         );
         if (!res.rows[0]) return authError(400, 'invalid_credentials', 'Invalid login credentials');
+        if (unconfirmed.has(res.rows[0].id)) return authError(400, 'email_not_confirmed', 'Email not confirmed');
         // Nouvelle session au niveau du mot de passe, même si le compte a un code (il sera demandé ensuite).
         return respond(200, makeSession(await userOut(res.rows[0]), openSession(res.rows[0].id, 'password')));
       }
@@ -577,6 +602,15 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
       await db.query(`update auth.users set email = $2 where id = $1`, [userId, change.newEmail]);
       const user = (await findUser('id = $1', userId))!;
       return respond(200, makeSession(await userOut(user), openSession(userId, 'email_change')));
+    }
+    // Lien de confirmation d'inscription : seul le dernier envoyé est valable, une seule fois.
+    if (path === 'verify' && method === 'POST' && (body.type === 'email' || body.type === 'signup')) {
+      const hash = String(body.token_hash ?? '');
+      const entry = [...unconfirmed].find(([, p]) => p.token === hash);
+      if (!entry) return authError(403, 'otp_expired', 'Email link is invalid or has expired');
+      unconfirmed.delete(entry[0]);
+      const user = (await findUser('id = $1', entry[0]))!;
+      return respond(200, makeSession(await userOut(user), openSession(user.id, 'otp')));
     }
     if (path === 'verify' && method === 'POST') {
       const hash = String(body.token_hash ?? '');
@@ -655,6 +689,19 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     }
     // Pas d'envoi d'e-mails en local : la demande est acceptée (comme Supabase, sans dire si le compte existe). Le jeton
     // du lien est gardé pour les tests (lastRecoveryToken) ; comme chez Supabase, seul le dernier demandé est valable.
+    // Nouveau lien de confirmation : réponse identique que l'adresse soit inconnue, confirmée ou en attente ; un seul envoi
+    // par délai, comme chez Supabase (« For security purposes… »).
+    if (path === 'resend' && method === 'POST') {
+      if (body.type !== 'signup') return authError(400, 'validation_failed', 'Unsupported resend type');
+      const user = await findUser('email = $1', String(body.email ?? '').trim().toLowerCase());
+      const pending = user ? unconfirmed.get(user.id) : undefined;
+      if (user && pending) {
+        const wait = Math.ceil(SIGNUP_RESEND_SECONDS - (Date.now() - pending.sentAt) / 1000);
+        if (wait > 0) return authError(429, 'over_email_send_rate_limit', `For security purposes, you can only request this after ${wait} seconds.`);
+        unconfirmed.set(user.id, { token: newToken(), sentAt: Date.now() });
+      }
+      return respond(200, {});
+    }
     if (path === 'recover') {
       const user = await findUser('email = $1', String(body.email ?? '').trim().toLowerCase());
       if (user) {
@@ -1005,5 +1052,16 @@ export function createFakeSupabase(db: PGlite, options: FakeSupabaseOptions) {
     const c = emailChanges.get(userId);
     return c ? { current: c.current, next: c.next } : null;
   };
-  return { handle, fetch: fetchFn, signingSecret, lastRecoveryToken, emailChangeTokens };
+  /** Jeton du dernier lien de confirmation « envoyé » à cette adresse (null : compte confirmé ou inconnu). */
+  const lastSignupToken = async (email: string) => {
+    const user = await findUser('email = $1', email.trim().toLowerCase());
+    return (user && unconfirmed.get(user.id)?.token) ?? null;
+  };
+  /** Tests : fait comme si le dernier lien de cette adresse était parti il y a plus que le délai de renvoi. */
+  const ageSignupMail = async (email: string) => {
+    const user = await findUser('email = $1', email.trim().toLowerCase());
+    const pending = user && unconfirmed.get(user.id);
+    if (pending) pending.sentAt -= SIGNUP_RESEND_SECONDS * 1000;
+  };
+  return { handle, fetch: fetchFn, signingSecret, lastRecoveryToken, emailChangeTokens, lastSignupToken, ageSignupMail };
 }
