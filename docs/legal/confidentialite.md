@@ -15,12 +15,14 @@ Pour chaque usage : les données, à quoi elles servent, et sur quelle base lég
 ### Votre compte
 
 - Votre adresse e-mail, votre mot de passe (gardé par Supabase sous une forme qui ne permet pas de le retrouver), votre prénom affiché, votre devise, vos préférences (visite guidée, astuces déjà vues, partage proposé par défaut…), vos dates d'inscription et de dernière connexion.
-- À quoi elles servent : créer votre compte, vous connecter, protéger l'accès.
-- Base légale : l'exécution du contrat (les conditions d'utilisation).
+- Votre photo de profil, si vous en ajoutez une (facultative, Réglages › Mon profil). Elle est recadrée et réduite sur votre appareil avant l'envoi, ce qui retire les informations cachées du fichier (lieu de la prise de vue, appareil). Elle n'est analysée par aucun outil (ni reconnaissance faciale, ni intelligence artificielle) et n'est jamais envoyée à Lia.
+- À quoi elles servent : créer votre compte, vous connecter, protéger l'accès ; la photo vous fait reconnaître de vos proches.
+- Base légale : l'exécution du contrat (les conditions d'utilisation). [À VALIDER : base légale de la photo de profil, facultative (consentement ou exécution du contrat)]
 
 ### Votre cave, votre carnet et vos envies
 
-- Vos caves et emplacements ; vos fiches de vins, avec leurs photos ; vos lots (quantités, prix, date et lieu d'achat, notes) et leurs mouvements (entrées, sorties, consommation) ; les prix de marché et vos recherches de prix ; vos dégustations (date, lieu, occasion, note, commentaires, plat, prix payé, photo) ; vos envies.
+- Vos caves et emplacements ; vos fiches de vins, avec leurs photos ; vos lots (quantités, prix, date et lieu d'achat, notes) et leurs mouvements (entrées, sorties, consommation) ; les prix de marché et vos recherches de prix ; vos dégustations (date, lieu, occasion, note, commentaires, plat, prix payé, photo, observations comme la robe, le nez ou l'acidité, et quatre repères facultatifs notés de 1 à 5 : fruité, puissance, boisé, minéralité) ; vos envies ; le vin dont vous suivez le prix, si vous l'avez choisi (voir plus bas).
+- Votre profil de goûts, si vous le remplissez : ce que vous aimez, ce que vous aimez moins, votre budget habituel, une note libre, et les traits tirés de votre carnet que vous demandez d'ignorer. Les autres traits sont calculés par l'application à partir de votre carnet, au moment de l'affichage, sans être enregistrés. Le graphique « Mes goûts » est calculé sur votre appareil, sans intelligence artificielle. « Effacer mon profil » supprime ce que vous avez déclaré.
 - Ces données montrent vos habitudes autour du vin : elles restent privées tant que vous ne les partagez pas.
 - À quoi elles servent : l'inventaire, le carnet, les conseils et la valeur de votre cave.
 - Base légale : l'exécution du contrat.
@@ -35,12 +37,15 @@ Pour chaque usage : les données, à quoi elles servent, et sur quelle base lég
 
 - Groupes : membres et rôles, bouteilles mises à disposition, notes partagées, envies communes et votes, activité du groupe (ses 500 dernières actions, avec les prénoms au moment de l'action).
 - Événements : titre, date, lieu (souvent une adresse), description, thème, budget, participants et leurs réponses, menu, vins prévus et réservés.
+- **Mode soirée**, pendant un événement : les courts messages que vous écrivez (280 caractères au plus) et la note de 1 à 5 que vous donnez à chaque bouteille. Ils ne sont lus que par les participants de l'événement, jamais par une personne bloquée (par vous ou qui vous a bloqué).
+- **Achats groupés**, dans un groupe : les achats proposés (titre, budget facultatif, note), les vins à acheter (nom, producteur, millésime, couleur, prix unitaire, nombre de bouteilles) et la part de chaque membre (nombre de bouteilles, validée ou non), avec son prénom. Aucun paiement ni aucune donnée bancaire ne passe par l'application : c'est une liste partagée entre les membres.
 - Ces informations sont visibles des autres membres du groupe ou participants de l'événement.
 - Base légale : l'exécution du contrat.
 
 ### Les notifications
 
-- Dans l'application : vos 200 dernières notifications (type, prénom de la personne à l'origine, date).
+- Dans l'application : vos 200 dernières notifications (type, prénom de la personne à l'origine ou nom du vin concerné, date).
+- Alertes facultatives, que vous activez vous-même : un vin de votre cave qui entre dans sa période de dégustation ou vit sa dernière année (une alerte par vin et par type au plus chaque année ; l'application garde, pour ne pas la répéter, la date de chaque alerte envoyée), et la baisse du prix du vin que vous suivez.
 - Sur vos appareils, si vous les activez : l'adresse d'abonnement que votre navigateur fournit pour chaque appareil, ses clés de chiffrement, et un nom d'appareil (par exemple « iPhone » ou « PC Windows · Chrome »). Le texte de chaque notification est chiffré pour vos appareils : le service de notification de votre navigateur le transmet sans pouvoir le lire.
 - Base légale : l'exécution du contrat ; pour les notifications sur vos appareils, l'autorisation que vous donnez à votre navigateur, que vous pouvez retirer à tout moment.
 
@@ -49,7 +54,7 @@ Pour chaque usage : les données, à quoi elles servent, et sur quelle base lég
 Lia s'appuie sur Claude, l'intelligence artificielle de la société Anthropic. Pour chaque demande, sont envoyés à Anthropic :
 
 - votre message, les 10 derniers messages de la conversation, la date du jour et la page d'où vous écrivez (fiche d'un vin, événement, groupe, visite de magasin) ;
-- selon la question, des extraits de vos données, lus avec vos droits : votre cave, y compris une cave gérée à plusieurs avec le prénom de la personne propriétaire (vins, conseils, quantités, emplacements, prix et date d'achat, notes, prix de marché enregistrés), votre carnet (vins bus, note, commentaires, observations, plat, occasion, date), vos visites de magasin (nom du magasin, budget, occasion, bouteilles analysées avec leur prix en rayon, leur analyse et leur verdict), et ce que vous avez écrit dans un groupe (commentaire et plat de vos dégustations partagées, notes de vos envies) ;
+- selon la question, des extraits de vos données, lus avec vos droits : votre cave, y compris une cave gérée à plusieurs avec le prénom de la personne propriétaire (vins, conseils, quantités, emplacements, prix et date d'achat, notes, prix de marché enregistrés), votre carnet (vins bus, note, commentaires, observations et repères de goût, plat, occasion, date), votre profil de goûts (ce que vous aimez ou aimez moins, budget habituel, note, traits à ignorer), vos visites de magasin (nom du magasin, budget, occasion, bouteilles analysées avec leur prix en rayon, leur analyse et leur verdict), et ce que vous avez écrit dans un groupe (commentaire et plat de vos dégustations partagées, notes de vos envies) ;
 - pour un événement : type, titre, date, état, thème, menu, nom du groupe pour une soirée de groupe, prénoms, rôles et réponses des participants, vins prévus (vin, millésime, couleur, appellation, quantité, état, ordre de service et prénom de leur propriétaire), vos bouteilles disponibles et celles que les participants acceptent de proposer (avec leur prénom) ; le lieu, le budget et la description seulement si vous l'organisez ;
 - pour un groupe : son nom, prénoms des membres, bouteilles visibles ou mises à sa disposition (avec le prénom de leur propriétaire), vins notés par les membres avec leur note sur 5, envies communes avec leur nombre de participants, titres et dates des soirées ;
 - les bouteilles que vos amis vous montrent : nom, producteur, millésime, couleur, région, appellation, contenance, quantité si elle n'est pas masquée, et le prénom de leur propriétaire ;
@@ -65,6 +70,7 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 - **Lecture d'étiquette** : la photo de l'étiquette, et celle de la contre-étiquette si vous l'ajoutez, sont envoyées à Anthropic. La photo de l'étiquette est gardée sur la fiche du vin ; celle de la contre-étiquette n'est pas gardée.
 - **Scanner avant d'acheter** : une à trois photos (étiquette, contre-étiquette, étiquette de prix en rayon), le code-barres, le nom du magasin, le prix relevé, et le budget et l'occasion que vous indiquez. Les photos et le code-barres sont envoyés à Anthropic pour identifier le vin et lire le prix ; la description du vin est envoyée pour l'avis et les prix ; le code-barres est aussi cherché chez Open Food Facts. Une étiquette de prix en rayon peut montrer le magasin ou des personnes : évitez de photographier quelqu'un.
 - **Prix de marché** : seule la description du vin (nom, cuvée, producteur, appellation, région, millésime, contenance) est envoyée à Anthropic, qui cherche des prix sur le web.
+- **Alerte de baisse de prix** (facultative, un seul vin suivi) : si vous la demandez sur la fiche d'un vin, la même description du vin est envoyée automatiquement à Anthropic une fois par semaine au plus, le vendredi soir, pour chercher son prix. Aucune autre donnée vous concernant n'est envoyée. Le prix trouvé est enregistré sur la fiche, et une notification vous prévient s'il passe sous le prix de référence. Vous arrêtez le suivi quand vous voulez. [À VALIDER : base légale de cet envoi automatique et hebdomadaire, fait sur votre demande]
 - **Photo officielle** : le serveur cherche une photo chez Open Food Facts à partir du code-barres ou du nom du vin, sans identifiant de personne. Les vignettes proposées s'affichent depuis le site d'Open Food Facts, qui reçoit alors votre adresse IP.
 - Avant l'envoi, chaque photo est redessinée sur votre appareil : les informations cachées qu'elle contient (date, lieu de la prise de vue, modèle d'appareil) sont retirées.
 - Base légale : l'exécution du contrat.
@@ -111,7 +117,7 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 
 - **Vous**, toujours.
 - **Les personnes que vous choisissez** : celles à qui vous ouvrez votre cave (ce que vous leur montrez), les membres de vos groupes, les participants de vos événements, les personnes associées à une cave gérée à plusieurs.
-- **Vos contacts et les personnes avec qui vous partagez un événement** voient votre prénom. À ce titre, ils ne voient pas le reste de votre profil : ni votre devise, ni votre date d'inscription, ni vos préférences, ni le fait d'être ou non l'administrateur.
+- **Vos contacts et les personnes avec qui vous partagez un événement** voient votre prénom, et votre photo de profil si vous en avez ajouté une (jamais une personne bloquée, dans un sens ou dans l'autre). À ce titre, ils ne voient pas le reste de votre profil : ni votre devise, ni votre date d'inscription, ni vos préférences, ni le fait d'être ou non l'administrateur.
 - **Les personnes inscrites** peuvent trouver votre prénom par la recherche, seulement si vous avez choisi d'y apparaître.
 - **L'administrateur de l'application** voit l'adresse e-mail de chaque compte, sa consommation de l'assistant et les erreurs techniques. Il ne voit pas, dans l'application, le contenu de vos conversations.
 - **L'éditeur**, qui gère l'hébergement technique, peut techniquement accéder à toutes les données enregistrées sur le serveur, y compris les conversations et les photos. Il s'engage à ne le faire que pour la maintenance, la sécurité ou une obligation légale.
@@ -156,7 +162,12 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 - **Demandes de contact ou d'accès refusées** : 6 mois.
 - **Analyses et visites du scanner**, avec leurs photos : 30 jours.
 - **Appareils de notification qui ne répondent plus** : 90 jours.
-- **Photos qui ne servent plus** (plus aucune fiche, dégustation, groupe ou analyse ne les utilise) : effacées chaque mois.
+- **Photos qui ne servent plus** (plus aucune fiche, dégustation, groupe, analyse ou profil ne les utilise) : effacées chaque mois.
+- **Photo de profil** : tant que vous la gardez. Changée ou retirée, l'ancienne est effacée tout de suite ; si l'effacement échoue, elle part avec les photos qui ne servent plus, à la première purge mensuelle après ses 30 jours, soit environ deux mois au plus.
+- **Messages et notes du mode soirée** : tant que l'événement existe.
+- **Achats groupés** : tant que le groupe existe ; quitter un groupe retire vos parts des achats encore ouverts.
+- **Vin suivi pour l'alerte de prix** : jusqu'à ce que vous arrêtiez le suivi, ou que le vin ou le compte soit supprimé.
+- **Profil de goûts** : jusqu'à ce que vous l'effaciez, ou jusqu'à la suppression du compte.
 - **Preuves de vos choix** : tant que le compte existe, puis 5 ans après sa suppression (identifiant, version et date seulement), puis effacées.
 - **Comptes inactifs** : aucun compte n'est supprimé automatiquement aujourd'hui.
 - **Sauvegardes** : une copie chiffrée de la base est faite chaque mois et avant chaque mise à jour importante. Chaque sauvegarde est gardée 3 mois au plus, puis effacée.
@@ -164,9 +175,9 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 
 ### Quand vous supprimez votre compte
 
-- Sont supprimés : votre profil, vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et invitations, et les événements que vous organisez (pour tous leurs participants).
+- Sont supprimés : votre profil (avec sa photo et votre profil de goûts), vos caves, vins, dégustations, envies, photos, conversations, analyses, contacts, accès et invitations, vos messages et notes du mode soirée, vos parts d'achats groupés, le vin que vous suiviez, et les événements que vous organisez (pour tous leurs participants).
 - Les photos de votre dossier sont effacées tout de suite. Si le stockage ne répond pas à ce moment-là, celles qui restent sont effacées ensuite avec les photos qui ne servent plus (chaque mois).
-- Chez les autres, votre prénom est remplacé par « Ancien membre » : dans leurs notifications, et dans l'activité de leurs groupes (vos actions, et celles qui vous nomment sous votre prénom actuel). Les envies que vous avez proposées dans un groupe restent, sans votre nom.
+- Chez les autres, votre prénom est remplacé par « Ancien membre » : dans leurs notifications, et dans l'activité de leurs groupes (vos actions, et celles qui vous nomment sous votre prénom actuel). Les envies et les achats groupés que vous avez proposés dans un groupe restent, sans votre nom.
 - Le suivi de l'assistant est gardé sans votre identifiant jusqu'à la fin de sa durée ; les compteurs des limites d'utilisation sont effacés. Les preuves de vos choix sont gardées 5 ans, puis effacées.
 - Si votre agenda Nous est relié, vos événements y sont mis à la corbeille.
 - Une sauvegarde faite avant la suppression peut encore contenir vos données, jusqu'à son effacement.

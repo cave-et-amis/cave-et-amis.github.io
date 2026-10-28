@@ -126,6 +126,17 @@ Pour chaque question : où elle se trouve, et ce qui est écrit aujourd'hui.
 44. **Stockage sur l'appareil sans bandeau.** Peut-on qualifier tout le stockage de « strictement nécessaire », y compris le budget habituel du scanner et l'état des propositions de l'assistant ?
     *Page cookies, « Pourquoi aucun accord ne vous est demandé ».*
 
+## I. Nouveautés de Cave & Amis 2.0 (ajouté le 28/10/2026)
+
+45. **Photo de profil**, facultative, visible des contacts et des participants d'un même événement : base légale (consentement ou exécution du contrat) ? Une photo du visage appelle-t-elle des précautions particulières ?
+    *Politique, « Votre compte » ; registre, T1.*
+46. **Alerte de baisse de prix** : sur demande de la personne, la description d'un vin est envoyée automatiquement chaque semaine à Anthropic (aucune autre donnée). Base légale, et information suffisante ?
+    *Politique, « La lecture d'étiquette, le scanner et les prix » ; registre, T7.*
+47. **Mode soirée et achats groupés** : les messages, notes et parts d'achat d'une personne sont visibles des autres participants ou membres, avec son prénom. Base légale pour ces données des autres personnes ?
+    *Politique, « Les groupes et les événements » ; registre, T4.*
+48. **Profil de goûts et repères de dégustation** (fruité, puissance, boisé, minéralité) : renforcent-ils la question 20 (habitudes de consommation d'alcool et données sensibles) ?
+    *Politique, « Votre cave, votre carnet et vos envies » ; registre, T2.*
+
 ---
 
 ## Ce que l'éditeur attend
