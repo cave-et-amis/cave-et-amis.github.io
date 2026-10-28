@@ -17,6 +17,7 @@ var AI_MESSAGES = {
 	quota_daily: "Vous avez atteint votre nombre de demandes à l’assistant pour aujourd’hui. Il sera de nouveau disponible demain ; le reste de l’application fonctionne normalement.",
 	quota_monthly: "Vous avez atteint votre limite mensuelle d’utilisation de l’assistant. Le reste de l’application fonctionne normalement.",
 	budget_exhausted: "L’assistant a atteint sa limite d’utilisation pour ce mois-ci. Le reste de l’application fonctionne normalement.",
+	price_alert_budget: "Les alertes de prix ont atteint leur plafond pour ce mois-ci : la vérification reprendra le mois prochain.",
 	rate_limited: "Doucement : trop de demandes en une minute. Réessayez dans un instant.",
 	too_many_concurrent: "Une demande est déjà en cours : attendez sa réponse.",
 	user_blocked: "L’accès à l’assistant n’est pas activé pour votre compte.",
@@ -3673,6 +3674,10 @@ function notificationText(n) {
 			text: `${n.actor_name || "Un vin de votre cave"} : dernière année de sa période de dégustation (période indicative de sa fiche)`,
 			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave?tri=maturite"
 		};
+		case "price_drop": return {
+			text: `${n.actor_name || "Le vin que vous suivez"} : prix plus bas trouvé vendredi`,
+			href: n.ref_id ? `#/cave/vin/${n.ref_id}` : "#/cave"
+		};
 		case "maturity_many": return {
 			text: `${n.actor_name ?? "Plusieurs"} vins de votre cave entrent dans leur période de dégustation ou la terminent cette année`,
 			href: "#/cave?tri=maturite"
@@ -5333,6 +5338,88 @@ function createApiHandler(env, deps = {}) {
 			};
 		}
 	}
+	/**
+	* Alertes de baisse de prix (décision du 28/10/2026) : le vendredi soir seulement (heure de Paris, même si la tâche est
+	* lancée un autre jour), les vins suivis dus (un par personne, 20 au plus par passage) sont vérifiés comme « Rechercher
+	* le prix actuel ». Chaque vérification réserve d'abord son coût maximal : au-delà du plafond des alertes, du budget
+	* global ou de la limite de la personne, elle n'est pas lancée, et les vins restants sont marqués « budget ».
+	*/
+	async function runPriceAlerts() {
+		const parts = new Intl.DateTimeFormat("en-GB", {
+			timeZone: "Europe/Paris",
+			weekday: "short",
+			hour: "2-digit",
+			hourCycle: "h23"
+		}).formatToParts(now());
+		const weekday = parts.find((p) => p.type === "weekday")?.value;
+		const hour = Number(parts.find((p) => p.type === "hour")?.value);
+		if (weekday !== "Fri" || hour < 18) return { skipped: "not_friday_evening" };
+		const { data: due, error } = await svc.rpc("price_watches_due", { p_limit: 20 });
+		if (error) throw new AiFailure("internal", sanitize(error.message));
+		const watches = due ?? [];
+		let checked = 0;
+		let lower = 0;
+		let stopped = null;
+		for (const w of watches) {
+			const record = (status, low, currency) => svc.rpc("record_price_watch", {
+				p_user: w.user_id,
+				p_status: status,
+				p_low: low,
+				p_currency: currency
+			});
+			if (stopped) {
+				await record("budget", null, null);
+				continue;
+			}
+			const { data: wine } = await svc.from("wines").select("*").eq("id", w.wine_id).eq("owner_id", w.user_id).maybeSingle();
+			if (!wine) continue;
+			const { data: profile } = await svc.from("profiles").select("currency").eq("id", w.user_id).maybeSingle();
+			const currency = profile?.currency ?? "EUR";
+			try {
+				const s = await settings();
+				const r = await metered(w.user_id, "price_alert", (m) => m.estimate({
+					chars: 6e3,
+					webSearches: s.web_search_enabled ? s.max_web_searches : 0,
+					maxTokens: Math.min(s.max_output_tokens, 4e3)
+				}), (meter) => lookupPrice({
+					svc,
+					meter,
+					userId: w.user_id,
+					currency
+				}, wine, w.volume_ml), s.scan_model);
+				if (r.status === "verified" && r.low !== null && r.high !== null && r.currency) await svc.from("market_prices").insert({
+					owner_id: w.user_id,
+					wine_id: w.wine_id,
+					volume_ml: w.volume_ml,
+					currency: r.currency,
+					price_low: r.low,
+					price_high: r.high,
+					method: "web",
+					sources: r.offers,
+					check_id: r.check_id,
+					note: "Alerte de prix du vendredi"
+				});
+				const { data: status } = await record(r.status, r.low, r.currency);
+				checked += 1;
+				if (status === "lower") lower += 1;
+			} catch (e) {
+				const code = e instanceof AiFailure ? e.code : "internal";
+				await record([
+					"price_alert_budget",
+					"budget_exhausted",
+					"quota_monthly",
+					"quota_daily"
+				].includes(code) ? "budget" : "failed", null, null);
+				if (code === "price_alert_budget" || code === "budget_exhausted") stopped = code;
+			}
+		}
+		return {
+			checked,
+			lower,
+			stopped,
+			due: watches.length
+		};
+	}
 	/** Requêtes sans session : venues du serveur Nous (signées) ou de la tâche planifiée (jeton du cron). */
 	async function serveMachine(req, cors) {
 		const bytes = await readCapped(req.body, ECO_MAX_BODY, req.headers.get("content-length"));
@@ -5371,6 +5458,10 @@ function createApiHandler(env, deps = {}) {
 			if (body.action === "photos_purge") return json({
 				ok: true,
 				...await purgeOrphanPhotos(svc)
+			}, 200, cors);
+			if (body.action === "price_alerts_run") return json({
+				ok: true,
+				...await runPriceAlerts()
 			}, 200, cors);
 			return json({
 				ok: false,

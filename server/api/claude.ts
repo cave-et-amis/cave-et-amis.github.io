@@ -30,7 +30,7 @@ export type AiSettings = {
   scan_retention_days?: number;
 };
 
-export type Action = 'chat' | 'label' | 'price' | 'scan' | 'scan_quality' | 'scan_price' | 'admin_test';
+export type Action = 'chat' | 'label' | 'price' | 'scan' | 'scan_quality' | 'scan_price' | 'price_alert' | 'admin_test';
 
 /** Modèles acceptant le paramètre « effort » (documentation Anthropic, octobre 2026). */
 export function supportsEffort(model: string) {

@@ -6,6 +6,7 @@
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type {
   EventLiveState,
+  PriceWatch,
   GroupPurchase,
   AccessScope,
   AppNotification,
@@ -676,6 +677,14 @@ export class Api {
     return must(await this.sb.rpc('group_notes', { p_group: id })) as GroupNote[];
   }
   /** Envies communes du groupe, les plus suivies d'abord. */
+  // Alerte de baisse de prix : un vin suivi au plus.
+  async priceWatch() {
+    return must(await this.sb.from('price_watches').select('*').maybeSingle()) as PriceWatch | null;
+  }
+  async setPriceWatch(wine: string | null, volume: number | null) {
+    must(await this.sb.rpc('set_price_watch', { p_wine: wine, p_volume: volume }));
+  }
+
   // Mode soirée
   async eventLiveState(event: string) {
     return must(await this.sb.rpc('event_live_state', { p_event: event })) as EventLiveState | null;

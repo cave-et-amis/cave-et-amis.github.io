@@ -96,6 +96,7 @@ export const AI_MESSAGES: Record<string, string> = {
   quota_daily: 'Vous avez atteint votre nombre de demandes à l’assistant pour aujourd’hui. Il sera de nouveau disponible demain ; le reste de l’application fonctionne normalement.',
   quota_monthly: 'Vous avez atteint votre limite mensuelle d’utilisation de l’assistant. Le reste de l’application fonctionne normalement.',
   budget_exhausted: 'L’assistant a atteint sa limite d’utilisation pour ce mois-ci. Le reste de l’application fonctionne normalement.',
+  price_alert_budget: 'Les alertes de prix ont atteint leur plafond pour ce mois-ci : la vérification reprendra le mois prochain.',
   rate_limited: 'Doucement : trop de demandes en une minute. Réessayez dans un instant.',
   too_many_concurrent: 'Une demande est déjà en cours : attendez sa réponse.',
   user_blocked: 'L’accès à l’assistant n’est pas activé pour votre compte.',

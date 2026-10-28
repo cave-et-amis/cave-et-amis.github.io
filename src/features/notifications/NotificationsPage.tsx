@@ -3,7 +3,7 @@
  * d'invitation utilisé, cave ouverte, compte relié à un agenda Nous. Marquées lues à l'ouverture.
  */
 import { useEffect, useRef, type ReactNode } from 'react';
-import { Bell, CalendarHeart, Hourglass, CalendarPlus, Eye, KeyRound, Link2, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
+import { Bell, CalendarHeart, Hourglass, TrendingDown, CalendarPlus, Eye, KeyRound, Link2, Sparkles, UserCheck, UserPlus, Users, Wine } from 'lucide-react';
 import type { AppNotification } from '../../domain/types';
 import { useStore } from '../../data/store';
 import { dateShort } from '../../domain/format';
@@ -34,6 +34,7 @@ const ICONS: Record<NotificationKind, ReactNode> = {
   maturity_ready: <Hourglass />,
   maturity_last: <Hourglass />,
   maturity_many: <Hourglass />,
+  price_drop: <TrendingDown />,
 };
 
 function describe(n: AppNotification): { text: string; href: string; icon: ReactNode } {

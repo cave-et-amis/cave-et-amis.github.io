@@ -232,3 +232,19 @@ test('défis et achats groupés : progression du carnet, part prise et validée,
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
 });
+
+test('alerte de prix : un seul vin suivi, vérifié le vendredi soir, plafond indiqué', async () => {
+  await goto(page, '/cave');
+  await page.getByText('Château Labeille').first().click();
+  const box = page.getByRole('checkbox', { name: /M’alerter si le prix baisse/ });
+  await expect(page.getByText(/Vérifié le vendredi soir, une fois par semaine/)).toBeVisible();
+  await expect(page.getByText(/plafond de 2 \$ par mois/)).toBeVisible();
+  // La case suit la réponse du serveur : elle se coche une fois l'alerte enregistrée.
+  await box.click();
+  await toast(page, 'Alerte de prix activée');
+  await expect(box).toBeChecked();
+  await expect(page.getByText('Premier contrôle vendredi soir.', { exact: false })).toBeVisible();
+  await box.click();
+  await toast(page, 'Alerte de prix retirée');
+  await expect(box).not.toBeChecked();
+});

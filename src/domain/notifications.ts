@@ -44,6 +44,8 @@ export function notificationText(n: Source): { text: string; href: string } {
     case 'maturity_last':
       return { text: `${n.actor_name || 'Un vin de votre cave'} : dernière année de sa période de dégustation (période indicative de sa fiche)`, href: n.ref_id ? `#/cave/vin/${n.ref_id}` : '#/cave?tri=maturite' };
     // Plus de 3 alertes le même jour : un seul résumé (actor_name : leur nombre).
+    case 'price_drop':
+      return { text: `${n.actor_name || 'Le vin que vous suivez'} : prix plus bas trouvé vendredi`, href: n.ref_id ? `#/cave/vin/${n.ref_id}` : '#/cave' };
     case 'maturity_many':
       return { text: `${n.actor_name ?? 'Plusieurs'} vins de votre cave entrent dans leur période de dégustation ou la terminent cette année`, href: '#/cave?tri=maturite' };
     default:

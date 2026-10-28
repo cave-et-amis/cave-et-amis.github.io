@@ -9,7 +9,7 @@ import { makeEnv, TEST_PUBLIC_KEY, TEST_SERVICE_KEY, TEST_URL } from '../helpers
  * `captcha` : protection CAPTCHA simulée par le faux Supabase.
  */
 export async function makeAiEnv(
-  o: { withKey?: boolean; webFetch?: typeof fetch; pushFetch?: typeof fetch; serverFetch?: (base: typeof fetch) => typeof fetch; captcha?: boolean } = {},
+  o: { withKey?: boolean; webFetch?: typeof fetch; pushFetch?: typeof fetch; serverFetch?: (base: typeof fetch) => typeof fetch; captcha?: boolean; now?: () => Date } = {},
 ) {
   const functions: Record<string, (req: Request) => Promise<Response>> = {};
   const env = await makeEnv(functions, { captcha: o.captcha });
@@ -22,7 +22,7 @@ export async function makeAiEnv(
       anthropicKey: o.withKey === false ? undefined : TEST_ANTHROPIC_KEY,
       anthropicBaseUrl: 'http://anthropic.test',
     },
-    { fetch: o.serverFetch ? o.serverFetch(env.fake.fetch) : env.fake.fetch, anthropicFetch: anthropic.fetch, webFetch: o.webFetch, pushFetch: o.pushFetch },
+    { fetch: o.serverFetch ? o.serverFetch(env.fake.fetch) : env.fake.fetch, anthropicFetch: anthropic.fetch, webFetch: o.webFetch, pushFetch: o.pushFetch, now: o.now },
   );
   functions['cave-api'] = handler;
   return { ...env, anthropic, handler };

@@ -423,6 +423,64 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
   }
 
+  /**
+   * Alertes de baisse de prix (décision du 28/10/2026) : le vendredi soir seulement (heure de Paris, même si la tâche est
+   * lancée un autre jour), les vins suivis dus (un par personne, 20 au plus par passage) sont vérifiés comme « Rechercher
+   * le prix actuel ». Chaque vérification réserve d'abord son coût maximal : au-delà du plafond des alertes, du budget
+   * global ou de la limite de la personne, elle n'est pas lancée, et les vins restants sont marqués « budget ».
+   */
+  async function runPriceAlerts() {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', weekday: 'short', hour: '2-digit', hourCycle: 'h23' }).formatToParts(now());
+    const weekday = parts.find((p) => p.type === 'weekday')?.value;
+    const hour = Number(parts.find((p) => p.type === 'hour')?.value);
+    if (weekday !== 'Fri' || hour < 18) return { skipped: 'not_friday_evening' };
+    const { data: due, error } = await svc.rpc('price_watches_due', { p_limit: 20 });
+    if (error) throw new AiFailure('internal', sanitize(error.message));
+    const watches = (due ?? []) as { user_id: string; wine_id: string; volume_ml: number }[];
+    let checked = 0;
+    let lower = 0;
+    let stopped: string | null = null;
+    for (const w of watches) {
+      const record = (status: string, low: number | null, currency: string | null) =>
+        svc.rpc('record_price_watch', { p_user: w.user_id, p_status: status, p_low: low, p_currency: currency });
+      if (stopped) {
+        await record('budget', null, null);
+        continue;
+      }
+      const { data: wine } = await svc.from('wines').select('*').eq('id', w.wine_id).eq('owner_id', w.user_id).maybeSingle();
+      if (!wine) continue;
+      const { data: profile } = await svc.from('profiles').select('currency').eq('id', w.user_id).maybeSingle();
+      const currency = (profile as { currency?: string } | null)?.currency ?? 'EUR';
+      try {
+        const s = await settings();
+        const r = await metered(
+          w.user_id,
+          'price_alert',
+          (m) => m.estimate({ chars: 6_000, webSearches: s.web_search_enabled ? s.max_web_searches : 0, maxTokens: Math.min(s.max_output_tokens, 4000) }),
+          (meter) => lookupPrice({ svc, meter, userId: w.user_id, currency }, wine as Wine, w.volume_ml),
+          s.scan_model,
+        );
+        // Un prix vérifié rejoint les relevés de la fiche (courbe d'évolution), comme après « Rechercher le prix actuel ».
+        if (r.status === 'verified' && r.low !== null && r.high !== null && r.currency) {
+          await svc.from('market_prices').insert({
+            owner_id: w.user_id, wine_id: w.wine_id, volume_ml: w.volume_ml, currency: r.currency, price_low: r.low, price_high: r.high,
+            method: 'web', sources: r.offers, check_id: r.check_id, note: 'Alerte de prix du vendredi',
+          });
+        }
+        const { data: status } = await record(r.status, r.low, r.currency);
+        checked += 1;
+        if (status === 'lower') lower += 1;
+      } catch (e) {
+        const code = e instanceof AiFailure ? e.code : 'internal';
+        const budget = ['price_alert_budget', 'budget_exhausted', 'quota_monthly', 'quota_daily'].includes(code);
+        await record(budget ? 'budget' : 'failed', null, null);
+        // Plafond des alertes ou budget global atteints : on s'arrête là pour cette semaine.
+        if (code === 'price_alert_budget' || code === 'budget_exhausted') stopped = code;
+      }
+    }
+    return { checked, lower, stopped, due: watches.length };
+  }
+
   /** Requêtes sans session : venues du serveur Nous (signées) ou de la tâche planifiée (jeton du cron). */
   async function serveMachine(req: Request, cors: Record<string, string>): Promise<Response> {
     const bytes = await readCapped(req.body, ECO_MAX_BODY, req.headers.get('content-length'));
@@ -441,6 +499,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       if (body.action === 'push_flush') return json({ ok: true, ...(await push.flush(100)) }, 200, cors);
       if (body.action === 'retention_purge') return json({ ok: true, ...(await purgeRetention(svc, now())) }, 200, cors);
       if (body.action === 'photos_purge') return json({ ok: true, ...(await purgeOrphanPhotos(svc)) }, 200, cors);
+      if (body.action === 'price_alerts_run') return json({ ok: true, ...(await runPriceAlerts()) }, 200, cors);
       return json({ ok: false, code: 'forbidden' }, 403, cors);
     }
     if (!env.ecosystemSecret) return json({ ok: false, code: 'integration_disabled' }, 503, cors);

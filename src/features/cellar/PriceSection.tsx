@@ -3,15 +3,15 @@
  * Un prix de marché indique toujours le vin et le millésime, la contenance, la devise, la date et ses sources.
  * Sans recherche vérifiable : « prix non vérifié ».
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ExternalLink, Search, Trash2 } from 'lucide-react';
 import { useStore } from '../../data/store';
-import type { Lot, MarketPrice, PriceSource, Tasting, Wine } from '../../domain/types';
+import type { Lot, MarketPrice, PriceSource, PriceWatch, Tasting, Wine } from '../../domain/types';
 import { dateLong, money, moneyRange, parseNumber } from '../../domain/format';
 import { latestPrices } from '../../domain/valuation';
 import { median, offersVsMedian, priceHistory, RANGES, variation, type PriceRange } from '../../domain/priceHistory';
 import { label, PRICE_KINDS, VOLUMES, volumeLabel, wineTitle } from '../../domain/wine';
-import { Button, Field, InlineLoading, Notice, Segmented, Sheet, useConfirm } from '../../ui/kit';
+import { Button, Check, Field, InlineLoading, Notice, Segmented, Sheet, useConfirm } from '../../ui/kit';
 import { SafeLink } from '../../ui/markdown';
 import { useAiStatus } from './LabelScan';
 
@@ -133,6 +133,7 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
             purchase={purchase.filter((l) => l.volume_ml === p.volume_ml && l.currency === p.currency).map((l) => Number(l.purchase_price))}
           />
         ))}
+        {wine.owner_id === userId && <PriceWatchToggle wine={wine} volume={lots[0]?.volume_ml ?? 750} />}
         <div className="inline">
           <Button variant="gold" size="sm" icon={<Search />} onClick={() => setLookup(true)}>
             Rechercher le prix actuel
@@ -146,6 +147,58 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
       {manual && <ManualPriceSheet wine={wine} volume={lots[0]?.volume_ml ?? 750} onClose={() => setManual(false)} />}
       {lookup && <LookupSheet wine={wine} volumes={[...new Set(lots.map((l) => l.volume_ml))]} onClose={() => setLookup(false)} />}
     </section>
+  );
+}
+
+const WATCH_STATUS: Record<NonNullable<PriceWatch['last_status']>, string> = {
+  lower: 'Prix plus bas trouvé',
+  not_lower: 'Pas de baisse',
+  unverified: 'Prix non vérifié (aucune offre fiable)',
+  budget: 'Vérification reportée : plafond des alertes ou budget de l’assistant atteint',
+  failed: 'La vérification n’a pas abouti',
+};
+
+/** « M'alerter si le prix baisse » : un seul vin suivi à la fois, vérifié le vendredi soir (décision du 28/10/2026). */
+function PriceWatchToggle({ wine, volume }: { wine: Wine; volume: number }) {
+  const { api, run, wine: wineById } = useStore();
+  const [watch, setWatch] = useState<PriceWatch | null | undefined>(undefined);
+  useEffect(() => {
+    void api
+      .priceWatch()
+      .then(setWatch)
+      .catch(() => setWatch(null));
+  }, [api]);
+  if (watch === undefined) return null;
+  const on = watch?.wine_id === wine.id;
+  const other = watch && !on ? wineById(watch.wine_id) : undefined;
+  async function toggle(next: boolean) {
+    const res = await run(() => api.setPriceWatch(next ? wine.id : null, next ? volume : null), {
+      success: next ? 'Alerte de prix activée' : 'Alerte de prix retirée',
+      reload: false,
+    });
+    if (res.ok) setWatch(await api.priceWatch().catch(() => null));
+  }
+  return (
+    <div className="stack-sm price-watch">
+      <Check
+        checked={on}
+        onChange={(v) => void toggle(v)}
+        label="M’alerter si le prix baisse"
+        hint={
+          other
+            ? `Vous suivez déjà « ${wineTitle(other)} » : un seul vin à la fois, cocher ici le remplace.`
+            : 'Vérifié le vendredi soir, une fois par semaine. Un seul vin suivi à la fois. Ces vérifications ont un plafond de 2 $ par mois pour toute l’application, dans le budget de l’assistant : s’il est atteint, elles reprennent le mois suivant.'
+        }
+      />
+      {on && watch && (
+        <p className="small muted" style={{ margin: 0 }}>
+          {watch.reference_price !== null && watch.currency ? `Alerte sous ${money(Number(watch.reference_price), watch.currency)}. ` : 'Le premier contrôle fixera le prix de référence. '}
+          {watch.last_checked_at && watch.last_status
+            ? `Dernier contrôle le ${dateLong(watch.last_checked_at)} : ${WATCH_STATUS[watch.last_status].toLowerCase()}.`
+            : 'Premier contrôle vendredi soir.'}
+        </p>
+      )}
+    </div>
   );
 }
 

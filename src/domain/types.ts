@@ -51,7 +51,8 @@ export type AppNotification = {
     | 'maturity_ready'
     | 'maturity_last'
     /** Résumé de plus de 3 alertes le même jour (actor_name : leur nombre). */
-    | 'maturity_many';
+    | 'maturity_many'
+    | 'price_drop';
   actor_id: string | null;
   actor_name: string | null;
   ref_id: string | null;
@@ -686,6 +687,19 @@ export type ScanMarket = {
 };
 
 // ───────────── Mode soirée et achats groupés (Cave & Amis 2.0) ─────────────
+
+/** Le vin dont je suis le prix (un seul à la fois), vérifié le vendredi soir. */
+export type PriceWatch = {
+  user_id: string;
+  wine_id: string;
+  volume_ml: number;
+  reference_price: number | null;
+  currency: string | null;
+  created_at: string;
+  last_checked_at: string | null;
+  last_status: 'lower' | 'not_lower' | 'unverified' | 'budget' | 'failed' | null;
+  last_low: number | null;
+};
 
 export type EventLive = { event_id: string; started_by: string | null; blind: boolean; current_wine: string | null; current_since: string; revealed: string[]; started_at: string; ended_at: string | null };
 export type EventMessage = { id: string; user_id: string; author: string; body: string; created_at: string; mine: boolean };
