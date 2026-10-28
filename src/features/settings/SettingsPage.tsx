@@ -57,7 +57,7 @@ export function SettingsPage() {
         <h2 id="h-profile" className="section">
           Mon profil
         </h2>
-        <Field label="Photo de profil" hint="Facultative. Visible seulement par les personnes qui voient déjà votre prénom : vos amis et les participants de vos événements.">
+        <Field label="Photo de profil" hint="Facultative. Visible seulement par les personnes qui voient déjà votre prénom : vos contacts et les participants de vos événements, jamais une personne bloquée.">
           <div className="inline">
             <Avatar name={me.display_name} seed={me.id} size="lg" />
             <input

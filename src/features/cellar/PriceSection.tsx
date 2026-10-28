@@ -187,7 +187,7 @@ function PriceWatchToggle({ wine, volume }: { wine: Wine; volume: number }) {
         hint={
           other
             ? `Vous suivez déjà « ${wineTitle(other)} » : un seul vin à la fois, cocher ici le remplace.`
-            : 'Vérifié le vendredi soir, une fois par semaine. Un seul vin suivi à la fois. Ces vérifications ont un plafond de 2 $ par mois pour toute l’application, dans le budget de l’assistant : s’il est atteint, elles reprennent le mois suivant.'
+            : 'Vérifié le vendredi soir, une fois par semaine : la description du vin (nom, producteur, appellation, millésime, contenance) est alors envoyée à Claude, d’Anthropic, pour chercher son prix sur le web. Un seul vin suivi à la fois. Ces vérifications ont un plafond de 2 $ par mois pour toute l’application, dans le budget de l’assistant : s’il est atteint, elles reprennent le mois suivant.'
         }
       />
       {on && watch && (

@@ -89,6 +89,9 @@ Avec votre accord, l'agent refait l'export (`npm run build`, avec `config.produc
 - Thème sombre par défaut ; Réglages › Apparence change le thème.
 - Barre du bas sur téléphone : Accueil, Ma cave, Amis, Événements, Explorer ; menu à 9 entrées sur ordinateur.
 - Réglages : ajouter puis retirer une photo de profil ; elle apparaît en haut à droite.
+- La purge mensuelle des photos (`supabase/sql/conservation.sql`, le 1er du mois à 2 h 40 UTC) doit être active : elle efface
+  les anciennes photos de profil dont la suppression immédiate aurait échoué (`select jobname from cron.job;` doit lister
+  `cave-photos-monthly`).
 - Explorer : recherche d'un vin, « Accords mets-vins » (Plat unique / Menu complet), « Défis et découvertes ».
 - Ma cave › Vue 2D ; Ajouter › « Ajouter plusieurs bouteilles » (une photo : Lia liste les bouteilles, rien n'est ajouté
   sans « Vérifier et ajouter »).
