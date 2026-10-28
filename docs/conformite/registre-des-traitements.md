@@ -31,7 +31,7 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 - **Base légale** : exécution du contrat (conditions d'utilisation).
 - **Destinataires** : la personne ; l'administrateur voit l'adresse e-mail de chaque compte ; Supabase (hébergeur) ; Brevo, pour les e-mails de connexion (mot de passe oublié, confirmation d'inscription, changement d'adresse : adresse e-mail et contenu du message), depuis le 27/10/2026.
 - **Transferts hors UE** : voir la section « Transferts ».
-- **Durée** : tant que le compte existe ; journaux d'envoi chez Brevo : [À VALIDER : durée non trouvée].
+- **Durée** : tant que le compte existe ; journaux d'envoi chez Brevo : 1 mois, sans aperçu du contenu des messages, et sans suivi des ouvertures ni des clics pour les personnes qui n'y ont pas consenti (réglages du compte Brevo commun à Cave et Cocon, faits par l'éditeur le 27/10/2026 : « Règles de conservation des emails » et « Consentement au suivi des pixels par contact » ; par défaut, Brevo garde ces journaux sans limite et suit tous les contacts, d'après ses pages d'aide relevées par la session Cocon).
 
 ### T2. Cave, carnet et envies
 
