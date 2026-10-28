@@ -4,7 +4,7 @@
  */
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { goto, signUp, toast } from './helpers';
+import { bottlePhoto, goto, signUp, toast } from './helpers';
 
 test.describe.configure({ mode: 'serial' });
 let page: Page;
@@ -92,4 +92,19 @@ test('explorer et statistiques : recherche dans le dictionnaire, ajout prérempl
   await expect(page.getByText('Bordeaux', { exact: true })).toBeVisible();
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+});
+
+test('photo de profil : ajoutée, recadrée en carré, affichée partout, retirée', async () => {
+  await goto(page, '/reglages');
+  await page.getByLabel('Choisir une photo de profil').setInputFiles({ name: 'moi.jpg', mimeType: 'image/jpeg', buffer: await bottlePhoto(page) });
+  await toast(page, 'Photo de profil enregistrée');
+  // La photo remplace l'initiale, dans les Réglages comme dans la barre du haut.
+  const topbar = page.getByRole('button', { name: 'Réglages et compte de Gaspard' });
+  await expect(topbar.locator('img')).toBeVisible();
+  const size = await page.locator('.avatar.lg img').evaluate((img: HTMLImageElement) => [img.naturalWidth, img.naturalHeight]);
+  expect(size[0]).toBe(size[1]);
+  await page.getByRole('button', { name: 'Retirer' }).click();
+  await toast(page, 'Photo de profil retirée');
+  await expect(topbar.locator('img')).toHaveCount(0);
+  await expect(topbar).toHaveText('G');
 });

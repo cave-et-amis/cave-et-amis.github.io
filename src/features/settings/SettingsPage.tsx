@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ChevronRight, Compass, Eye, KeyRound, Lightbulb, LockKeyhole, LogOut, Mail, MonitorSmartphone, Shield, Smartphone, Trash2, Warehouse } from 'lucide-react';
+import { squareAvatar } from '../../data/photos';
 import { useStore } from '../../data/store';
 import { toMessage } from '../../domain/errors';
 import { PASSWORD_HINT, passwordProblem } from '../../domain/password';
 import type { Visibility } from '../../domain/types';
 import { VISIBILITIES } from '../../domain/wine';
-import { Button, Check, Field, Notice, Segmented, Sheet, useConfirm, useToast } from '../../ui/kit';
+import { Avatar, Button, Check, Field, Notice, Segmented, Sheet, useConfirm, useToast } from '../../ui/kit';
 import { applyTheme, DEFAULT_THEME, THEMES, type Theme } from '../../ui/theme';
 import { go } from '../../ui/router';
 import { useCaptcha } from '../auth/Captcha';
@@ -34,7 +35,17 @@ export function SettingsPage() {
   useEffect(() => setDiscoverable(me.discoverable), [me.discoverable]);
   const [showShared, setShowShared] = useState(me.show_shared_wines);
   useEffect(() => setShowShared(me.show_shared_wines), [me.show_shared_wines]);
+  const photoInput = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const prefs = me.preferences ?? {};
+  // Photo recadrée en carré sur l'appareil (métadonnées retirées), puis envoyée ; l'ancienne est supprimée.
+  const changePhoto = async (file: File | null) => {
+    setPhotoBusy(true);
+    await run(async () => api.setAvatar(me.id, file ? await squareAvatar(file) : null, me.avatar_photo), {
+      success: file ? 'Photo de profil enregistrée' : 'Photo de profil retirée',
+    });
+    setPhotoBusy(false);
+  };
   const openTo = snapshot.relations.filter((r) => r.they_see_mine).length;
 
   // Fusion côté base : n'écrase ni la visite guidée ni les astuces enregistrées entre-temps.
@@ -46,6 +57,31 @@ export function SettingsPage() {
         <h2 id="h-profile" className="section">
           Mon profil
         </h2>
+        <Field label="Photo de profil" hint="Facultative. Visible seulement par les personnes qui voient déjà votre prénom : vos amis et les participants de vos événements.">
+          <div className="inline">
+            <Avatar name={me.display_name} seed={me.id} size="lg" />
+            <input
+              ref={photoInput}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              aria-label="Choisir une photo de profil"
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                e.target.value = '';
+                if (file) void changePhoto(file);
+              }}
+            />
+            <Button variant="secondary" loading={photoBusy} onClick={() => photoInput.current?.click()}>
+              {me.avatar_photo ? 'Changer la photo' : 'Ajouter une photo'}
+            </Button>
+            {me.avatar_photo && (
+              <Button variant="ghost" disabled={photoBusy} onClick={() => void changePhoto(null)}>
+                Retirer
+              </Button>
+            )}
+          </div>
+        </Field>
         <Field label="Prénom affiché" htmlFor="s-name" hint="Visible par vos amis et les participants de vos événements.">
           <div className="inline" style={{ flexWrap: 'nowrap' }}>
             <input id="s-name" className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />

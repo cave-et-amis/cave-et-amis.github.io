@@ -47,7 +47,7 @@ describe('profil limité au prénom (audit, constat F8)', () => {
     expect(await as(db, marc, `select * from profiles where id = $1`, [claire])).toEqual([]);
     expect(await as(db, claire, `select id from profiles`)).toEqual([{ id: claire }]);
     // Seuls l'identifiant et le prénom sortent, par la fonction dédiée.
-    expect(await as(db, claire, `select * from profile_names() where id = $1`, [bruno])).toEqual([{ id: bruno, display_name: 'Bruno' }]);
+    expect(await as(db, claire, `select * from profile_names() where id = $1`, [bruno])).toEqual([{ id: bruno, display_name: 'Bruno', avatar_photo: null }]);
   });
 
   it('il lit toujours son prénom, comme les participants d’un événement commun et les membres d’un groupe commun', async () => {
@@ -82,7 +82,7 @@ describe('profil limité au prénom (audit, constat F8)', () => {
   it('chacun lit et modifie tout son profil', async () => {
     const mine = await as<Record<string, unknown>>(db, claire, `select * from profiles`);
     expect(mine).toHaveLength(1);
-    expect(Object.keys(mine[0]).sort()).toEqual(['created_at', 'currency', 'discoverable', 'display_name', 'id', 'is_admin', 'preferences', 'show_shared_wines']);
+    expect(Object.keys(mine[0]).sort()).toEqual(['avatar_photo', 'created_at', 'currency', 'discoverable', 'display_name', 'id', 'is_admin', 'preferences', 'show_shared_wines']);
     expect(mine[0]).toMatchObject({ id: claire, display_name: 'Claire', currency: 'EUR', is_admin: false, discoverable: false, show_shared_wines: true });
     await as(
       db,

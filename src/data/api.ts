@@ -842,6 +842,25 @@ export class Api {
   async removePhotos(paths: string[]) {
     if (paths.length) await this.sb.storage.from('photos').remove(paths);
   }
+  /**
+   * Photo de profil : nouvelle photo (déjà recadrée) ou aucune (null). L'ancienne est supprimée ensuite ; si cette
+   * suppression échoue, la purge mensuelle des photos inutiles s'en charge.
+   */
+  async setAvatar(userId: string, blob: Blob | null, previous: string | null | undefined) {
+    let path: string | null = null;
+    if (blob) {
+      path = `${userId}/avatar-${newId()}.jpg`;
+      const { error } = await this.sb.storage.from('photos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+      if (error) throw error;
+    }
+    const saved = await this.sb.from('profiles').update({ avatar_photo: path }).eq('id', userId);
+    if (saved.error) {
+      if (path) await this.removePhotos([path]).catch(() => undefined);
+      throw saved.error;
+    }
+    if (previous && previous !== path) await this.removePhotos([previous]).catch(() => undefined);
+    return path;
+  }
 
   // ───────────── Scanner avant d'acheter ─────────────
 

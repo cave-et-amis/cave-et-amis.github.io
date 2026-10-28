@@ -19,10 +19,12 @@ export type Profile = {
   discoverable: boolean;
   /** Affiche la section « Bouteilles partagées par mes amis » (activé par défaut). */
   show_shared_wines: boolean;
+  /** Photo de profil (stockage privé), facultative : vue par ceux qui voient le prénom. */
+  avatar_photo?: string | null;
   created_at: string;
 };
 /** Une autre personne telle que je la vois (contact, participant d'un même événement) : rien d'autre que son prénom. */
-export type PersonName = { id: string; display_name: string };
+export type PersonName = { id: string; display_name: string; /** Photo de profil (stockage privé), facultative. */ avatar_photo?: string | null };
 
 /**
  * Demande en attente, reçue (« in ») ou envoyée (« out »). open_cellar : la personne qui demande ouvre aussi sa cave

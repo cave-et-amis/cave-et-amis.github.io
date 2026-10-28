@@ -19,7 +19,7 @@ import { LegalNotice } from '../features/legal/LegalGate';
 import { LegalPage } from '../features/legal/LegalViews';
 import { PrivacyPage } from '../features/legal/PrivacyPage';
 import { isLegalKind, LEGAL_TITLES } from '../domain/legal';
-import { Avatar, Button, EmptyState, InlineLoading } from './kit';
+import { Avatar, AvatarPhotos, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 import { lazyPage } from './lazyPage';
 import { PremiumIcon } from './PremiumIcon';
@@ -107,6 +107,13 @@ function ShellInner() {
     }),
     [],
   );
+
+  // Photos de profil des personnes que je vois (la base ne m'en donne pas d'autres).
+  const avatarPhotos = useMemo(() => {
+    const paths = new Map(snapshot.people.map((p) => [p.id, p.avatar_photo ?? null]));
+    paths.set(me.id, me.avatar_photo ?? null);
+    return { api: store.api, pathOf: (id: string) => paths.get(id) };
+  }, [snapshot.people, me.id, me.avatar_photo, store.api]);
 
   const pathOnly = route.split('?')[0];
   // Apparence choisie dans les Réglages ; à la déconnexion, retour au thème par défaut.
@@ -320,134 +327,136 @@ function ShellInner() {
 
   return (
     <ActionsContext.Provider value={actions}>
-      <div className="app">
-        {/* Clavier : passer directement au contenu (le lien ne change pas d'écran). */}
-        <a
-          className="skip-link"
-          href="#contenu"
-          onClick={(e) => {
-            e.preventDefault();
-            document.getElementById('contenu')?.focus();
-          }}
-        >
-          Aller au contenu
-        </a>
-        <nav className="sidenav" aria-label="Navigation principale">
-          <div className="brand-small">
-            <img src="/img/logo-cave.webp" alt="" width={34} height={34} />
-            Cave &amp; Amis
-          </div>
-          <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
-            Ajouter un vin
-          </Button>
-          {/* Ordre de la maquette : Accueil, Ma cave, Explorer, Lia, Événements, Amis, Statistiques (libellés courts). Le
-              carnet est rangé dans Statistiques (et reste dans la barre du bas sur téléphone). */}
-          {[
-            tabs[0],
-            tabs[1],
-            tabs[4],
-            { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab,
-            tabs[3],
-            tabs[2],
-            { path: '/statistiques', label: 'Statistiques', icon: <PremiumIcon name="statistiques" fallback={<ChartColumn />} /> } as Tab,
-          ].map((t) => (
-            <a key={t.path} href={`#${t.path}`} aria-current={activeSide === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
-              {t.icon}
-              {t.short ?? t.label}
-              {!!t.badge && <span className="pill primary" style={{ marginLeft: 'auto' }}>{t.badge}</span>}
-            </a>
-          ))}
-          <div className="spacer" />
-          {me.is_admin && (
-            <a href="#/admin" aria-current={activeTab === '/admin' ? 'page' : undefined}>
-              <PremiumIcon name="administration" fallback={<Shield />} />
-              Administration
-            </a>
-          )}
-          <a href="#/reglages" aria-current={activeTab === '/reglages' ? 'page' : undefined}>
-            <PremiumIcon name="parametres" fallback={<Settings />} />
-            Paramètres
+      <AvatarPhotos.Provider value={avatarPhotos}>
+        <div className="app">
+          {/* Clavier : passer directement au contenu (le lien ne change pas d'écran). */}
+          <a
+            className="skip-link"
+            href="#contenu"
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('contenu')?.focus();
+            }}
+          >
+            Aller au contenu
           </a>
-        </nav>
-        {local && <div className="local-banner">Serveur local de test : rien n’est en ligne</div>}
-        {!online && <div className="offline-banner">Pas de connexion internet : les informations affichées peuvent dater un peu.</div>}
-        <header className="topbar">
-          <div className="topbar-inner">
-            {back && (
-              <button type="button" className="icon-btn" aria-label="Retour" onClick={() => (history.length > 1 ? history.back() : go(back!))}>
-                <ArrowLeft />
-              </button>
-            )}
-            <h1>{title}</h1>
-            <a
-              className="icon-btn"
-              href="#/notifications"
-              aria-label={unreadNotifications ? `Notifications (${unreadNotifications} nouvelle${unreadNotifications > 1 ? 's' : ''})` : 'Notifications'}
-              title="Notifications"
-            >
-              <Bell />
-              {unreadNotifications > 0 && (
-                <span className="dot-count" aria-hidden>
-                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
-                </span>
-              )}
-            </a>
-            <button type="button" className="icon-btn" aria-label="Aide de cette page" title="Aide" onClick={actions.help} data-tour="aide">
-              <CircleHelp />
-            </button>
-            {seg[0] !== 'assistant' && (
-              <a className="icon-btn accent" href="#/assistant" aria-label="Assistant sommelier" title="Assistant sommelier" data-tour="lia">
-                <Sparkles />
+          <nav className="sidenav" aria-label="Navigation principale">
+            <div className="brand-small">
+              <img src="/img/logo-cave.webp" alt="" width={34} height={34} />
+              Cave &amp; Amis
+            </div>
+            <Button className="add-btn" icon={<Plus />} onClick={actions.add} data-tour="ajouter">
+              Ajouter un vin
+            </Button>
+            {/* Ordre de la maquette : Accueil, Ma cave, Explorer, Lia, Événements, Amis, Statistiques (libellés courts). Le
+                carnet est rangé dans Statistiques (et reste dans la barre du bas sur téléphone). */}
+            {[
+              tabs[0],
+              tabs[1],
+              tabs[4],
+              { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab,
+              tabs[3],
+              tabs[2],
+              { path: '/statistiques', label: 'Statistiques', icon: <PremiumIcon name="statistiques" fallback={<ChartColumn />} /> } as Tab,
+            ].map((t) => (
+              <a key={t.path} href={`#${t.path}`} aria-current={activeSide === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
+                {t.icon}
+                {t.short ?? t.label}
+                {!!t.badge && <span className="pill primary" style={{ marginLeft: 'auto' }}>{t.badge}</span>}
+              </a>
+            ))}
+            <div className="spacer" />
+            {me.is_admin && (
+              <a href="#/admin" aria-current={activeTab === '/admin' ? 'page' : undefined}>
+                <PremiumIcon name="administration" fallback={<Shield />} />
+                Administration
               </a>
             )}
-            <span data-tour="reglages" style={{ display: 'inline-flex', borderRadius: '50%' }}>
-              <Avatar name={me.display_name} seed={me.id} onClick={() => go('/reglages')} label={`Réglages et compte de ${me.display_name}`} />
-            </span>
-          </div>
-        </header>
-        <m.main className="page" id="contenu" tabIndex={-1} animate={pageFade}>
-          {seg[0] === undefined && <ResumeTour />}
-          <LegalNotice />
-          {/* Une page par chemin : les paramètres (?…) qu'une page ajoute ou retire ne la remontent pas. */}
-          <PageBoundary key={pathOnly}>
-            <Suspense fallback={<InlineLoading />}>{page}</Suspense>
-          </PageBoundary>
-        </m.main>        {/* Explorer et Statistiques ont leurs propres boutons d'ajout (et « Noter une dégustation » dans le carnet). */}
-        {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && (
-          <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
-            <Plus aria-hidden />
-            Ajouter
-          </button>
-        )}
-        <nav className="tabbar" aria-label="Navigation principale">
-          <div className="tabbar-inner">
-            {tabs.map((t) => (
+            <a href="#/reglages" aria-current={activeTab === '/reglages' ? 'page' : undefined}>
+              <PremiumIcon name="parametres" fallback={<Settings />} />
+              Paramètres
+            </a>
+          </nav>
+          {local && <div className="local-banner">Serveur local de test : rien n’est en ligne</div>}
+          {!online && <div className="offline-banner">Pas de connexion internet : les informations affichées peuvent dater un peu.</div>}
+          <header className="topbar">
+            <div className="topbar-inner">
+              {back && (
+                <button type="button" className="icon-btn" aria-label="Retour" onClick={() => (history.length > 1 ? history.back() : go(back!))}>
+                  <ArrowLeft />
+                </button>
+              )}
+              <h1>{title}</h1>
               <a
-                key={t.path}
-                href={`#${t.path}`}
-                className="tab"
-                aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label}
-                aria-current={activeSide === t.path ? 'page' : undefined}
-                data-tour={tourId(t.path)}
+                className="icon-btn"
+                href="#/notifications"
+                aria-label={unreadNotifications ? `Notifications (${unreadNotifications} nouvelle${unreadNotifications > 1 ? 's' : ''})` : 'Notifications'}
+                title="Notifications"
               >
-                {t.icon}
-                <span>{t.short ?? t.label}</span>
-                {!!t.badge && (
-                  <span className="badge" aria-hidden>
-                    {t.badge}
+                <Bell />
+                {unreadNotifications > 0 && (
+                  <span className="dot-count" aria-hidden>
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
                 )}
               </a>
-            ))}
-          </div>
-        </nav>
-      </div>
-      <AddSheet open={sheet?.kind === 'add'} onClose={() => setSheet(null)} />
-      {sheet?.kind === 'wine' && <WineFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'scan' && <LabelScanSheet onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'tasting' && <TastingFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'wish' && <WishFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
-      {sheet?.kind === 'help' && <HelpSheet page={pageOfRoute(route)} onClose={() => setSheet(null)} />}
+              <button type="button" className="icon-btn" aria-label="Aide de cette page" title="Aide" onClick={actions.help} data-tour="aide">
+                <CircleHelp />
+              </button>
+              {seg[0] !== 'assistant' && (
+                <a className="icon-btn accent" href="#/assistant" aria-label="Assistant sommelier" title="Assistant sommelier" data-tour="lia">
+                  <Sparkles />
+                </a>
+              )}
+              <span data-tour="reglages" style={{ display: 'inline-flex', borderRadius: '50%' }}>
+                <Avatar name={me.display_name} seed={me.id} onClick={() => go('/reglages')} label={`Réglages et compte de ${me.display_name}`} />
+              </span>
+            </div>
+          </header>
+          <m.main className="page" id="contenu" tabIndex={-1} animate={pageFade}>
+            {seg[0] === undefined && <ResumeTour />}
+            <LegalNotice />
+            {/* Une page par chemin : les paramètres (?…) qu'une page ajoute ou retire ne la remontent pas. */}
+            <PageBoundary key={pathOnly}>
+              <Suspense fallback={<InlineLoading />}>{page}</Suspense>
+            </PageBoundary>
+          </m.main>        {/* Explorer et Statistiques ont leurs propres boutons d'ajout (et « Noter une dégustation » dans le carnet). */}
+          {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && (
+            <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
+              <Plus aria-hidden />
+              Ajouter
+            </button>
+          )}
+          <nav className="tabbar" aria-label="Navigation principale">
+            <div className="tabbar-inner">
+              {tabs.map((t) => (
+                <a
+                  key={t.path}
+                  href={`#${t.path}`}
+                  className="tab"
+                  aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label}
+                  aria-current={activeSide === t.path ? 'page' : undefined}
+                  data-tour={tourId(t.path)}
+                >
+                  {t.icon}
+                  <span>{t.short ?? t.label}</span>
+                  {!!t.badge && (
+                    <span className="badge" aria-hidden>
+                      {t.badge}
+                    </span>
+                  )}
+                </a>
+              ))}
+            </div>
+          </nav>
+        </div>
+        <AddSheet open={sheet?.kind === 'add'} onClose={() => setSheet(null)} />
+        {sheet?.kind === 'wine' && <WineFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
+        {sheet?.kind === 'scan' && <LabelScanSheet onClose={() => setSheet(null)} />}
+        {sheet?.kind === 'tasting' && <TastingFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
+        {sheet?.kind === 'wish' && <WishFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
+        {sheet?.kind === 'help' && <HelpSheet page={pageOfRoute(route)} onClose={() => setSheet(null)} />}
+      </AvatarPhotos.Provider>
     </ActionsContext.Provider>
   );
 }

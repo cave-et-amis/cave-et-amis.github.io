@@ -25,6 +25,23 @@ export async function resizeImage(file: Blob, maxEdge = MAX_EDGE, quality = 0.85
   return blob;
 }
 
+/** Photo de profil : carré central de 512 px, en JPEG (métadonnées retirées). */
+export async function squareAvatar(file: Blob, edge = 512, quality = 0.85): Promise<Blob> {
+  const bitmap = await createImageBitmap(file).catch(() => null);
+  if (!bitmap) throw new Error('image_invalid');
+  const side = Math.min(bitmap.width, bitmap.height);
+  const out = Math.min(edge, side);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = out;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('image_invalid');
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, out, out);
+  bitmap.close?.();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+  if (!blob) throw new Error('image_invalid');
+  return blob;
+}
+
 type Entry = { url: string; expires: number };
 const cache = new Map<string, Entry>();
 const waiting = new Map<string, Promise<void>>();
@@ -52,11 +69,11 @@ export async function signedUrls(api: Api, paths: string[]): Promise<Map<string,
   return out;
 }
 
-export function usePhotoUrl(api: Api, path: string | null | undefined): string | null {
+export function usePhotoUrl(api: Api | null, path: string | null | undefined): string | null {
   const [url, setUrl] = useState<string | null>(() => (path ? (cache.get(path)?.url ?? null) : null));
   useEffect(() => {
     let alive = true;
-    if (!path) {
+    if (!path || !api) {
       setUrl(null);
       return;
     }

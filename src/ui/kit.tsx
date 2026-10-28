@@ -18,6 +18,8 @@ import { AnimatePresence, m, useIsPresent, type HTMLMotionProps } from 'motion/r
 import { Info, Star, TriangleAlert, Wine as WineIcon, X } from 'lucide-react';
 import { EXIT, TAP } from './motion';
 import { registerSheet } from './router';
+import { usePhotoUrl } from '../data/photos';
+import type { Api } from '../data/api';
 
 // ───────────── Boutons ─────────────
 
@@ -347,19 +349,33 @@ export function avatarColor(seed: string): string {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-export function Avatar({ name, seed, size, onClick, label }: { name: string; seed: string; size?: 'sm'; onClick?: () => void; label?: string }) {
+/**
+ * Photos de profil : la Shell indique la photo de chaque personne que je vois (moi, mes contacts, les participants de
+ * mes événements). Sans photo, ou hors de ce cercle, l'avatar garde l'initiale.
+ */
+export const AvatarPhotos = createContext<{ api: Api; pathOf: (id: string) => string | null | undefined } | null>(null);
+
+function useAvatarUrl(id: string) {
+  const ctx = useContext(AvatarPhotos);
+  const path = ctx?.pathOf(id) ?? null;
+  return usePhotoUrl(ctx?.api ?? null, path);
+}
+
+export function Avatar({ name, seed, size, onClick, label }: { name: string; seed: string; size?: 'sm' | 'lg'; onClick?: () => void; label?: string }) {
   const initial = name.trim().charAt(0).toUpperCase() || '?';
+  const url = useAvatarUrl(seed);
   const style = { background: avatarColor(seed) };
+  const content = url ? <img src={url} alt="" /> : initial;
   if (onClick) {
     return (
       <button type="button" className={`avatar ${size ?? ''}`} style={style} onClick={onClick} aria-label={label ?? name}>
-        {initial}
+        {content}
       </button>
     );
   }
   return (
     <span className={`avatar ${size ?? ''}`} style={style} aria-hidden>
-      {initial}
+      {content}
     </span>
   );
 }
