@@ -150,8 +150,8 @@ function ShellInner() {
     { path: '/cave', label: 'Ma cave', icon: <PremiumIcon name="cave" fallback={<Wine />} /> },
     { path: '/amis', label: 'Amis & Groupes', short: 'Amis', icon: <PremiumIcon name="amis" fallback={<Users />} />, badge: incomingRequests },
     { path: '/evenements', label: 'Événements', icon: <PremiumIcon name="evenements" fallback={<CalendarHeart />} />, badge: pendingRsvp },
-    // Le carnet est rangé dans Statistiques (onglet « Mon carnet »).
-    { path: '/statistiques', label: 'Statistiques', icon: <PremiumIcon name="statistiques" fallback={<ChartColumn />} /> },
+    // Téléphone : Explorer en 5e entrée ; Statistiques (et le carnet, qui y est rangé) depuis l'accueil et Ma cave.
+    { path: '/explorer', label: 'Explorer', icon: <PremiumIcon name="explorer" fallback={<Compass />} /> },
   ];
 
   let title = 'Cave & Amis';
@@ -345,11 +345,11 @@ function ShellInner() {
           {[
             tabs[0],
             tabs[1],
-            { path: '/explorer', label: 'Explorer', icon: <PremiumIcon name="explorer" fallback={<Compass />} /> } as Tab,
+            tabs[4],
             { path: '/assistant', label: 'Lia (IA)', icon: <PremiumIcon name="lia" fallback={<Sparkles />} /> } as Tab,
             tabs[3],
             tabs[2],
-            tabs[4],
+            { path: '/statistiques', label: 'Statistiques', icon: <PremiumIcon name="statistiques" fallback={<ChartColumn />} /> } as Tab,
           ].map((t) => (
             <a key={t.path} href={`#${t.path}`} aria-current={activeSide === t.path ? 'page' : undefined} data-tour={tourId(t.path)}>
               {t.icon}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, Compass, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, Wine } from 'lucide-react';
+import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, ChartColumn, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, Wine } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { bottlesByEntryMonth, buildRows, colorBreakdown, dayPick, pastWindow, readyToDrink, type WineRow } from '../../domain/cellar';
@@ -268,10 +268,10 @@ export function Home() {
             Que boire ce soir ?
             <span className="hint">Demandez à l’assistant</span>
           </button>
-          <button type="button" className="shortcut" onClick={() => go('/explorer')}>
-            <Compass aria-hidden />
-            Explorer les vins
-            <span className="hint">Chercher un vin, accords mets-vins</span>
+          <button type="button" className="shortcut" onClick={() => go('/statistiques')}>
+            <ChartColumn aria-hidden />
+            Statistiques et carnet
+            <span className="hint">Ma cave en chiffres, mes dégustations</span>
           </button>
           <button type="button" className="shortcut" onClick={() => go('/amis?inviter=1')}>
             <UserPlus aria-hidden />
