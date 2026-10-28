@@ -5,7 +5,7 @@ import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink, pendingLink, startSession } from './domain/nous';
-import { expiredMessage, parseEmailLink } from './domain/emailLink';
+import { expiredMessage, parseEmailLink, SIGNUP_NETWORK } from './domain/emailLink';
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
@@ -118,15 +118,17 @@ function Root({ api, local }: { api: Api; local: boolean }) {
         }
         failed = true;
       } else if (mail?.tokenHash && mail.kind === 'signup') {
-        const s = await api.verifySignup(mail.tokenHash).catch(() => null);
+        // Réseau coupé : le lien n'a pas été essayé, il reste valable ; ce n'est pas un lien expiré.
+        const s = await api.verifySignup(mail.tokenHash).catch(() => 'network' as const);
         if (!alive) return;
-        if (s) {
+        if (s === 'network') setLinkError({ text: SIGNUP_NETWORK, mode: 'login' });
+        else if (s) {
           started = true;
           setSession(s);
-          toast('Adresse e-mail confirmée : bienvenue !');
+          const name = (s.user.user_metadata as { display_name?: string } | undefined)?.display_name?.trim();
+          toast(`Adresse e-mail confirmée. Bienvenue sur Cave & Amis${name ? `, ${name}` : ''} ! 🍷`);
           return;
-        }
-        failed = true;
+        } else failed = true;
       } else if (mail?.tokenHash && mail.kind === 'email_change') {
         const r = await api.verifyEmailChange(mail.tokenHash).catch(() => ({ result: 'expired' as const }));
         if (!alive) return;

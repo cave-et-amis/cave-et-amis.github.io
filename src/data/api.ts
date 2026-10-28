@@ -183,9 +183,13 @@ export class Api {
     return error ? null : data.session;
   }
 
-  /** Lien de confirmation d'inscription : ouvre la session du compte confirmé ; null si le lien n'est plus valable. */
+  /**
+   * Lien de confirmation d'inscription : ouvre la session du compte confirmé ; null si le lien n'est plus valable.
+   * Réseau coupé : lève l'erreur (le lien n'a pas été essayé et reste valable).
+   */
   async verifySignup(tokenHash: string): Promise<Session | null> {
     const { data, error } = await this.sb.auth.verifyOtp({ type: 'email', token_hash: tokenHash });
+    if (error && (error.name === 'AuthRetryableFetchError' || error.status === 0)) throw error;
     return error ? null : data.session;
   }
 

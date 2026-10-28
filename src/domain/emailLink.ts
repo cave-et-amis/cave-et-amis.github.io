@@ -16,6 +16,8 @@ export const RECOVERY_EXPIRED =
   'Ce lien n’est plus valable : un lien ne sert qu’une fois, et seul le dernier e-mail reçu fonctionne. Demandez-en un nouveau avec « Mot de passe oublié ».';
 export const SIGNUP_EXPIRED =
   'Ce lien de confirmation n’est plus valable : un lien ne sert qu’une fois, et seul le dernier e-mail reçu fonctionne. Connectez-vous : si votre adresse n’est pas encore confirmée, vous pourrez recevoir un nouveau lien.';
+export const SIGNUP_NETWORK =
+  'Votre adresse n’a pas pu être confirmée : la connexion a été coupée. Vérifiez votre réseau, puis rouvrez le lien de l’e-mail : il reste valable.';
 export const EMAIL_CHANGE_EXPIRED =
   'Ce lien de changement d’adresse n’est plus valable : un lien ne sert qu’une fois. Refaites la demande dans Réglages › Mon profil.';
 
@@ -24,7 +26,31 @@ export function expiredMessage(kind: EmailLinkKind | null) {
   return kind === 'signup' ? SIGNUP_EXPIRED : kind === 'email_change' ? EMAIL_CHANGE_EXPIRED : RECOVERY_EXPIRED;
 }
 
-const SUPABASE_ERROR_PARAMS = ['error', 'error_code', 'error_description', 'sb'];
+/** Délai entre deux liens de confirmation demandés depuis l'application (Supabase impose 60 s par défaut). */
+export const RESEND_COOLDOWN_SECONDS = 60;
+
+/**
+ * Adresse affichée en partie masquée (écran partagé, capture) : début et fin du nom gardés, domaine entier, pour que la
+ * personne reconnaisse son adresse. « bruno.oliveira@gmail.com » → « br•••••a@gmail.com ».
+ */
+export function maskEmail(email: string) {
+  const clean = email.trim();
+  const at = clean.lastIndexOf('@');
+  if (at < 1) return clean;
+  const name = clean.slice(0, at);
+  const domain = clean.slice(at);
+  if (name.length <= 2) return `${name[0]}•${domain}`;
+  if (name.length <= 4) return `${name[0]}•••${domain}`;
+  return `${name.slice(0, 2)}•••••${name.slice(-1)}${domain}`;
+}
+
+/** Secondes à attendre avant un nouvel envoi, d'après le refus de Supabase (« …request this after 42 seconds »). */
+export function resendWaitSeconds(err: unknown): number | null {
+  const m = /after (\d+) seconds?/i.exec((err as { message?: string } | null)?.message ?? '');
+  return m ? Math.max(1, Number(m[1])) : null;
+}
+
+const SUPABASE_ERROR_PARAMS =['error', 'error_code', 'error_description', 'sb'];
 
 export function parseEmailLink(href: string): EmailLink | null {
   let url: URL;
