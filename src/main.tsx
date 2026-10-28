@@ -7,10 +7,11 @@ import { App, ConfigProblem, Framed } from './App';
 import { readConfig } from './config';
 import { Api } from './data/api';
 import { MotionProvider } from './ui/motion';
-import { applyTheme, DEFAULT_THEME } from './ui/theme';
+import { applyTheme, DEFAULT_THEME, rememberedTheme } from './ui/theme';
 
-// Thème par défaut dès le premier affichage ; celui du compte s'applique une fois la personne connectée.
-applyTheme(DEFAULT_THEME);
+// Dès le premier affichage : le dernier thème noté sur cet appareil (déjà posé par theme-boot.js), sinon le thème par
+// défaut ; celui du compte s'applique une fois la personne connectée.
+applyTheme(rememberedTheme() ?? DEFAULT_THEME);
 const root = createRoot(document.getElementById('root')!);
 
 function boot() {

@@ -232,7 +232,7 @@ export type Preferences = {
   /** Alertes de maturité demandées (désactivées par défaut). */
   maturity_alerts?: boolean;
   /** Apparence choisie (par défaut : sombre). */
-  theme?: 'sombre' | 'clair' | 'auto';
+  theme?: 'sombre' | 'clair' | 'nuit' | 'auto';
   /** Affiche d'emblée les champs avancés des formulaires. */
   advanced?: boolean;
   /** Visibilité proposée par défaut pour les nouveaux lots (toujours « privé » si absent). */

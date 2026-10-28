@@ -3,9 +3,11 @@
  * effacé à la déconnexion, pour qu'un appareil partagé ne garde rien de la personne précédente.
  */
 import { LINK_PENDING_KEY } from '../domain/nous';
+import { THEME_KEY } from '../ui/theme';
 import { clearDraft } from '../features/scanner/draft';
 
-const LOCAL_KEYS = ['cave-amis-invite', 'cave-amis-actions', 'cave.scan.budget', LINK_PENDING_KEY];
+// cave.plan.vue : vue 3D ou liste de la cave (CellarMapPage) ; THEME_KEY : dernier thème affiché (ui/theme).
+const LOCAL_KEYS = ['cave-amis-invite', 'cave-amis-actions', 'cave.scan.budget', 'cave.plan.vue', THEME_KEY, LINK_PENDING_KEY];
 const SESSION_KEYS = ['cave-amis-visite-plus-tard'];
 
 export async function clearDeviceData() {

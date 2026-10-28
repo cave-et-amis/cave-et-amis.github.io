@@ -140,6 +140,62 @@
   color: var(--ink) !important;
 }
 
+/* Thème « Sombre » (le vrai mode sombre) : le cadre de « Clair-obscur » (data-theme='sombre') plus data-nuit, qui
+   assombrit aussi les cartes, champs, fenêtres et messages. Les textes d'accent sont éclaircis pour garder le contraste
+   AA sur fond sombre ; les boutons pleins gardent le framboise, texte blanc. */
+:root[data-theme='sombre'][data-nuit] {
+  --card: #1d1b21;
+  --card-2: #26232b;
+  --card-line: #3a3640;
+  --card-line-strong: #4d4854;
+  --card-ink: #f2eef0;
+  --card-ink-2: #c9c2c7;
+  --card-ink-3: #aaa2a8;
+  --accent: #f29bb4;
+  --accent-strong: #f7bccc;
+  --accent-soft: #42222d;
+  --accent-ink: #f7bccc;
+  --board: #121115;
+  --bg-deep: #0f0e12;
+  --fill: #a8365a;
+  --fill-strong: #8e2a4a;
+  --fill-ink: #ffffff;
+  --gold: #d3b06c;
+  --gold-ink: #e3c47f;
+  --gold-soft: #3a2f1c;
+  --success: #6fd3a1;
+  --success-soft: #173326;
+  --danger: #f28b7f;
+  --danger-soft: #3d1c1a;
+  --warn: #f0c26b;
+  --warn-soft: #3a2d14;
+  --info: #9cc2f0;
+  --info-soft: #1b2a3d;
+  --wood: #c58b5c;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+:root[data-theme='sombre'][data-nuit] :is(.card, .list, .tile, .shortcut, .notice, .empty, .form, .bubble, .search, .input, .sheet, .dialog, .hero, .suggestions, .segmented, .stars) {
+  --gold: #d3b06c;
+  --gold-ink: #e3c47f;
+  --danger: #f28b7f;
+}
+
+/* Changement de thème : fondu léger des couleurs, sauf si l'appareil demande moins d'animations. */
+:root.theme-switching,
+:root.theme-switching *,
+:root.theme-switching *::before,
+:root.theme-switching *::after {
+  transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease, fill 0.25s ease !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root.theme-switching,
+  :root.theme-switching *,
+  :root.theme-switching *::before,
+  :root.theme-switching *::after {
+    transition: none !important;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -4432,12 +4488,18 @@ details.help-topic:not([open]) > summary::after {
   background: linear-gradient(180deg, rgba(10, 6, 5, 0.82), rgba(10, 6, 5, 0.9)), url('/img/fond-cave-flou.webp') center / cover;
   color: #f3ece8;
 }
-.page:has(> .cellar-page) .cellar-name {
+/* Textes clairs seulement sur le fond de cave sombre (thèmes Sombre et Clair-obscur) ; en thème clair, couleurs du thème. */
+:root[data-theme='sombre'] .page:has(> .cellar-page) .cellar-name {
   color: #f3ece8;
 }
-.page:has(> .cellar-page) .small.faint,
-.page:has(> .cellar-page) .small.muted {
+:root[data-theme='sombre'] .page:has(> .cellar-page) .small.faint,
+:root[data-theme='sombre'] .page:has(> .cellar-page) .small.muted {
   color: rgba(243, 236, 232, 0.72);
+}
+:root[data-theme='clair'] .cellar-legend {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--ink-2);
 }
 
 @media (max-width: 560px) {

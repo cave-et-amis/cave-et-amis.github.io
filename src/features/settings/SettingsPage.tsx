@@ -158,7 +158,7 @@ export function SettingsPage() {
           options={THEMES}
           value={prefs.theme ?? DEFAULT_THEME}
           onChange={(theme) => {
-            applyTheme(theme);
+            applyTheme(theme, { remember: true, animate: true });
             void savePrefs({ theme });
           }}
         />

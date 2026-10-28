@@ -17,10 +17,10 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => page.context().close());
 
-test('thème « Clair-Obscur » par défaut ; le thème clair choisi est gardé par le compte', async () => {
+test('thèmes : Clair-obscur par défaut ; clair, sombre et automatique gardés par le compte et l’appareil, bouton soleil/lune', async () => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
   await goto(page, '/reglages');
-  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Clair' }).click();
+  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Clair', exact: true }).click();
   await toast(page, 'Préférence enregistrée');
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'clair');
   await page.reload();
@@ -28,8 +28,35 @@ test('thème « Clair-Obscur » par défaut ; le thème clair choisi est gardé 
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'clair');
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
-  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Sombre' }).click();
+  // Le vrai mode sombre : cadre ET cartes sombres ; contrastes vérifiés aussi.
+  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Sombre', exact: true }).click();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
+  await expect(page.locator('html')).toHaveAttribute('data-nuit', '');
+  const bg = await page.locator('.card').first().evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(bg).toBe('rgb(29, 27, 33)');
+  const dark = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(dark.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => v.id)).toEqual([]);
+  // Gardé sur l'appareil : au rechargement, la page s'ouvre directement en sombre, avant même le compte.
+  await page.reload({ waitUntil: 'commit' });
+  await expect(page.locator('html')).toHaveAttribute('data-nuit', '');
+  await expect(page.getByRole('navigation', { name: 'Navigation principale' }).first()).toBeVisible();
+  // Soleil/lune : vers le clair, puis retour au dernier thème sombre choisi.
+  await page.getByRole('button', { name: 'Passer en thème clair' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'clair');
+  await page.getByRole('button', { name: 'Passer en thème sombre' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-nuit', '');
+  // Automatique : suit l'appareil (ici, un appareil réglé en clair).
+  await goto(page, '/reglages');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Automatique' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'clair');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-nuit', '');
+  // Retour au thème par défaut pour la suite des tests.
+  await page.getByRole('group', { name: 'Apparence' }).getByRole('button', { name: 'Clair-obscur' }).click();
+  await toast(page, 'Préférence enregistrée');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'sombre');
+  await expect(page.locator('html')).not.toHaveAttribute('data-nuit', '');
 });
 
 test('alertes de maturité : désactivées par défaut, activables', async () => {

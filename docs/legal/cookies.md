@@ -24,6 +24,8 @@
 - Le budget habituel par bouteille que vous avez indiqué dans le scanner.
 - L'état des propositions de Lia (déjà faites ou ignorées), pour ne pas vous les reproposer.
 - « Plus tard » pour la visite guidée, le temps de l'onglet ouvert.
+- Le thème d'affichage choisi (clair, sombre, automatique ou clair-obscur), pour que l'application s'ouvre directement avec. Il est aussi gardé dans votre compte, pour vos autres appareils.
+- La vue choisie pour la cave en 3D (3D ou liste).
 
 Ces informations sont effacées quand vous vous déconnectez.
 

@@ -1,6 +1,6 @@
 /** Cadre de l'application connectée : barre du haut, onglets (téléphone) ou navigation latérale (ordinateur), fenêtres globales. */
-import { createContext, Suspense, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { ArrowLeft, Bell, CalendarHeart, ChartColumn, CircleHelp, Compass, Home as HomeIcon, Plus, Settings, Shield, Sparkles, Users, Wine } from 'lucide-react';
+import { createContext, Suspense, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { ArrowLeft, Bell, CalendarHeart, ChartColumn, CircleHelp, Compass, Home as HomeIcon, Moon, Plus, Settings, Shield, Sparkles, Sun, Users, Wine } from 'lucide-react';
 import { m, useAnimationControls } from 'motion/react';
 import { useStore } from '../data/store';
 import { pageOfRoute } from '../domain/help';
@@ -23,7 +23,7 @@ import { Avatar, AvatarPhotos, Button, EmptyState, InlineLoading } from './kit';
 import { go, routeQuery, useRoute, whenHistorySettled } from './router';
 import { lazyPage } from './lazyPage';
 import { PremiumIcon } from './PremiumIcon';
-import { applyTheme, DEFAULT_THEME, isTheme } from './theme';
+import { applyTheme, DEFAULT_THEME, isTheme, rememberedTheme, resolveTheme, toggledTheme, type Theme } from './theme';
 import { PageBoundary } from './PageBoundary';
 
 // Pages chargées à leur première visite (l'accueil et la cave restent dans le premier chargement).
@@ -123,9 +123,21 @@ function ShellInner() {
   // Apparence choisie dans les Réglages ; à la déconnexion, retour au thème par défaut.
   const theme = isTheme(me.preferences?.theme) ? me.preferences.theme : DEFAULT_THEME;
   useEffect(() => {
-    applyTheme(theme);
-    return () => applyTheme(DEFAULT_THEME);
+    applyTheme(theme, { remember: true });
+    // À la déconnexion : le thème noté sur l'appareil reste (écran de connexion du même thème), sinon le défaut.
+    return () => applyTheme(rememberedTheme() ?? DEFAULT_THEME);
   }, [theme]);
+  // Bouton soleil/lune : bascule clair ↔ sombre, et revient au dernier thème sombre choisi (Sombre ou Clair-obscur).
+  const lastDark = useRef<Theme | null>(null);
+  useEffect(() => {
+    if (resolveTheme(theme) !== 'clair') lastDark.current = theme;
+  }, [theme]);
+  const shownDark = resolveTheme(theme) !== 'clair';
+  const toggleTheme = () => {
+    const next = toggledTheme(theme, lastDark.current);
+    applyTheme(next, { remember: true, animate: true });
+    void store.run(() => store.api.mergePreferences({ theme: next }), { silent: true });
+  };
   // Changement d'écran : retour en haut et fondu d'apparition (transparence seule : la page ne bouge pas sous le doigt).
   const pageFade = useAnimationControls();
   useEffect(() => {
@@ -421,6 +433,9 @@ function ShellInner() {
                   </span>
                 )}
               </a>
+              <button type="button" className="icon-btn" aria-label={shownDark ? 'Passer en thème clair' : 'Passer en thème sombre'} title={shownDark ? 'Thème clair' : 'Thème sombre'} onClick={toggleTheme}>
+                {shownDark ? <Sun /> : <Moon />}
+              </button>
               <button type="button" className="icon-btn" aria-label="Aide de cette page" title="Aide" onClick={actions.help} data-tour="aide">
                 <CircleHelp />
               </button>
