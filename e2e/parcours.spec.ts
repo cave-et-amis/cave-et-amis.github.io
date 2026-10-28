@@ -138,6 +138,28 @@ test('prix de marché : seules les offres issues de la recherche sont retenues, 
   await expect(bruno.getByText(/relevé par la recherche web/)).toBeVisible();
 });
 
+test('prix relevé et ticket de caisse lus par Lia : formulaires remplis, aucune donnée de carte', async () => {
+  // Sur la fiche du vin du test précédent.
+  await bruno.getByRole('button', { name: 'Saisir un prix relevé' }).click();
+  const price = bruno.getByRole('dialog', { name: 'Saisir un prix relevé' });
+  await price.getByLabel('Photographier le prix').setInputFiles({ name: 'prix.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
+  await expect(price.getByLabel(/^Prix \(/)).toHaveValue('39,9');
+  await expect(price.getByLabel('Note')).toHaveValue('Caviste exemple · 6 pour le prix de 5');
+  await expect(price.getByText(/Lu par Lia : vérifiez avant d’enregistrer, surtout : prix/)).toBeVisible();
+  await price.getByRole('button', { name: 'Fermer' }).click();
+
+  await bruno.getByRole('button', { name: 'Ajouter des bouteilles' }).click();
+  const lot = bruno.getByRole('dialog', { name: 'Ajouter des bouteilles' });
+  await lot.getByLabel('Photographier le ticket ou la facture').setInputFiles({ name: 'ticket.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
+  await expect(lot.getByLabel('Prix d’achat / bouteille')).toHaveValue('42,5');
+  await expect(lot.getByRole('textbox', { name: 'Nombre de bouteilles', exact: true })).toHaveValue('3');
+  await lot.getByText('Achat et notes').click();
+  await expect(lot.getByLabel('Date d’achat')).toHaveValue('2026-10-20');
+  await expect(lot.getByLabel('Lieu d’achat')).toHaveValue('Cave du Marché');
+  await expect(bruno.getByText(/4970/)).toHaveCount(0);
+  await lot.getByRole('button', { name: 'Annuler' }).click();
+});
+
 let inviteCode = '';
 
 test('invitation d’un ami par lien : accepter, puis partage sélectif', async () => {
@@ -286,21 +308,6 @@ test('dégustation au restaurant : le stock ne change pas', async () => {
   await expect(bruno.locator('.row').filter({ hasText: 'Château Test' })).toContainText('8');
 });
 
-test('dégustation : la photo de l’étiquette remplit le vin et reste jointe', async () => {
-  await goto(bruno, '/carnet');
-  await bruno.getByRole('button', { name: 'Noter une dégustation' }).click();
-  const form = bruno.getByRole('dialog', { name: 'Nouvelle dégustation' });
-  await expect(form.getByRole('button', { name: 'Photographier l’étiquette' })).toBeVisible();
-  await form.getByLabel('Photo de l’étiquette').setInputFiles({ name: 'etiquette.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
-  await expect(form.getByLabel('Vin', { exact: true })).toHaveValue('Château Labeille');
-  await expect(form.getByText(/Lu par Lia : vérifiez avant d’enregistrer/)).toBeVisible();
-  await form.getByRole('button', { name: '3 sur 5' }).click();
-  await form.getByRole('button', { name: 'Enregistrer' }).click();
-  await toast(bruno, 'Dégustation enregistrée');
-  await expect(bruno.getByRole('heading', { name: /Château Labeille/ })).toBeVisible();
-  await expect(bruno.locator('img[src^="blob:"], img[src*="photos"]').first()).toBeVisible();
-});
-
 test('assistant : réponse fondée sur la cave, action confirmée par la personne', async () => {
   await goto(bruno, '/assistant');
   await bruno.getByRole('button', { name: 'Quel vin de ma cave ouvrir avec un magret de canard ?' }).click();
@@ -320,6 +327,36 @@ test('assistant : réponse fondée sur la cave, action confirmée par la personn
   await expect(bruno.locator('.action-card').last()).toContainText('Fait');
   await goto(bruno, '/');
   await expect.poll(() => tile(bruno, /bouteilles en stock/)).toBe(before - 1);
+});
+
+test('dégustation : la photo de l’étiquette remplit le vin et reste jointe', async () => {
+  // La limite de 6 demandes à Lia par minute vaut aussi pour les photos : on laisse passer la minute de l'assistant.
+  test.setTimeout(120_000);
+  await bruno.waitForTimeout(61_000);
+  await goto(bruno, '/carnet');
+  await bruno.getByRole('button', { name: 'Noter une dégustation' }).click();
+  const form = bruno.getByRole('dialog', { name: 'Nouvelle dégustation' });
+  await expect(form.getByRole('button', { name: 'Photographier l’étiquette' })).toBeVisible();
+  await form.getByLabel('Photo de l’étiquette').setInputFiles({ name: 'etiquette.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
+  await expect(form.getByLabel('Vin', { exact: true })).toHaveValue('Château Labeille');
+  await expect(form.getByText(/Lu par Lia : vérifiez avant d’enregistrer/)).toBeVisible();
+  await form.getByRole('button', { name: '3 sur 5' }).click();
+  await form.getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(bruno, 'Dégustation enregistrée');
+  await expect(bruno.getByRole('heading', { name: /Château Labeille/ })).toBeVisible();
+  await expect(bruno.locator('img[src^="blob:"], img[src*="photos"]').first()).toBeVisible();
+});
+
+test('liste d’envies : la photo de l’étiquette remplit le vin, sans garder la photo', async () => {
+  await goto(bruno, '/carnet');
+  await bruno.getByRole('tab', { name: 'Envies' }).click();
+  await bruno.getByRole('button', { name: 'Ajouter une envie' }).click();
+  const form = bruno.getByRole('dialog', { name: 'Liste d’envies' });
+  await form.getByLabel('Photo de l’étiquette').setInputFiles({ name: 'etiquette.jpg', mimeType: 'image/jpeg', buffer: await labelPhoto(bruno) });
+  await expect(form.getByLabel('Vin', { exact: true })).toHaveValue('Château Labeille');
+  await expect(form.getByText(/Lu par Lia : vérifiez avant d’enregistrer/)).toBeVisible();
+  await form.getByRole('button', { name: 'Enregistrer' }).click();
+  await toast(bruno, 'Ajouté à votre liste d’envies');
 });
 
 test('administration : double authentification obligatoire, test de connexion sans afficher la clé, quota atteint, fonctions manuelles intactes', async () => {

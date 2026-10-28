@@ -13,6 +13,7 @@ import { runChat, type ChatInput } from './chat.ts';
 import { makeClient, mapAnthropicError, Meter, type Action, type AiSettings, baseParams, textOf } from './claude.ts';
 import { identifyLabel, readPhoto } from './label.ts';
 import { identifyShelf } from './shelf.ts';
+import { DOCUMENT_KINDS, readDocument } from './documents.ts';
 import { importPhoto, offProduct, searchPhotos } from './photos.ts';
 import { createNous, ECO_MAX_BODY, ecoVerify, NOUS_ACTIONS } from './nous.ts';
 import { createPush } from './push.ts';
@@ -192,6 +193,23 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
           (m) => m.estimate({ chars: 6_000, images: images.length, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
           (meter) => identifyLabel({ meter, images }),
           // Lecture d'étiquette et prix depuis une fiche : modèle du scanner (même travail), l'assistant garde le sien.
+          s.scan_model,
+        );
+        return { result };
+      }
+
+      case 'read_document': {
+        // Étiquette de prix, ticket ou liste de prix : une photo, dans le dossier de la personne. Comptée comme une
+        // lecture d'étiquette. Le type de document est contrôlé ; la photo est effacée par l'appli après la lecture.
+        const kind = DOCUMENT_KINDS.find((k) => k === body.kind);
+        if (!kind) throw new AiFailure('invalid');
+        const s = await settings();
+        const image = await readPhoto(user, userId, body.photo_path, s.max_image_bytes);
+        const result = await metered(
+          userId,
+          'label',
+          (m) => m.estimate({ chars: 6_000, images: 1, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
+          (meter) => readDocument({ meter, image, kind }),
           s.scan_model,
         );
         return { result };

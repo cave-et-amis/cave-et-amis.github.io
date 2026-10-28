@@ -6,10 +6,11 @@ import { useRef, useState, type FormEvent } from 'react';
 import { newId } from '../../data/api';
 import { useStore } from '../../data/store';
 import { parseNumber, todayIso } from '../../domain/format';
-import { VOLUMES } from '../../domain/wine';
+import { fold, VOLUMES } from '../../domain/wine';
 import type { Lot, Visibility, Wine } from '../../domain/types';
-import { Advanced, Button, Check, Field, Sheet, useConfirm } from '../../ui/kit';
+import { Advanced, Button, Check, Field, Notice, Sheet, useConfirm } from '../../ui/kit';
 import { Stepper, VisibilityField } from './fields';
+import { DocumentPhotoButton } from './WineAssist';
 
 export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClose: () => void }) {
   const { snapshot, api, run, me, userId, cellarLabel, profileName } = useStore();
@@ -25,6 +26,7 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
   const [newLocation, setNewLocation] = useState('');
   const [price, setPrice] = useState(lot?.purchase_price !== null && lot?.purchase_price !== undefined ? String(lot.purchase_price).replace('.', ',') : '');
   const [date, setDate] = useState(lot?.purchase_date ?? (editing ? '' : todayIso()));
+  const [docWarning, setDocWarning] = useState<string | null>(null);
   const [place, setPlace] = useState(lot?.purchase_place ?? '');
   const [origin, setOrigin] = useState<'achat' | 'cadeau_recu' | 'entree'>('achat');
   const [visibility, setVisibility] = useState<Visibility>(lot?.visibility ?? me.preferences.default_visibility ?? 'private');
@@ -96,6 +98,23 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
             </Field>
           </div>
         )}
+        {(editing || origin === 'achat') && (
+          <DocumentPhotoButton
+            kind="receipt"
+            hint="Lia lit le prix, puis la date et le magasin (dans « Achat et notes »). Elle ne recopie ni nom, ni carte bancaire, ni adresse ; la photo est effacée aussitôt."
+            onResult={(r) => {
+              // Plusieurs vins sur le ticket : celui dont le nom ressemble le plus à ce vin, sinon le premier.
+              const line = r.lines.find((l) => fold(l.wine_name).includes(fold(wine.name)) || fold(wine.name).includes(fold(l.wine_name))) ?? r.lines[0];
+              if (line.unit_price != null) setPrice(String(line.unit_price).replace('.', ','));
+              if (line.volume_ml && VOLUMES.some((v) => v.value === line.volume_ml)) setVolume(line.volume_ml);
+              if (!editing && line.quantity) setQuantity(line.quantity);
+              if (r.purchase_date) setDate(r.purchase_date);
+              if (r.seller) setPlace(r.seller);
+              setDocWarning(r.currency && r.currency !== me.currency ? `Ticket en ${r.currency}, mais vos prix sont en ${me.currency} : vérifiez le prix.` : null);
+            }}
+          />
+        )}
+        {docWarning && <Notice tone="warn">{docWarning}</Notice>}
         <div className="field-row">
           <Field label="Contenance">
             <select className="input" value={volume} onChange={(e) => setVolume(Number(e.target.value))}>

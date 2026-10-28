@@ -4,6 +4,7 @@ import { parseNumber } from '../../domain/format';
 import type { Color, WishItem } from '../../domain/types';
 import { Button, Field, Sheet } from '../../ui/kit';
 import { ColorChips } from '../cellar/fields';
+import { WineNameField } from '../cellar/WineAssist';
 
 export type WishPrefill = Partial<Pick<WishItem, 'wine_name' | 'producer' | 'vintage' | 'color' | 'region' | 'appellation' | 'note' | 'source_tasting_id'>>;
 
@@ -53,9 +54,19 @@ export function WishFormSheet({ prefill, item, onClose }: { prefill?: WishPrefil
       }
     >
       <form id="wish-form" className="form" onSubmit={submit}>
-        <Field label="Vin" htmlFor="wi-name">
-          <input id="wi-name" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} required data-autofocus />
-        </Field>
+        <WineNameField
+          id="wi-name"
+          value={name}
+          onChange={setName}
+          photo={!item}
+          onFields={(f) => {
+            if (f.name) setName(f.name);
+            if (f.producer) setProducer(f.producer);
+            if (f.vintage) setVintage(String(f.vintage));
+            if (f.color) setColor(f.color);
+            if (f.region) setRegion(f.region);
+          }}
+        />
         <div className="field-row">
           <Field label="Producteur" htmlFor="wi-prod">
             <input id="wi-prod" className="input" value={producer} onChange={(e) => setProducer(e.target.value)} />

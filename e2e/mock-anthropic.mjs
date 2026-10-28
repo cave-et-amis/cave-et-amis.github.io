@@ -111,6 +111,22 @@ function label(body) {
   ]);
 }
 
+// Documents d'achat : étiquette de prix, ticket (avec un numéro de carte, que le serveur doit effacer), liste de prix.
+function documentRead(body) {
+  const ask = lastUserText(body.messages);
+  const base = { is_readable: true, currency: 'EUR', purchase_date: '', seller: '', title: '', conditions: '', uncertain: [], notes: '' };
+  const line = (wine_name, unit_price, extra = {}) => ({ wine_name, producer: '', vintage: null, color: 'rouge', volume_ml: 750, unit_price, quantity: null, ...extra });
+  let out;
+  if (/ticket de caisse/.test(ask)) {
+    out = { ...base, purchase_date: '2026-10-20', seller: 'Cave du Marché', notes: 'Carte 4970 1234 5678 9012', document_lines: [line('Château Labeille 2016', 42.5, { quantity: 3, vintage: 2016 })] };
+  } else if (/liste de prix/.test(ask)) {
+    out = { ...base, seller: 'Domaine des Abeilles', title: 'Commande au Domaine des Abeilles', conditions: 'Franco de port dès 24 bouteilles', document_lines: [line('Cuvée des Ruches', 14), line('Clos du Miel', 22, { color: 'blanc', vintage: 2023 }), line('Vieilles Vignes', null)] };
+  } else {
+    out = { ...base, seller: 'Caviste exemple', conditions: '6 pour le prix de 5', uncertain: ['prix'], document_lines: [line('Château Labeille', 39.9)] };
+  }
+  return message(body, [text(JSON.stringify(out))]);
+}
+
 // Import multiple : trois bouteilles, dont deux identiques et une au millésime incertain.
 function shelf(body) {
   const b = (name, producer, appellation, vintage, uncertain = []) => ({ name, producer, appellation, region: 'Bordeaux', color: 'rouge', vintage, non_vintage: false, uncertain });
@@ -256,6 +272,7 @@ createServer(async (req, res) => {
     const body = JSON.parse(raw);
     if (body.output_config?.format?.schema?.properties?.price_tag) return send(200, scan(body));
     if (body.output_config?.format?.schema?.properties?.bottles) return send(200, shelf(body));
+    if (body.output_config?.format?.schema?.properties?.document_lines) return send(200, documentRead(body));
     if (body.output_config?.format) return send(200, label(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_assessment')) return send(200, assessment(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_scan_offers')) return send(200, scanOffers(body));

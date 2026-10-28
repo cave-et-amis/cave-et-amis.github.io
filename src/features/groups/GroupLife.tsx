@@ -12,6 +12,7 @@ import { colorLabel, fold } from '../../domain/wine';
 import { useActions } from '../../ui/Shell';
 import { Button, EmptyState, Field, InlineLoading, Sheet, StarsView, useConfirm } from '../../ui/kit';
 import { ColorChips } from '../cellar/fields';
+import { WineNameField } from '../cellar/WineAssist';
 import { EventFormSheet } from '../events/EventForm';
 
 const wineLabel = (w: { wine_name: string; vintage: number | null }) => [w.wine_name, w.vintage].filter(Boolean).join(' ');
@@ -257,9 +258,18 @@ function WishSheet({ group, onClose, onDone }: { group: MyGroup; onClose: () => 
       }
     >
       <div className="form">
-        <Field label="Vin" htmlFor="gw-name">
-          <input id="gw-name" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} placeholder="Château Montus, Champagne de vigneron…" data-autofocus />
-        </Field>
+        <WineNameField
+          id="gw-name"
+          value={name}
+          onChange={setName}
+          placeholder="Château Montus, Champagne de vigneron…"
+          onFields={(f) => {
+            if (f.name) setName(f.name);
+            if (f.producer) setProducer(f.producer);
+            if (f.vintage) setVintage(String(f.vintage));
+            if (f.color) setColor(f.color);
+          }}
+        />
         <div className="field-row">
           <Field label="Producteur (facultatif)" htmlFor="gw-prod">
             <input id="gw-prod" className="input" value={producer} onChange={(e) => setProducer(e.target.value)} maxLength={120} />

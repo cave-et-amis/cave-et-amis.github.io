@@ -246,6 +246,12 @@ test('défis et achats groupés : progression du carnet, part prise et validée,
   await page.getByRole('button', { name: 'Proposer au groupe' }).click();
   await toast(page, 'Achat groupé proposé');
   await page.getByRole('button', { name: 'Ajouter une bouteille' }).click();
+  // Le dictionnaire des vins aide aussi ici (sans IA) ; une photo d'étiquette est proposée.
+  await expect(page.getByRole('button', { name: 'Photographier l’étiquette' })).toBeVisible();
+  await page.getByLabel('Vin', { exact: true }).fill('condrieu guigal');
+  await page.getByRole('listitem').filter({ hasText: 'E. Guigal' }).filter({ hasText: 'Condrieu' }).first().click();
+  await expect(page.getByLabel('Vin', { exact: true })).toHaveValue(/E\. Guigal/);
+  await expect(page.getByRole('group', { name: 'Couleur' }).getByRole('button', { name: /Blanc/, pressed: true })).toBeVisible();
   await page.getByLabel('Vin', { exact: true }).fill('Domaine du Val');
   await page.getByLabel('Prix d’une bouteille').fill('30');
   await page.getByLabel('Nombre de bouteilles à acheter').fill('2');
@@ -262,6 +268,18 @@ test('défis et achats groupés : progression du carnet, part prise et validée,
   await toast(page, 'Parts validées');
   await expect(page.getByText('Parts validées : 1 sur 1 participant')).toBeVisible();
   await expect(page.getByText('Sans paiement dans l’application')).toBeVisible();
+  // Depuis la liste de prix d'un vigneron : titre et vins proposés par Lia, cochés ; un vin sans prix reste décoché.
+  await page.getByRole('button', { name: 'Proposer un achat groupé' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Proposer un achat groupé' });
+  await sheet.getByLabel('Photographier la liste de prix').setInputFiles({ name: 'liste.jpg', mimeType: 'image/jpeg', buffer: await bottlePhoto(page) });
+  await expect(sheet.getByLabel('Titre')).toHaveValue('Commande au Domaine des Abeilles');
+  const read = sheet.getByRole('group', { name: 'Vins lus sur la liste' });
+  await expect(read.getByRole('checkbox', { name: /Cuvée des Ruches/ })).toBeChecked();
+  await expect(read.getByRole('checkbox', { name: /Vieilles Vignes · prix illisible/ })).not.toBeChecked();
+  await read.getByLabel('Bouteilles à acheter : Clos du Miel').fill('12');
+  await sheet.getByRole('button', { name: 'Proposer au groupe' }).click();
+  await toast(page, 'Achat groupé proposé avec 2 vins');
+  await expect(page.getByText(/12 bouteilles · /)).toBeVisible();
   await page.waitForTimeout(400);
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);

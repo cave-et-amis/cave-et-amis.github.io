@@ -8,8 +8,9 @@ import { Check as CheckIcon, Minus, Plus, ShoppingBasket, Trash2 } from 'lucide-
 import { useStore } from '../../data/store';
 import { money, parseNumber } from '../../domain/format';
 import type { Color, GroupPurchase, MyGroup, PurchaseItem } from '../../domain/types';
-import { Button, EmptyState, Field, InlineLoading, Pill, Sheet, useConfirm } from '../../ui/kit';
+import { Button, Check, EmptyState, Field, InlineLoading, Pill, Sheet, useConfirm } from '../../ui/kit';
 import { ColorChips } from '../cellar/fields';
+import { DocumentPhotoButton, WineNameField, type DocumentLine } from '../cellar/WineAssist';
 
 const taken = (i: PurchaseItem) => i.parts.reduce((n, p) => n + p.bottles, 0);
 const mine = (i: PurchaseItem) => i.parts.find((p) => p.mine)?.bottles ?? 0;
@@ -183,8 +184,12 @@ export function GroupPurchases({ group }: { group: MyGroup }) {
       {creating && (
         <PurchaseSheet
           onClose={() => setCreating(false)}
-          onSave={async (title, budget, note) => {
-            await act(() => api.createGroupPurchase(group.id, { title, budget, note }), 'Achat groupé proposé');
+          onSave={async (title, budget, note, items) => {
+            // L'achat, puis les vins lus sur la liste de prix (s'il y en a), dans l'ordre de la liste.
+            await act(async () => {
+              const p = await api.createGroupPurchase(group.id, { title, budget, note });
+              for (const i of items) await api.addGroupPurchaseItem(p.id, i);
+            }, items.length ? `Achat groupé proposé avec ${items.length} vin${items.length > 1 ? 's' : ''}` : 'Achat groupé proposé');
             setCreating(false);
           }}
         />
@@ -202,24 +207,68 @@ export function GroupPurchases({ group }: { group: MyGroup }) {
   );
 }
 
-function PurchaseSheet({ onClose, onSave }: { onClose: () => void; onSave: (title: string, budget: number | null, note: string | null) => Promise<void> }) {
+type NewItem = { wine_name: string; producer: string | null; vintage: number | null; color: string | null; unit_price: number; bottles: number };
+type ListRow = DocumentLine & { key: number; selected: boolean; bottles: string };
+
+function PurchaseSheet({ onClose, onSave }: { onClose: () => void; onSave: (title: string, budget: number | null, note: string | null, items: NewItem[]) => Promise<void> }) {
   const [title, setTitle] = useState('');
   const [budget, setBudget] = useState('');
   const [note, setNote] = useState('');
+  const [rows, setRows] = useState<ListRow[]>([]);
   const b = budget.trim() ? parseNumber(budget) : null;
   const bad = Boolean(budget.trim()) && (b === null || b <= 0);
+  // Vins lus sur la liste : seulement ceux cochés, avec un prix et un nombre de bouteilles valables.
+  const items: NewItem[] = rows
+    .filter((r) => r.selected && r.unit_price != null)
+    .map((r) => ({ wine_name: r.wine_name, producer: r.producer, vintage: r.vintage, color: r.color, unit_price: r.unit_price!, bottles: parseNumber(r.bottles) ?? 0 }))
+    .filter((i) => Number.isInteger(i.bottles) && i.bottles >= 1 && i.bottles <= 120);
+  const patch = (key: number, p: Partial<ListRow>) => setRows((all) => all.map((r) => (r.key === key ? { ...r, ...p } : r)));
   return (
     <Sheet
       open
       onClose={onClose}
       title="Proposer un achat groupé"
       footer={
-        <Button disabled={!title.trim() || bad} icon={<ShoppingBasket />} onClick={() => void onSave(title.trim(), b, note.trim() || null)}>
+        <Button disabled={!title.trim() || bad} icon={<ShoppingBasket />} onClick={() => void onSave(title.trim(), b, note.trim() || null, items)}>
           Proposer au groupe
         </Button>
       }
     >
       <div className="stack-sm">
+        <DocumentPhotoButton
+          kind="price_list"
+          hint="La liste de prix d’un vigneron ou d’un caviste : Lia propose le titre et les vins, que vous cochez."
+          onResult={(r) => {
+            if (!title.trim()) setTitle(r.title ?? (r.seller ? `Commande chez ${r.seller}` : ''));
+            if (!note.trim() && r.conditions) setNote(r.conditions);
+            setRows(r.lines.map((l, key) => ({ ...l, key, selected: l.unit_price != null, bottles: String(l.quantity ?? 6) })));
+          }}
+        />
+        {rows.length > 0 && (
+          <div className="card soft stack-sm" role="group" aria-label="Vins lus sur la liste">
+            <span className="small strong">Vins lus sur la liste : cochez ceux à proposer.</span>
+            {rows.map((r) => (
+              <div key={r.key} className="purchase-read-row">
+                <Check
+                  checked={r.selected}
+                  onChange={(v) => patch(r.key, { selected: v })}
+                  label={`${r.wine_name}${r.vintage ? ` ${r.vintage}` : ''}${r.unit_price != null ? ` · ${money(r.unit_price)}` : ' · prix illisible'}`}
+                />
+                {r.selected && (
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    aria-label={`Bouteilles à acheter : ${r.wine_name}`}
+                    value={r.bottles}
+                    onChange={(e) => patch(r.key, { bottles: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                    style={{ width: 72 }}
+                  />
+                )}
+              </div>
+            ))}
+            <p className="small faint">De 1 à 120 bouteilles par vin ; un vin sans prix lisible s’ajoute ensuite à la main.</p>
+          </div>
+        )}
         <Field label="Titre" hint="Par exemple : Bourgogne, Commande chez le vigneron.">
           <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={80} autoFocus />
         </Field>
@@ -263,9 +312,17 @@ function ItemSheet({
       }
     >
       <div className="stack-sm">
-        <Field label="Vin">
-          <input className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} autoFocus />
-        </Field>
+        <WineNameField
+          id="gp-name"
+          value={name}
+          onChange={setName}
+          onFields={(f) => {
+            if (f.name) setName(f.name);
+            if (f.producer) setProducer(f.producer);
+            if (f.vintage) setVintage(String(f.vintage));
+            if (f.color) setColor(f.color);
+          }}
+        />
         <Field label="Producteur (facultatif)">
           <input className="input" value={producer} onChange={(e) => setProducer(e.target.value)} maxLength={120} />
         </Field>

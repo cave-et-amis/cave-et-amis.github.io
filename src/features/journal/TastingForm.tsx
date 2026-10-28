@@ -11,7 +11,7 @@ import { fold, OCCASIONS, PRICE_KINDS, vintageLabel, volumeLabel } from '../../d
 import { Advanced, Button, Check, Chips, Field, Notice, Sheet, Stars } from '../../ui/kit';
 import { go } from '../../ui/router';
 import { ColorChips, PhotoField } from '../cellar/fields';
-import { LabelPhotoButton } from './LabelPhotoButton';
+import { WineNameField } from '../cellar/WineAssist';
 
 export type TastingPrefill = {
   wine_id?: string | null;
@@ -261,13 +261,16 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
             </select>
           </Field>
         )}
-        {!editing && !eventWineId && (
-          <LabelPhotoButton
-            onPhoto={(p) => {
-              uploaded.current.push(p);
-              setPhoto(p);
-            }}
-            onFields={(f) => {
+        <WineNameField
+          id="t-name"
+          value={name}
+          onChange={(v) => (setName(v), setWineId(null))}
+          photo={!editing && !eventWineId}
+          onPhoto={(p) => {
+            uploaded.current.push(p);
+            setPhoto(p);
+          }}
+          onFields={(f) => {
               setWineId(null);
               if (f.name) setName(f.name);
               if (f.vintage) setVintage(String(f.vintage));
@@ -277,12 +280,8 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
               if (f.region) setRegion(f.region);
               if (f.appellation) setAppellation(f.appellation);
               if (f.grapes?.length) setGrapes(f.grapes.join(', '));
-            }}
-          />
-        )}
-        <Field label="Vin" htmlFor="t-name">
-          <input id="t-name" className="input" value={name} onChange={(e) => (setName(e.target.value), setWineId(null))} maxLength={120} required placeholder="Nom du vin, domaine…" />
-        </Field>
+          }}
+        />
         {matches.length > 0 && (
           <div className="card soft stack-sm">
             <span className="small strong">Dans votre cave :</span>

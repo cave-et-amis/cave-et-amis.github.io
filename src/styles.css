@@ -4503,3 +4503,11 @@ details.help-topic:not([open]) > summary::after {
 .move-new-shelf .input {
   flex: 1 1 160px;
 }
+
+/* Achat groupé : vins lus sur la liste de prix d'un vigneron, à cocher. */
+.purchase-read-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}

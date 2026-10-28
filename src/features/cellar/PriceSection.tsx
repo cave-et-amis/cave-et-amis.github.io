@@ -10,10 +10,11 @@ import type { Lot, MarketPrice, PriceSource, PriceWatch, Tasting, Wine } from '.
 import { dateLong, money, moneyRange, parseNumber } from '../../domain/format';
 import { latestPrices } from '../../domain/valuation';
 import { median, offersVsMedian, priceHistory, RANGES, variation, type PriceRange } from '../../domain/priceHistory';
-import { label, PRICE_KINDS, VOLUMES, volumeLabel, wineTitle } from '../../domain/wine';
+import { fold, label, PRICE_KINDS, VOLUMES, volumeLabel, wineTitle } from '../../domain/wine';
 import { Button, Check, Field, InlineLoading, Notice, Segmented, Sheet, useConfirm } from '../../ui/kit';
 import { SafeLink } from '../../ui/markdown';
 import { useAiStatus } from './LabelScan';
+import { DocumentPhotoButton } from './WineAssist';
 
 type CheckResult = {
   status: 'verified' | 'unverified';
@@ -350,6 +351,18 @@ function ManualPriceSheet({ wine, volume, onClose }: { wine: Wine; volume: numbe
     >
       <div className="form">
         <p className="muted small">Pour « {wineTitle(wine)} ». Ce prix sera présenté comme saisi par vous, avec la date d’aujourd’hui.</p>
+        <DocumentPhotoButton
+          kind="price"
+          hint="Étiquette de prix, page de catalogue ou capture d’écran d’un site."
+          onResult={(r) => {
+            // Plusieurs vins sur la photo : celui dont le nom ressemble le plus à ce vin, sinon le premier.
+            const line = r.lines.find((l) => fold(l.wine_name).includes(fold(wine.name)) || fold(wine.name).includes(fold(l.wine_name))) ?? r.lines[0];
+            if (line.unit_price != null) setLow(String(line.unit_price).replace('.', ','));
+            if (line.volume_ml && VOLUMES.some((v) => v.value === line.volume_ml)) setVol(line.volume_ml);
+            setNote([r.seller, r.conditions].filter(Boolean).join(' · '));
+            if (r.currency && r.currency !== me.currency) setError(`Prix lu en ${r.currency}, mais vos prix sont en ${me.currency} : vérifiez le montant.`);
+          }}
+        />
         <div className="field-row">
           <Field label={`Prix (${me.currency})`} htmlFor="mp-low">
             <input id="mp-low" className="input" inputMode="decimal" value={low} onChange={(e) => setLow(e.target.value)} />

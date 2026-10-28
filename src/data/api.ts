@@ -732,7 +732,7 @@ export class Api {
     return must(await this.sb.rpc('group_purchases_list', { p_group: group })) as GroupPurchase[];
   }
   async createGroupPurchase(group: string, p: { title: string; budget: number | null; note: string | null }) {
-    must(await this.sb.rpc('create_group_purchase', { p_group: group, p }));
+    return must(await this.sb.rpc('create_group_purchase', { p_group: group, p })) as { id: string };
   }
   async addGroupPurchaseItem(purchase: string, p: { wine_name: string; producer: string | null; vintage: number | null; color: string | null; unit_price: number; bottles: number }) {
     must(await this.sb.rpc('add_group_purchase_item', { p_purchase: purchase, p }));
