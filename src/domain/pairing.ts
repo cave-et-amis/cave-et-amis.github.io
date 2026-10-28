@@ -134,3 +134,15 @@ export function suggestPairings(dish: string, rows: WineRow[], limit = 5): { fam
   out.sort((a, b) => b.score - a.score || a.row.wine.name.localeCompare(b.row.wine.name, 'fr'));
   return { family, suggestions: out.slice(0, limit) };
 }
+
+export type PairingLevel = 'parfait' | 'excellent' | 'alternative';
+export const LEVEL_LABELS: Record<PairingLevel, string> = { parfait: 'Parfait', excellent: 'Excellent', alternative: 'Belle alternative' };
+
+/**
+ * Niveau d'une suggestion, par rapport au meilleur score « ordinaire » de la famille (meilleure couleur, meilleur type,
+ * prêt à boire) : au moins ce score, « Parfait » ; un point de moins, « Excellent » ; en dessous, « Belle alternative ».
+ */
+export function pairingLevel(family: DishFamily, score: number): PairingLevel {
+  const best = Math.max(0, ...Object.values(family.colors)) + Math.max(0, ...Object.values(family.types ?? {})) + 1;
+  return score >= best ? 'parfait' : score >= best - 1 ? 'excellent' : 'alternative';
+}

@@ -2243,6 +2243,146 @@ details.fold:not([open]) > summary::after {
   border-color: var(--primary);
   background: var(--primary-soft);
 }
+/* Viseur du scanner (maquette, panneau 2) : toujours sombre, comme un écran d'appareil photo. */
+.viewfinder {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px 18px;
+  border-radius: var(--radius);
+  background: radial-gradient(120% 80% at 50% 35%, #2a1c22 0%, #120d10 60%, #0a0809 100%);
+  color: #f3ece8;
+  overflow: hidden;
+}
+.vf-label {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(243, 236, 232, 0.7);
+}
+.vf-frame {
+  position: relative;
+  width: min(52vw, 190px);
+  aspect-ratio: 3 / 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Image posée dans le cadre : elle ne décide jamais de sa hauteur (ratio fixé par le cadre). */
+.vf-photo,
+.vf-bottle {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.vf-photo {
+  object-fit: cover;
+  border-radius: 10px;
+}
+.vf-bottle {
+  padding: 4% 0;
+  object-fit: contain;
+  opacity: 0.55;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.6));
+}
+/* Quatre coins dorés, dessinés par des dégradés (aucune image). */
+.vf-corners {
+  position: absolute;
+  inset: -6px;
+  pointer-events: none;
+  --c: var(--gold, #bb854c);
+  background:
+    linear-gradient(var(--c), var(--c)) top left / 28px 3px,
+    linear-gradient(var(--c), var(--c)) top left / 3px 28px,
+    linear-gradient(var(--c), var(--c)) top right / 28px 3px,
+    linear-gradient(var(--c), var(--c)) top right / 3px 28px,
+    linear-gradient(var(--c), var(--c)) bottom left / 28px 3px,
+    linear-gradient(var(--c), var(--c)) bottom left / 3px 28px,
+    linear-gradient(var(--c), var(--c)) bottom right / 28px 3px,
+    linear-gradient(var(--c), var(--c)) bottom right / 3px 28px;
+  background-repeat: no-repeat;
+}
+.vf-hint {
+  margin: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: rgba(243, 236, 232, 0.82);
+  max-width: 32ch;
+}
+.vf-shutter {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  border: 3px solid #f3ece8;
+  background: transparent;
+  padding: 4px;
+  cursor: pointer;
+}
+.vf-shutter span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #f3ece8;
+  transition: transform 0.12s ease;
+}
+.vf-shutter:hover span {
+  transform: scale(0.94);
+}
+.vf-shutter:focus-visible {
+  outline: 3px solid var(--gold, #bb854c);
+  outline-offset: 3px;
+}
+.vf-shutter:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+/* Note de Lia : anneau de 0 à 10. */
+.score-ring {
+  position: relative;
+  flex: 0 0 auto;
+  width: 76px;
+  height: 76px;
+}
+.score-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.score-ring .track {
+  stroke: var(--border);
+}
+.score-ring .value {
+  stroke: currentColor;
+  stroke-linecap: round;
+}
+.score-ring-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-weight: 700;
+  font-size: 1.35rem;
+  color: var(--ink);
+}
+.score-ring-text small {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--ink-3);
+}
+.scan-verdict-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.scan-verdict.success .score-ring { color: var(--success); }
+.scan-verdict.gold .score-ring { color: var(--gold); }
+.scan-verdict.danger .score-ring { color: var(--danger); }
 .scan-slots {
   list-style: none;
   margin: 0;
@@ -3369,4 +3509,192 @@ details.help-topic:not([open]) > summary::after {
 }
 .stats-share span {
   overflow-wrap: anywhere;
+}
+
+/* ───────── Mes goûts (maquette, panneau 3) ───────── */
+.eyebrow {
+  display: block;
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.taste-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.taste-head img {
+  flex: 0 0 auto;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.taste-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.taste-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 4px 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  font-size: 0.9rem;
+}
+.taste-chip.liked {
+  background: var(--primary-soft);
+  border-color: color-mix(in srgb, var(--primary) 45%, transparent);
+  color: var(--primary-strong);
+}
+.taste-chip.disliked {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.taste-chip button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.taste-chip button:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.taste-chip button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.taste-chip button svg {
+  width: 14px;
+  height: 14px;
+}
+.radar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px 24px;
+}
+.radar svg {
+  width: min(100%, 300px);
+  height: auto;
+  overflow: visible;
+}
+.radar text {
+  font-size: 10.5px;
+  fill: var(--ink-2);
+}
+.radar-ring {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-shape {
+  fill: color-mix(in srgb, var(--primary) 30%, transparent);
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.radar-dot {
+  fill: var(--primary);
+}
+.radar-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+}
+
+/* ───────── Accords mets-vins (maquette, panneau 8) ───────── */
+.dish-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.dish-card img {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.dish-card p {
+  margin: 0;
+}
+.pairing-why {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 2px 12px 8px;
+}
+.pairing-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.pairing-level.parfait {
+  color: var(--primary);
+}
+.pairing-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.pairing-dots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+.pairing-dots i.on {
+  background: var(--primary);
+}
+
+/* ───────── Alertes de maturité (maquette, panneau 6) ───────── */
+.maturity-alert {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  margin: 8px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--gold) 45%, transparent);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--gold) 16%, var(--surface)) 0%, var(--surface) 70%);
+}
+.maturity-alert-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  color: var(--ink-3);
+}
+.maturity-alert-head img {
+  border-radius: 6px;
+}
+.maturity-alert-head .pill {
+  margin-left: auto;
+}
+.maturity-alert-title {
+  font-size: 1.1rem;
 }

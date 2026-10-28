@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildRows } from '../src/domain/cellar.ts';
-import { dishFamily, suggestPairings } from '../src/domain/pairing.ts';
+import { DISH_FAMILIES, dishFamily, LEVEL_LABELS, pairingLevel, suggestPairings } from '../src/domain/pairing.ts';
 import type { Cellar, Lot, Wine } from '../src/domain/types.ts';
 
 const cellars = [{ id: 'c', name: 'Cave', storage: 'cave' } as Cellar];
@@ -53,5 +53,17 @@ describe('accords mets et vins parmi les bouteilles disponibles (mission H)', ()
     const wines = [wine({ name: 'Bordeaux rouge', color: 'rouge', wine_type: 'tranquille' }), wine({ name: 'Muscadet', color: 'blanc', wine_type: 'tranquille' })];
     const rows = buildRows(wines, wines.map((w) => lot(w.id)), cellars, 2026);
     expect(suggestPairings('huîtres', rows).suggestions.map((s) => s.row.wine.name)).toEqual(['Muscadet']);
+  });
+});
+
+describe('niveau d’un accord', () => {
+  it('Parfait au meilleur score ordinaire de la famille, Excellent un point en dessous, sinon Belle alternative', () => {
+    const rouge = DISH_FAMILIES.find((f) => f.id === 'viande_rouge')!;
+    // Rouge (3) + tranquille (1) + prêt à boire (1) = 5.
+    expect(pairingLevel(rouge, 5)).toBe('parfait');
+    expect(pairingLevel(rouge, 7)).toBe('parfait');
+    expect(pairingLevel(rouge, 4)).toBe('excellent');
+    expect(pairingLevel(rouge, 3)).toBe('alternative');
+    expect(LEVEL_LABELS.alternative).toBe('Belle alternative');
   });
 });

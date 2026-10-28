@@ -100,6 +100,9 @@ export function ScannerPage() {
   const unavailable = ai.unavailable ?? (quotaReached ? 'Vous avez atteint votre nombre d’analyses pour aujourd’hui.' : null);
   const filled = ROLES.filter((r) => slots[r.role]);
   const hasLabel = Boolean(slots.front || slots.back);
+  // Viseur : la dernière photo utile (l'étiquette d'abord) ; le déclencheur prend la prochaine photo manquante.
+  const shown = slots.front ?? slots.back ?? slots.price;
+  const next = ROLES.find((r) => !slots[r.role]) ?? ROLES[0];
 
   function pick(role: ScanPhotoRole, from: 'camera' | 'gallery') {
     target.current = role;
@@ -229,6 +232,20 @@ export function ScannerPage() {
           Il vous reste {quota.limit - quota.used} analyse{quota.limit - quota.used > 1 ? 's' : ''} aujourd’hui.
         </Notice>
       )}
+
+      <section className="viewfinder" aria-label="Viseur du scanner">
+        <span className="vf-label" aria-hidden>
+          Scanner
+        </span>
+        <div className="vf-frame">
+          {shown ? <img className="vf-photo" src={shown.url} alt="" /> : <img className="vf-bottle" src="/img/bouteille-generique.webp" alt="" />}
+          <span className="vf-corners" aria-hidden />
+        </div>
+        <p className="vf-hint">{filled.length === ROLES.length ? 'Les trois photos sont prêtes.' : `${next.title} : ${next.hint}`}</p>
+        <button type="button" className="vf-shutter" aria-label={`Photographier : ${next.title}`} onClick={() => pick(next.role, 'camera')} disabled={Boolean(busy)}>
+          <span aria-hidden />
+        </button>
+      </section>
 
       <ul className="scan-slots" aria-label="Photos de la bouteille">
         {ROLES.map(({ role, title, hint, icon: Icon }) => {

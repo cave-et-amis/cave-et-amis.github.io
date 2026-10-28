@@ -13,13 +13,16 @@ import { TAP } from '../../ui/motion';
 import { PairingSheet } from '../cellar/PairingSheet';
 import { go } from '../../ui/router';
 
-/** Photo de la bouteille (bouteille ou étiquette de la fiche), sinon la bouteille générique, sur fond de bois. */
+/** Bouteille générique selon la couleur du vin (images générées, sans étiquette ni marque). */
+const GENERIC_BOTTLE: Partial<Record<string, string>> = { blanc: 'bouteille-blanc', rose: 'bouteille-rose', effervescent: 'bouteille-effervescent' };
+
+/** Photo de la bouteille (bouteille ou étiquette de la fiche), sinon une bouteille générique de sa couleur, sur fond de bois. */
 function BottlePhoto({ row, large }: { row: WineRow; large?: boolean }) {
   const { api } = useStore();
   const url = usePhotoUrl(api, row.wine.bottle_photo ?? row.wine.label_photo);
   return (
     <span className={`dash-photo${large ? ' large' : ''}${url ? ' own' : ''}`} aria-hidden>
-      <img src={url ?? '/img/bouteille-generique.webp'} alt="" loading="lazy" decoding="async" />
+      <img src={url ?? `/img/${(row.wine.color && GENERIC_BOTTLE[row.wine.color]) || 'bouteille-generique'}.webp`} alt="" loading="lazy" decoding="async" />
     </span>
   );
 }

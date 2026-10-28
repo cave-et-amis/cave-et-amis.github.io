@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPreferenceList, tasteSummary, traitKey } from '../src/domain/tasteProfile.ts';
+import { cleanPreferenceList, tasteRadar, tasteSummary, traitKey } from '../src/domain/tasteProfile.ts';
 import type { Tasting } from '../src/domain/types.ts';
 
 let n = 0;
@@ -61,5 +61,28 @@ describe('mémoire des goûts : ce que l’application déduit du carnet', () =>
     expect(cleanPreferenceList(['  Pinot   noir ', 'pinot noir', '', 'Bourgogne'])).toEqual(['Pinot noir', 'Bourgogne']);
     expect(cleanPreferenceList(Array.from({ length: 30 }, (_, i) => `Goût ${i}`))).toHaveLength(20);
     expect(cleanPreferenceList(['x'.repeat(60)])[0]).toHaveLength(40);
+  });
+});
+
+describe('radar des goûts : cinq axes, sur les vins aimés', () => {
+  it('moyenne de chaque axe sur les dégustations notées 4/5 ou plus, à partir de deux valeurs', () => {
+    const r = tasteRadar(
+      [
+        t({ rating: 5, fruite: 4, puissance: 3, boise: 2, acidite: 'vive' }),
+        t({ rating: 4, fruite: 5, puissance: 4, acidite: 'moyenne', mineralite: 3 }),
+        // Pas aimé : ne compte pas. Un autre carnet non plus.
+        t({ rating: 2, fruite: 1, puissance: 1, boise: 5, mineralite: 5 }),
+        t({ user_id: 'autre', rating: 5, boise: 5, mineralite: 5 }),
+      ],
+      'moi',
+    );
+    expect(r.liked).toBe(2);
+    expect(Object.fromEntries(r.axes.map((a) => [a.key, a.value]))).toEqual({ fruite: 4.5, puissance: 3.5, boise: null, acidite: 4, mineralite: null });
+    expect(r.axes.find((a) => a.key === 'boise')?.count).toBe(1);
+  });
+
+  it('ignore une valeur hors de 1 à 5 et un carnet vide', () => {
+    expect(tasteRadar([t({ rating: 5, fruite: 9 }), t({ rating: 5, fruite: 0 })], 'moi').axes[0].value).toBeNull();
+    expect(tasteRadar([], 'moi')).toEqual({ liked: 0, axes: expect.any(Array) });
   });
 });

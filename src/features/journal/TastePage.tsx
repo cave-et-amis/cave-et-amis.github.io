@@ -3,25 +3,71 @@
  * Consultable, corrigeable (écarter un trait déduit, modifier ses préférences) et effaçable. Lia s'en sert pour conseiller.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { EyeOff, RotateCcw, Sparkles, Trash2 } from 'lucide-react';
+import { RotateCcw, Sparkles, Trash2, X } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { money, parseNumber } from '../../domain/format';
-import { cleanPreferenceList, DISLIKED_UNTIL, kindLabel, LIKED_FROM, MAX_IGNORED, MIN_COUNT, tasteSummary, type TasteProfile, type Trait } from '../../domain/tasteProfile';
+import { cleanPreferenceList, DISLIKED_UNTIL, kindLabel, LIKED_FROM, MAX_IGNORED, MIN_COUNT, tasteRadar, tasteSummary, type TasteProfile, type TasteRadar, type Trait } from '../../domain/tasteProfile';
 import { Button, EmptyState, Field, InlineLoading, Notice, useConfirm } from '../../ui/kit';
 import { go } from '../../ui/router';
 
 const splitList = (s: string) => cleanPreferenceList(s.split(/[,;\n]/));
 
-function TraitRow({ t, onIgnore, disabled }: { t: Trait; onIgnore: () => void; disabled: boolean }) {
+/** Une puce de goût : le trait, son nombre de dégustations, et le bouton pour l'écarter du profil. */
+function TraitChip({ t, tone, onIgnore, disabled }: { t: Trait; tone: 'liked' | 'disliked'; onIgnore: () => void; disabled: boolean }) {
+  const detail = `${kindLabel(t.kind)} · ${t.count} dégustations, ${String(t.average).replace('.', ',')}/5 en moyenne`;
   return (
-    <li className="between" style={{ gap: 8 }}>
+    <li className={`taste-chip ${tone}`} title={detail}>
       <span>
-        <strong>{t.label}</strong> <span className="small muted">· {kindLabel(t.kind)} · {t.count} dégustations, {String(t.average).replace('.', ',')}/5 en moyenne</span>
+        {t.label} <span className="sr-only">({detail})</span>
       </span>
-      <button type="button" className="icon-btn" aria-label={`Écarter « ${t.label} » de mon profil`} onClick={onIgnore} disabled={disabled}>
-        <EyeOff />
+      <button type="button" aria-label={`Écarter « ${t.label} » de mon profil`} onClick={onIgnore} disabled={disabled}>
+        <X aria-hidden />
       </button>
     </li>
+  );
+}
+
+/** Radar à cinq axes (1 à 5). Un axe sans assez de notes reste au centre et s'affiche « — » dans la légende. */
+function Radar({ radar }: { radar: TasteRadar }) {
+  const n = radar.axes.length;
+  const R = 78;
+  const point = (i: number, v: number) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / n;
+    return [120 + Math.cos(a) * R * (v / 5), 110 + Math.sin(a) * R * (v / 5)] as const;
+  };
+  const ring = (v: number) => radar.axes.map((_, i) => point(i, v).join(',')).join(' ');
+  const shape = radar.axes.map((ax, i) => point(i, ax.value ?? 0).join(',')).join(' ');
+  return (
+    <div className="radar">
+      <svg viewBox="0 0 240 220" aria-hidden>
+        {[1, 2, 3, 4, 5].map((v) => (
+          <polygon key={v} className="radar-ring" points={ring(v)} />
+        ))}
+        {radar.axes.map((ax, i) => {
+          const [x, y] = point(i, 5);
+          const [lx, ly] = point(i, 6.3);
+          return (
+            <g key={ax.key}>
+              <line className="radar-ring" x1="120" y1="110" x2={x} y2={y} />
+              <text x={lx} y={ly} textAnchor={Math.abs(lx - 120) < 4 ? 'middle' : lx > 120 ? 'start' : 'end'} dominantBaseline="middle">
+                {ax.label}
+              </text>
+            </g>
+          );
+        })}
+        <polygon className="radar-shape" points={shape} />
+        {radar.axes.map((ax, i) =>
+          ax.value === null ? null : <circle key={ax.key} className="radar-dot" cx={point(i, ax.value)[0]} cy={point(i, ax.value)[1]} r="3.5" />,
+        )}
+      </svg>
+      <ul className="radar-legend small">
+        {radar.axes.map((ax) => (
+          <li key={ax.key}>
+            <span className="muted">{ax.label}</span> <strong>{ax.value === null ? '—' : `${String(ax.value).replace('.', ',')}/5`}</strong>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -49,6 +95,8 @@ export function TastePage() {
 
   const ignored = profile?.ignored ?? [];
   const summary = useMemo(() => tasteSummary(snapshot.tastings, userId, ignored), [snapshot.tastings, userId, ignored]);
+  const radar = useMemo(() => tasteRadar(snapshot.tastings, userId), [snapshot.tastings, userId]);
+  const radarReady = radar.axes.filter((a) => a.value !== null).length >= 3;
 
   if (profile === undefined) return <InlineLoading />;
 
@@ -83,9 +131,17 @@ export function TastePage() {
   return (
     <div className="stack">
       <section className="card stack-sm" aria-labelledby="h-deduit">
-        <h2 id="h-deduit" className="section">
-          Ce que votre carnet dit de vos goûts
-        </h2>
+        <div className="taste-head">
+          <img src="/img/lia-avatar.webp" alt="" width={44} height={44} />
+          <div>
+            <h2 id="h-deduit" className="section" style={{ margin: 0 }}>
+              Ce que votre carnet dit de vos goûts
+            </h2>
+            <span className="small muted">
+              Votre profil, d’après {summary.rated} dégustation{summary.rated > 1 ? 's' : ''} notée{summary.rated > 1 ? 's' : ''}
+            </span>
+          </div>
+        </div>
         <p className="small muted">
           Calculé sur ce téléphone à partir de vos {summary.rated} dégustations notées : un trait est retenu s’il revient au moins {MIN_COUNT} fois, à
           partir de {LIKED_FROM}/5 en moyenne (« vous aimez ») ou jusqu’à {String(DISLIKED_UNTIL).replace('.', ',')}/5 (« vous aimez moins »).
@@ -99,25 +155,42 @@ export function TastePage() {
           <>
             {summary.liked.length > 0 && (
               <>
-                <span className="strong small">Vous aimez</span>
-                <ul className="stack-sm" style={{ listStyle: 'none', padding: 0 }}>
+                <span className="eyebrow">Vous aimez</span>
+                <ul className="taste-chips">
                   {summary.liked.map((t) => (
-                    <TraitRow key={t.key} t={t} disabled={full} onIgnore={() => void ignore(t)} />
+                    <TraitChip key={t.key} t={t} tone="liked" disabled={full} onIgnore={() => void ignore(t)} />
                   ))}
                 </ul>
               </>
             )}
             {summary.disliked.length > 0 && (
               <>
-                <span className="strong small">Vous aimez moins</span>
-                <ul className="stack-sm" style={{ listStyle: 'none', padding: 0 }}>
+                <span className="eyebrow">Vous aimez moins</span>
+                <ul className="taste-chips">
                   {summary.disliked.map((t) => (
-                    <TraitRow key={t.key} t={t} disabled={full} onIgnore={() => void ignore(t)} />
+                    <TraitChip key={t.key} t={t} tone="disliked" disabled={full} onIgnore={() => void ignore(t)} />
                   ))}
                 </ul>
               </>
             )}
           </>
+        )}
+        <h3 className="eyebrow" style={{ marginTop: 8 }}>
+          Profil des vins que vous aimez
+        </h3>
+        {radarReady ? (
+          <>
+            <Radar radar={radar} />
+            <p className="small faint">
+              Moyenne de vos repères (fruité, puissance, boisé, acidité, minéralité) sur les vins notés {LIKED_FROM}/5 ou plus ; un axe compte à partir de{' '}
+              {MIN_COUNT} notes.
+            </p>
+          </>
+        ) : (
+          <p className="small muted">
+            Le radar apparaîtra quand au moins trois repères auront {MIN_COUNT} notes sur des vins que vous avez aimés. Notez-les dans « Observations
+            guidées » de vos fiches de dégustation.
+          </p>
         )}
         {full && <Notice tone="warn">Vous avez écarté {MAX_IGNORED} traits, le maximum : rétablissez-les pour en écarter d’autres.</Notice>}
         {ignored.length > 0 && (

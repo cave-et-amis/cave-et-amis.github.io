@@ -509,6 +509,11 @@ export type Tasting = {
   acidite: 'faible' | 'moyenne' | 'vive' | null;
   tanins: 'aucun' | 'souples' | 'presents' | 'marques' | null;
   longueur: 'courte' | 'moyenne' | 'longue' | null;
+  /** Profil gustatif facultatif, de 1 (discret) à 5 (intense) : axes du radar de « Mes goûts ». */
+  fruite?: number | null;
+  puissance?: number | null;
+  boise?: number | null;
+  mineralite?: number | null;
   dish: string | null;
   price_paid: number | null;
   price_kind: PriceKind | null;

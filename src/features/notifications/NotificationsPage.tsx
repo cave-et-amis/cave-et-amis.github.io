@@ -115,6 +115,27 @@ export function NotificationsPage() {
             </div>
           );
         }
+        // Alerte de maturité : carte à part, comme sur la maquette (titre, vin, origine de la période, lien vers la fiche).
+        if (n.kind === 'maturity_ready' || n.kind === 'maturity_last' || n.kind === 'maturity_many') {
+          const title = n.kind === 'maturity_ready' ? 'Votre vin est à maturité' : n.kind === 'maturity_last' ? 'Dernière année pour ce vin' : 'Des vins à ouvrir cette année';
+          return (
+            <section key={n.id} className={`maturity-alert${n.read_at ? '' : ' unread'}`} aria-label={title}>
+              <span className="maturity-alert-head small">
+                <img src="/img/logo-cave.webp" alt="" width={20} height={20} />
+                Cave &amp; Amis · {dateShort(n.created_at)}
+                {!n.read_at && <span className="pill primary">Nouveau</span>}
+              </span>
+              <strong className="maturity-alert-title">{title}</strong>
+              <p className="small" style={{ margin: 0 }}>
+                {d.text}
+              </p>
+              {origin(n) && <span className="pill success maturity-alert-origin">{origin(n)}</span>}
+              <a className="btn btn-secondary btn-sm" href={d.href}>
+                {n.kind === 'maturity_many' ? 'Voir les vins' : 'Voir la bouteille'}
+              </a>
+            </section>
+          );
+        }
         return (
           <a key={n.id} className={`row notification${n.read_at ? '' : ' unread'}`} href={d.href}>
             <span className="notification-icon" aria-hidden>

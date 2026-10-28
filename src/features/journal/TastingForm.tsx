@@ -48,6 +48,14 @@ const TANINS = [
   { value: 'presents', label: 'Présents' },
   { value: 'marques', label: 'Marqués' },
 ] as const;
+const LEVELS = [1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }));
+const PROFILE = [
+  { key: 'fruite', label: 'Fruité' },
+  { key: 'puissance', label: 'Puissance' },
+  { key: 'boise', label: 'Boisé' },
+  { key: 'mineralite', label: 'Minéralité' },
+] as const;
+type ProfileKey = (typeof PROFILE)[number]['key'];
 const LONGUEUR = [
   { value: 'courte', label: 'Courte' },
   { value: 'moyenne', label: 'Moyenne' },
@@ -80,6 +88,12 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
   const [acidite, setAcidite] = useState<Tasting['acidite']>(tasting?.acidite ?? null);
   const [tanins, setTanins] = useState<Tasting['tanins']>(tasting?.tanins ?? null);
   const [longueur, setLongueur] = useState<Tasting['longueur']>(tasting?.longueur ?? null);
+  const [profile, setProfile] = useState<Record<ProfileKey, number | null>>({
+    fruite: tasting?.fruite ?? null,
+    puissance: tasting?.puissance ?? null,
+    boise: tasting?.boise ?? null,
+    mineralite: tasting?.mineralite ?? null,
+  });
   const [dish, setDish] = useState(s(tasting?.dish));
   const [price, setPrice] = useState(s(tasting?.price_paid).replace('.', ','));
   const [priceKind, setPriceKind] = useState<PriceKind | ''>(tasting?.price_kind ?? '');
@@ -181,6 +195,7 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
       acidite,
       tanins,
       longueur,
+      ...profile,
       dish: dish.trim() || null,
       price_paid: parseNumber(price),
       price_kind: priceKind || null,
@@ -290,7 +305,7 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
         {rebuy && !editing && <Check checked={alsoWish} onChange={setAlsoWish} label="L’ajouter aussi à ma liste d’envies" />}
         <Check checked={favorite} onChange={setFavorite} label="Coup de cœur (favori)" />
 
-        <Advanced title="Observations guidées (facultatif)" open={Boolean(me.preferences.advanced) || Boolean(prefill?.robe || prefill?.nez || prefill?.bouche) || (editing && Boolean(tasting?.robe || tasting?.nez || tasting?.bouche || tasting?.acidite))}>
+        <Advanced title="Observations guidées (facultatif)" open={Boolean(me.preferences.advanced) || Boolean(prefill?.robe || prefill?.nez || prefill?.bouche) || (editing && Boolean(tasting?.robe || tasting?.nez || tasting?.bouche || tasting?.acidite || tasting?.fruite || tasting?.puissance || tasting?.boise || tasting?.mineralite))}>
           <Field label="Robe" htmlFor="t-robe" hint="Couleur, reflets, intensité…">
             <input id="t-robe" className="input" value={robe} onChange={(e) => setRobe(e.target.value)} maxLength={300} />
           </Field>
@@ -309,6 +324,12 @@ export function TastingFormSheet({ prefill, tasting, onClose }: { prefill?: Tast
           <Field label="Longueur">
             <Chips label="Longueur" value={longueur} onChange={(v) => setLongueur(v === longueur ? null : v)} options={[...LONGUEUR]} />
           </Field>
+          <p className="small muted">Profil du vin, de 1 (discret) à 5 (intense) : il dessine le radar de « Mes goûts ».</p>
+          {PROFILE.map(({ key, label }) => (
+            <Field key={key} label={label}>
+              <Chips<number> label={label} value={profile[key]} onChange={(v) => setProfile((p) => ({ ...p, [key]: v === p[key] ? null : v }))} options={LEVELS} />
+            </Field>
+          ))}
           <p className="small faint">
             Besoin d’aide pour décrire ? <a href={`#/assistant?q=${encodeURIComponent('Aide-moi à décrire ce que je ressens pendant la dégustation.')}`}>Demandez à l’assistant</a>.
           </p>

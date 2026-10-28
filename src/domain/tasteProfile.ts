@@ -35,6 +35,41 @@ const MAX_TRAITS = 8;
 const KIND_LABELS: Record<TraitKind, string> = { couleur: 'Couleur', region: 'Région', appellation: 'Appellation', cepage: 'Cépage', structure: 'Structure' };
 export const kindLabel = (k: TraitKind) => KIND_LABELS[k];
 
+/** Radar des goûts : cinq axes, de 1 (discret) à 5 (intense). L'acidité reprend le champ « acidité » de la fiche. */
+export type RadarAxis = 'fruite' | 'puissance' | 'boise' | 'acidite' | 'mineralite';
+export const RADAR_AXES: { key: RadarAxis; label: string }[] = [
+  { key: 'fruite', label: 'Fruité' },
+  { key: 'puissance', label: 'Puissance' },
+  { key: 'boise', label: 'Boisé' },
+  { key: 'acidite', label: 'Acidité' },
+  { key: 'mineralite', label: 'Minéralité' },
+];
+const ACIDITY_LEVEL = { faible: 1, moyenne: 3, vive: 5 } as const;
+export type TasteRadar = { liked: number; axes: { key: RadarAxis; label: string; value: number | null; count: number }[] };
+
+/** Valeur d'un axe pour une dégustation (null si la personne ne l'a pas notée). */
+export function axisValue(t: Tasting, axis: RadarAxis): number | null {
+  if (axis === 'acidite') return t.acidite ? ACIDITY_LEVEL[t.acidite] : null;
+  const v = t[axis];
+  return typeof v === 'number' && v >= 1 && v <= 5 ? v : null;
+}
+
+/**
+ * Moyenne de chaque axe sur les vins que la personne a aimés (au moins LIKED_FROM/5). Un axe n'est retenu qu'à partir
+ * de MIN_COUNT valeurs ; sinon il vaut null (affiché « pas encore assez de notes »).
+ */
+export function tasteRadar(tastings: Tasting[], me: string): TasteRadar {
+  const liked = tastings.filter((t) => t.user_id === me && t.rating !== null && t.rating >= LIKED_FROM);
+  return {
+    liked: liked.length,
+    axes: RADAR_AXES.map(({ key, label }) => {
+      const values = liked.map((t) => axisValue(t, key)).filter((v): v is number => v !== null);
+      const value = values.length >= MIN_COUNT ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10 : null;
+      return { key, label, value, count: values.length };
+    }),
+  };
+}
+
 export const traitKey = (kind: TraitKind, value: string) => `${kind}:${fold(value).trim()}`;
 
 const STRUCTURE: Record<string, string> = {

@@ -53,6 +53,25 @@ export const host = (url: string) => {
   }
 };
 
+/** Anneau de la note de Lia (0 à 10) ; décoratif, la note est aussi écrite en toutes lettres sous le verdict. */
+function ScoreRing({ score }: { score: number }) {
+  const r = 32;
+  const c = 2 * Math.PI * r;
+  const part = Math.max(0, Math.min(1, score / 10));
+  return (
+    <span className="score-ring" aria-hidden>
+      <svg viewBox="0 0 76 76">
+        <circle className="track" cx="38" cy="38" r={r} fill="none" strokeWidth="6" />
+        <circle className="value" cx="38" cy="38" r={r} fill="none" strokeWidth="6" strokeDasharray={`${c * part} ${c}`} />
+      </svg>
+      <span className="score-ring-text">
+        {String(score).replace('.', ',')}
+        <small>/10</small>
+      </span>
+    </span>
+  );
+}
+
 function SourceLinks({ urls }: { urls: string[] }) {
   if (!urls.length) return null;
   return (
@@ -223,10 +242,15 @@ export function ScanAnalysis({ scan, onAssessment }: { scan: Scan; onAssessment?
   return (
     <div className="stack">
       <section className={`card stack-sm scan-verdict ${TONE[v.verdict]}`} aria-live="polite" aria-labelledby="scan-verdict-title">
-        <span className="small muted">Verdict de Lia</span>
-        <h2 id="scan-verdict-title" style={{ margin: 0 }}>
-          {busy && !assessment ? 'Analyse en cours…' : VERDICT_LABELS[v.verdict]}
-        </h2>
+        <div className="scan-verdict-head">
+          {v.score !== null && <ScoreRing score={v.score} />}
+          <div>
+            <span className="small muted">Verdict de Lia</span>
+            <h2 id="scan-verdict-title" style={{ margin: 0 }}>
+              {busy && !assessment ? 'Analyse en cours…' : VERDICT_LABELS[v.verdict]}
+            </h2>
+          </div>
+        </div>
         {lines.map((l) => (
           <p key={l} style={{ margin: 0 }}>
             {l}

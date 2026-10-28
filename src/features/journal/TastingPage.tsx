@@ -31,6 +31,10 @@ export function TastingPage({ id }: { id: string }) {
     ['Acidité', t.acidite],
     ['Tanins', t.tanins],
     ['Longueur', t.longueur],
+    ['Fruité', t.fruite && `${t.fruite}/5`],
+    ['Puissance', t.puissance && `${t.puissance}/5`],
+    ['Boisé', t.boise && `${t.boise}/5`],
+    ['Minéralité', t.mineralite && `${t.mineralite}/5`],
   ].filter(([, v]) => v) as [string, string][];
   return (
     <>

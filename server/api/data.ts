@@ -13,6 +13,9 @@ import { ADVICE_SOURCES, colorLabel, fold, label, WINE_TYPES } from '../../src/d
 import { deName } from '../../src/domain/format.ts';
 import { AiFailure, sanitize } from './util.ts';
 
+/** Profil gustatif d'une dégustation (1 à 5), transmis à Lia avec les observations. */
+const PROFILE_AXES = [['fruite', 'fruité'], ['puissance', 'puissance'], ['boise', 'boisé'], ['mineralite', 'minéralité']] as const;
+
 async function all<T>(q: () => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
   const { data, error } = await q();
   if (error) throw new AiFailure('internal', sanitize(error.message));
@@ -31,6 +34,7 @@ async function paged<T>(page: (from: number, to: number) => PromiseLike<{ data: 
 }
 
 /** Bouteilles d'un de mes lots mises à disposition d'un groupe (avec le nom du groupe). */
+
 export type Allocation = { lot_id: string; group: string; bottles: number };
 
 /** owner_name : propriétaire d'une cave gérée à plusieurs (absent pour les caves de la personne). */
@@ -189,7 +193,7 @@ export function compactTasting(t: Tasting) {
     occasion: t.occasion ?? undefined,
     rating_out_of_5: t.rating ?? undefined,
     comment: clip(t.comment, 300),
-    observations: [t.robe && `robe : ${t.robe}`, t.nez && `nez : ${t.nez}`, t.bouche && `bouche : ${t.bouche}`, t.acidite && `acidité ${t.acidite}`, t.tanins && `tanins ${t.tanins}`, t.longueur && `longueur ${t.longueur}`]
+    observations: [t.robe && `robe : ${t.robe}`, t.nez && `nez : ${t.nez}`, t.bouche && `bouche : ${t.bouche}`, t.acidite && `acidité ${t.acidite}`, t.tanins && `tanins ${t.tanins}`, t.longueur && `longueur ${t.longueur}`, ...PROFILE_AXES.map(([k, label]) => t[k] && `${label} ${t[k]}/5`)]
       .filter(Boolean)
       .join(' ; ') || undefined,
     dish: t.dish ?? undefined,

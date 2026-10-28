@@ -1275,6 +1275,13 @@ new Intl.DateTimeFormat("fr-FR", {
 });
 //#endregion
 //#region server/api/data.ts
+/** Profil gustatif d'une dégustation (1 à 5), transmis à Lia avec les observations. */
+var PROFILE_AXES = [
+	["fruite", "fruité"],
+	["puissance", "puissance"],
+	["boise", "boisé"],
+	["mineralite", "minéralité"]
+];
 async function all(q) {
 	const { data, error } = await q();
 	if (error) throw new AiFailure("internal", sanitize(error.message));
@@ -1463,7 +1470,8 @@ function compactTasting(t) {
 			t.bouche && `bouche : ${t.bouche}`,
 			t.acidite && `acidité ${t.acidite}`,
 			t.tanins && `tanins ${t.tanins}`,
-			t.longueur && `longueur ${t.longueur}`
+			t.longueur && `longueur ${t.longueur}`,
+			...PROFILE_AXES.map(([k, label]) => t[k] && `${label} ${t[k]}/5`)
 		].filter(Boolean).join(" ; ") || void 0,
 		dish: t.dish ?? void 0,
 		rebuy: t.rebuy || void 0
