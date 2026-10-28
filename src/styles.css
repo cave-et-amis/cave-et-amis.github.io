@@ -4419,3 +4419,37 @@ details.help-topic:not([open]) > summary::after {
 .cellar-list .bottle-dot:not(.ready):not(.soon) {
   border-color: rgba(0, 0, 0, 0.55);
 }
+
+/* Fenêtre « Déplacer » : une puce par arrivée possible, rangées par cave. */
+.move-dest {
+  display: grid;
+  gap: 12px;
+}
+.move-cellar {
+  display: grid;
+  gap: 8px;
+}
+.move-cellar-name {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.chip-add {
+  border-style: dashed;
+}
+.chip-add svg {
+  width: 16px;
+  height: 16px;
+}
+.move-new-shelf {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.move-new-shelf .input {
+  flex: 1 1 160px;
+}

@@ -165,7 +165,15 @@ test('cave en 3D : vue 3D si l’appareil la permet, liste, étagère configuré
   await expect(sheet.getByText(/dont 2 libres/)).toBeVisible();
   await sheet.getByRole('button', { name: 'Déplacer' }).click();
   const move = page.getByRole('dialog', { name: 'Déplacer : Château Labeille 2016' });
-  await move.getByLabel('Vers').selectOption({ label: 'A · Casier du haut' });
+  // Une puce par arrivée ; une étagère se crée sans quitter la fenêtre, et se trouve choisie.
+  await move.getByRole('button', { name: 'Nouvelle étagère' }).click();
+  await move.getByRole('textbox', { name: /Nom de la nouvelle étagère/ }).fill('Frigo');
+  await move.getByRole('button', { name: 'Créer' }).click();
+  await toast(page, 'Étagère « Frigo » ajoutée');
+  await expect(move.getByRole('button', { name: /Frigo/, pressed: true })).toBeVisible();
+  await move.getByRole('button', { name: 'A · Casier du haut' }).click();
+  await expect(move.getByRole('button', { name: 'A · Casier du haut', pressed: true })).toBeVisible();
+  await expect(move.getByRole('button', { name: 'Tout le lot (2)' })).toBeVisible();
   await expect(move.getByRole('textbox', { name: 'Nombre de bouteilles', exact: true })).toHaveValue('1');
   await move.getByRole('button', { name: 'Confirmer le déplacement' }).click();
   await toast(page, '1 bouteille déplacée');

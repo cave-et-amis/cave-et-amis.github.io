@@ -65,10 +65,21 @@ export function CellarMapPage() {
   const year = currentYear();
   const show3d = view === '3d' && webgl && !lost;
 
-  const shelves = useMemo(() => {
-    const rows = buildRows(snapshot.wines, snapshot.lots, snapshot.cellars, year, snapshot.groupShares);
-    return cellarLayout(cellarId, snapshot.locations, snapshot.lots, rows);
-  }, [snapshot, cellarId, year]);
+  const rows = useMemo(() => buildRows(snapshot.wines, snapshot.lots, snapshot.cellars, year, snapshot.groupShares), [snapshot, year]);
+  const shelves = useMemo(() => cellarLayout(cellarId, snapshot.locations, snapshot.lots, rows), [snapshot, cellarId, rows]);
+  // Où une bouteille peut aller : chacune de mes caves, ses étagères (mêmes libellés « A · nom ») et « Sans emplacement ».
+  const destinations = useMemo(
+    () =>
+      cellars.map((c) => ({
+        id: c.id,
+        name: c.name,
+        places: (c.id === cellarId ? shelves : cellarLayout(c.id, snapshot.locations, snapshot.lots, rows))
+          .filter((s) => s.location)
+          .map((s) => ({ id: s.location!.id, label: s.label })),
+      })),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [snapshot, cellarId, shelves, rows],
+  );
   const bottles = shelves.reduce((n, s) => n + s.bottles.length + s.overflow, 0);
 
   // Bouteilles qui viennent d'apparaître (après un déplacement ou un ajout) : elles « entrent » dans leur casier.
@@ -89,6 +100,21 @@ export function CellarMapPage() {
     rememberView(v);
   };
   const shelfOf = (b: CellarBottle) => shelves.find((s) => s.id === b.shelfId)!;
+  // Pourquoi des bouteilles sont réservées : événements où elles sont proposées, groupes où elles sont mises à disposition.
+  const reservationsOf = (lot: string) => {
+    const out: string[] = [];
+    for (const w of snapshot.myEventWines) {
+      if (w.lot_id !== lot || w.reserved_qty <= 0) continue;
+      const ev = snapshot.events.find((e) => e.id === w.event_id);
+      out.push(`${w.reserved_qty} pour l’événement « ${ev?.title ?? 'sans titre'} »`);
+    }
+    for (const g of snapshot.groupShares) {
+      if (g.lot_id !== lot || g.allocated <= 0) continue;
+      const group = snapshot.groups.find((x) => x.id === g.group_id);
+      out.push(`${g.allocated} mise${g.allocated > 1 ? 's' : ''} à disposition du groupe « ${group?.name ?? 'sans nom'} »`);
+    }
+    return out.length ? out : ['pour un événement ou un groupe'];
+  };
   const pick = (key: string) => {
     const b = shelves.flatMap((s) => s.bottles).find((x) => x.key === key);
     if (b) setOpen(b);
@@ -237,7 +263,6 @@ export function CellarMapPage() {
                 <Button
                   variant="secondary"
                   icon={<ArrowLeftRight />}
-                  disabled={freeBottles(open.lot) === 0}
                   onClick={() => {
                     setMoving(open);
                     setOpen(null);
@@ -247,7 +272,17 @@ export function CellarMapPage() {
                 </Button>
               )}
             </span>
-            {freeBottles(open.lot) === 0 && <p className="small faint">Toutes les bouteilles de ce lot sont réservées ou mises à disposition d’un groupe : elles restent en place.</p>}
+            {open.lot.reserved > 0 && (
+              <div className="small faint">
+                <p>Réservées :</p>
+                <ul>
+                  {reservationsOf(open.lot.id).map((r) => (
+                    <li key={r}>{r}</li>
+                  ))}
+                </ul>
+                <p>Elles suivent le lot s’il change de place en entier.</p>
+              </div>
+            )}
           </div>
         )}
       </Sheet>
@@ -255,16 +290,23 @@ export function CellarMapPage() {
       {moving && (
         <MoveSheet
           bottle={moving}
+          fromCellar={cellarId}
           from={shelfOf(moving).location?.id ?? null}
-          places={shelves.filter((s) => s.location).map((s) => ({ id: s.location!.id, label: s.label }))}
+          destinations={destinations}
           onClose={() => setMoving(null)}
-          onMove={async (quantity, to, requestId) => {
-            const res = await run(() => api.moveBottles(moving.lot.id, quantity, to, requestId), {
-              success: `${quantity} bouteille${quantity > 1 ? 's' : ''} déplacée${quantity > 1 ? 's' : ''}`,
+          onAddShelf={async (cellar, name) => {
+            const res = await run(() => api.addLocation({ cellar_id: cellar, name, kind: 'etagere' }), { success: `Étagère « ${name} » ajoutée` });
+            return res.ok ? res.value.id : null;
+          }}
+          onMove={async (quantity, cellar, to, requestId, whole) => {
+            const other = cellar !== cellarId ? destinations.find((d) => d.id === cellar)?.name : undefined;
+            const n = `${quantity} bouteille${quantity > 1 ? 's' : ''} déplacée${quantity > 1 ? 's' : ''}`;
+            const res = await run(() => api.moveBottles(moving.lot.id, quantity, cellar === cellarId ? null : cellar, to, requestId, whole), {
+              success: other ? `${n} vers « ${other} »` : n,
             });
             if (res.ok) {
               setMoving(null);
-              setFocus(to ?? 'aucun');
+              if (!other) setFocus(to ?? 'aucun');
             }
           }}
         />
@@ -282,30 +324,58 @@ export function CellarMapPage() {
   );
 }
 
+type Destination = { id: string; name: string; places: { id: string; label: string }[] };
+
+/**
+ * Choix de l'arrivée en une touche : une puce par étagère, rangées par cave (la cave actuelle d'abord), plus « Sans
+ * emplacement » et « Nouvelle étagère » dans chaque cave. La place actuelle n'est pas proposée.
+ */
 function MoveSheet({
   bottle,
+  fromCellar,
   from,
-  places,
+  destinations,
   onClose,
+  onAddShelf,
   onMove,
 }: {
   bottle: CellarBottle;
+  fromCellar: string;
   from: string | null;
-  places: { id: string; label: string }[];
+  destinations: Destination[];
   onClose: () => void;
-  onMove: (quantity: number, to: string | null, requestId: string) => Promise<void>;
+  onAddShelf: (cellar: string, name: string) => Promise<string | null>;
+  onMove: (quantity: number, cellar: string, to: string | null, requestId: string, whole: boolean) => Promise<void>;
 }) {
   const free = freeBottles(bottle.lot);
-  const options = [...places, { id: '', label: 'Sans emplacement' }].filter((p) => (p.id || null) !== from);
-  const [to, setTo] = useState(options[0]?.id ?? '');
-  const [quantity, setQuantity] = useState(1);
+  const groups = [...destinations]
+    .sort((a, b) => Number(b.id === fromCellar) - Number(a.id === fromCellar))
+    .map((d) => ({ ...d, options: [...d.places, { id: '', label: 'Sans emplacement' }].filter((p) => d.id !== fromCellar || (p.id || null) !== from) }));
+  const first = groups.find((g) => g.options.length);
+  // Arrivée choisie : « cave|emplacement » (emplacement vide = sans emplacement).
+  const [dest, setDest] = useState(first ? `${first.id}|${first.options[0].id}` : '');
+  const all = bottle.lot.quantity;
+  // Une partie : seulement des bouteilles libres. Tout le lot : réservations comprises (elles le suivent).
+  const [quantity, setQuantity] = useState(free > 0 ? 1 : all);
   const [busy, setBusy] = useState(false);
+  const [newShelf, setNewShelf] = useState<{ cellar: string; name: string } | null>(null);
+  const [cellar, location] = dest.split('|');
   // Une clé par déplacement choisi : un nouvel envoi après une coupure réseau ne déplace pas deux fois.
   const request = useRef({ key: '', id: newId() });
   const requestId = () => {
-    const key = `${quantity}:${to}`;
+    const key = `${quantity}:${dest}`;
     if (request.current.key !== key) request.current = { key, id: newId() };
     return request.current.id;
+  };
+  const createShelf = async () => {
+    if (!newShelf?.name.trim()) return;
+    setBusy(true);
+    const id = await onAddShelf(newShelf.cellar, newShelf.name.trim());
+    setBusy(false);
+    if (id) {
+      setDest(`${newShelf.cellar}|${id}`);
+      setNewShelf(null);
+    }
   };
   return (
     <Sheet
@@ -315,10 +385,10 @@ function MoveSheet({
       footer={
         <Button
           loading={busy}
-          disabled={!options.length}
+          disabled={!dest || !!newShelf}
           onClick={async () => {
             setBusy(true);
-            await onMove(quantity, to || null, requestId());
+            await onMove(quantity, cellar, location || null, requestId(), quantity === all);
             setBusy(false);
           }}
         >
@@ -327,18 +397,65 @@ function MoveSheet({
       }
     >
       <div className="stack-sm">
-        <Field label="Vers">
-          <select className="input" value={to} onChange={(e) => setTo(e.target.value)}>
-            {options.map((p) => (
-              <option key={p.id || 'aucun'} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+        <div className="move-dest" role="group" aria-label="Vers">
+          <span className="label">Vers</span>
+          {groups.map((g) => (
+            <div key={g.id} className="move-cellar" role="group" aria-label={g.name}>
+              {groups.length > 1 && <p className="move-cellar-name">{g.id === fromCellar ? `${g.name} (cave actuelle)` : g.name}</p>}
+              <div className="chips">
+                {g.options.map((p) => {
+                  const value = `${g.id}|${p.id}`;
+                  return (
+                    <button key={value} type="button" className="chip" aria-pressed={dest === value} onClick={() => setDest(value)}>
+                      {p.label}
+                    </button>
+                  );
+                })}
+                <button type="button" className="chip chip-add" aria-expanded={newShelf?.cellar === g.id} onClick={() => setNewShelf({ cellar: g.id, name: '' })}>
+                  <Plus aria-hidden /> Nouvelle étagère
+                </button>
+              </div>
+              {newShelf?.cellar === g.id && (
+                <div className="move-new-shelf">
+                  <input
+                    className="input"
+                    aria-label={`Nom de la nouvelle étagère (${g.name})`}
+                    placeholder="Par exemple : Haut"
+                    value={newShelf.name}
+                    maxLength={60}
+                    autoFocus
+                    onChange={(e) => setNewShelf({ cellar: g.id, name: e.target.value })}
+                    onKeyDown={(e) => e.key === 'Enter' && void createShelf()}
+                  />
+                  <Button variant="secondary" loading={busy} disabled={!newShelf.name.trim()} onClick={() => void createShelf()}>
+                    Créer
+                  </Button>
+                  <Button variant="ghost" onClick={() => setNewShelf(null)}>
+                    Annuler
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <Field
+          label="Nombre de bouteilles"
+          hint={
+            free === all
+              ? `${all} bouteille${all > 1 ? 's' : ''} dans ce lot.`
+              : `${free} libre${free > 1 ? 's' : ''} sur ${all} : une partie ne prend que des bouteilles libres ; tout le lot part avec ses réservations, qui le suivent.`
+          }
+        >
+          <span className="inline">
+            {free > 0 && <Stepper value={Math.min(quantity, free)} onChange={(v) => setQuantity(Math.min(v, free))} min={1} max={free} label="Nombre de bouteilles" />}
+            {(all > 1 || free < all) && (
+              <button type="button" className="chip" aria-pressed={quantity === all} onClick={() => setQuantity(all)}>
+                Tout le lot ({all})
+              </button>
+            )}
+          </span>
         </Field>
-        <Field label="Nombre de bouteilles" hint={`${free} bouteille${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''} dans ce lot ; les bouteilles réservées restent en place.`}>
-          <Stepper value={quantity} onChange={setQuantity} min={1} max={free} label="Nombre de bouteilles" />
-        </Field>
+        {cellar && cellar !== fromCellar && <p className="small faint">Dans une autre cave, ces bouteilles prennent les accès de cette cave : vérifiez qui la voit.</p>}
         <p className="small faint">Le stock ne change pas : seules les bouteilles changent de place.</p>
       </div>
     </Sheet>

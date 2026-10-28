@@ -419,9 +419,13 @@ export class Api {
   /**
    * Déplacer des bouteilles libres d'un lot vers un emplacement de la même cave (null : sans emplacement). Une partie du
    * lot devient un lot jumeau ; aucun mouvement de stock (le total ne change pas). Idempotent par `requestId`.
+   * `cellar` : une autre de mes caves (vide : la cave du lot). `whole` : tout le lot, réservations comprises (elles le
+   * suivent) ; sinon seulement des bouteilles libres.
    */
-  async moveBottles(lot: string, quantity: number, location: string | null, requestId: string) {
-    return must(await this.sb.rpc('move_bottles', { p_lot: lot, p_quantity: quantity, p_location: location, p_request: requestId })) as {
+  async moveBottles(lot: string, quantity: number, cellar: string | null, location: string | null, requestId: string, whole = false) {
+    return must(
+      await this.sb.rpc('move_bottles', { p_lot: lot, p_quantity: quantity, p_cellar: cellar, p_location: location, p_request: requestId, p_whole: whole }),
+    ) as {
       lot_id: string;
       moved_lot_id: string;
       quantity: number;

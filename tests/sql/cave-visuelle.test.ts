@@ -97,9 +97,9 @@ describe('déplacer des bouteilles', () => {
     await one(db, claire, `select respond_group_invite($1, true)`, [g.id]);
     await one(db, bruno, `select allocate_to_group($1, $2, 3)`, [lotId, g.id]);
     expect(await lotState(db, lotId)).toEqual({ quantity: 6, reserved: 5 });
-    // 1 seule bouteille libre ; « tout le lot » n'est pas possible tant que des bouteilles sont réservées.
+    // 1 seule bouteille libre : une partie plus grande est refusée (tout le lot réservé : voir deplacer-entre-caves).
     await expectError(move(bruno, lotId, 2, bas), /not_enough_free/);
-    await expectError(move(bruno, lotId, 6, bas), /not_enough_free/);
+    await expectError(move(bruno, lotId, 5, bas), /not_enough_free/);
     const r = await move(bruno, lotId, 1, bas);
     expect(r.moved_lot_id).not.toBe(lotId);
     expect(await lotState(db, lotId)).toEqual({ quantity: 5, reserved: 5 });
@@ -198,6 +198,8 @@ describe('retour arrière', () => {
   it('rend l’état d’avant, export compris ; les bouteilles restent où elles sont', async () => {
     const { wineId, lotId } = await addWine(db, bruno, { name: 'Morgon' }, { quantity: 6, location_id: haut });
     await move(bruno, lotId, 2, bas);
+    // Dans l'ordre inverse : d'abord le retour de la 11 (déplacer entre caves), puis celui de la 9.
+    await db.exec(readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'retour-20261102000011.sql'), 'utf8'));
     await db.exec(readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'retour-20261102000009.sql'), 'utf8'));
     const d = (await one<{ d: Record<string, unknown> }>(db, bruno, `select export_my_data() as d`)).d;
     expect(d).not.toHaveProperty('deplacements_de_bouteilles');
