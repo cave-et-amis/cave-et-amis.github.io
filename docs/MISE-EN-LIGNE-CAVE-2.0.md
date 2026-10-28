@@ -30,11 +30,7 @@ powershell -ExecutionPolicy Bypass -File scripts\sauvegarde.ps1
 
 Notez le dossier affiché : c'est votre point de retour.
 
-## 2. Code sur GitHub
-
-Avec votre accord, l'agent pousse la branche sur `main`.
-
-## 3. Migrations, une par une (vous cliquez « Run »)
+## 2. Migrations, une par une (vous cliquez « Run »)
 
 Supabase › SQL Editor, un onglet vierge par fichier, dans cet ordre. L'agent colle le texte et compare son empreinte au
 fichier avant que vous cliquiez. Aucune ne supprime de donnée existante. Les quatre premières sont rejouables sans danger ;
@@ -62,12 +58,12 @@ select price_alert_budget_usd, monthly_budget_usd from ai_settings;
 
 Attendu : `2.00` pour le plafond des alertes, votre budget mensuel habituel pour l'autre.
 
-## 4. cave-api (vous cliquez « Deploy updates »)
+## 3. cave-api (vous cliquez « Deploy updates »)
 
 Supabase › Edge Functions › cave-api › Code : l'agent remplace le code par `supabase/functions/cave-api/index.ts` et compare
 son empreinte au fichier. « Verify JWT » reste **désactivé**. Aucun nouveau secret.
 
-## 5. Tâches planifiées (accord à part pour chacune)
+## 4. Tâches planifiées (accord à part pour chacune)
 
 - **Alertes de maturité** : `supabase/sql/maturite-cron.sql` (chaque jour ; sans IA, sans coût).
 - **Alerte de baisse de prix** : `supabase/sql/alerte-prix-cron.sql` (vendredi 19 h UTC). **Coût** : environ 0,255 $ réservés
@@ -78,6 +74,11 @@ son empreinte au fichier. « Verify JWT » reste **désactivé**. Aucun nouveau 
 
 Sans la seconde, la case « M'alerter si le prix baisse » s'enregistre mais rien n'est vérifié : ne la publiez pas sans
 l'avoir activée, ou dites-le aux personnes.
+
+## 5. Code sur GitHub
+
+Avec votre accord, l'agent pousse la branche sur `main`, **après** la base et cave-api (comme les mises en ligne
+précédentes : rien n'est exposé avant d'être en place). Compte GitHub : celui qui administre l'organisation `cave-et-amis`.
 
 ## 6. Site
 
