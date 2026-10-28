@@ -101,7 +101,7 @@ export function LotSheet({ wine, lot, onClose }: { wine: Wine; lot?: Lot; onClos
         {(editing || origin === 'achat') && (
           <DocumentPhotoButton
             kind="receipt"
-            hint="Lia lit le prix, puis la date et le magasin (dans « Achat et notes »). Elle ne recopie ni nom, ni carte bancaire, ni adresse ; la photo est effacée aussitôt."
+            hint="Lia lit le prix, puis la date et le magasin (dans « Achat et notes »). La photo entière est lue par Claude puis effacée : cachez votre nom ou votre numéro de carte si vous le pouvez."
             onResult={(r) => {
               // Plusieurs vins sur le ticket : celui dont le nom ressemble le plus à ce vin, sinon le premier.
               const line = r.lines.find((l) => fold(l.wine_name).includes(fold(wine.name)) || fold(wine.name).includes(fold(l.wine_name))) ?? r.lines[0];

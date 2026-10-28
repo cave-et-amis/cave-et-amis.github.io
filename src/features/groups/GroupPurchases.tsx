@@ -237,7 +237,7 @@ function PurchaseSheet({ onClose, onSave }: { onClose: () => void; onSave: (titl
       <div className="stack-sm">
         <DocumentPhotoButton
           kind="price_list"
-          hint="La liste de prix d’un vigneron ou d’un caviste : Lia propose le titre et les vins, que vous cochez."
+          hint="La liste de prix d’un vigneron ou d’un caviste : Lia propose le titre et les vins, que vous cochez. La photo entière est lue par Claude puis effacée : cachez les noms ou coordonnées qui y figurent si vous le pouvez."
           onResult={(r) => {
             if (!title.trim()) setTitle(r.title ?? (r.seller ? `Commande chez ${r.seller}` : ''));
             if (!note.trim() && r.conditions) setNote(r.conditions);
