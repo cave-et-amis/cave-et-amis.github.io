@@ -278,7 +278,7 @@ export function AuthScreen({
           {mode === 'forgot' && <h2 className="title-font" style={{ fontSize: '1.25rem' }}>Mot de passe oublié</h2>}
           <form className="form" onSubmit={submit} noValidate={false}>
             {mode === 'signup' && (
-              <Field label="Votre prénom" htmlFor="name" hint="Visible par vos amis et les participants de vos événements.">
+              <Field label="Votre prénom" htmlFor="name" hint="Visible par vos contacts et les participants de vos événements.">
                 <input id="name" className="input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="given-name" maxLength={40} required />
               </Field>
             )}

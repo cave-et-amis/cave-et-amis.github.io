@@ -82,7 +82,7 @@ export function SettingsPage() {
             )}
           </div>
         </Field>
-        <Field label="Prénom affiché" htmlFor="s-name" hint="Visible par vos amis et les participants de vos événements.">
+        <Field label="Prénom affiché" htmlFor="s-name" hint="Visible par vos contacts et les participants de vos événements.">
           <div className="inline" style={{ flexWrap: 'nowrap' }}>
             <input id="s-name" className="input" value={name} maxLength={40} onChange={(e) => setName(e.target.value)} />
             <Button
