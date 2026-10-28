@@ -132,21 +132,46 @@ test('import multiple : une photo, la liste à vérifier, les bouteilles identiq
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
 });
 
-test('cave en 2D : une pastille par bouteille, rangée par emplacement, aperçu du vin', async () => {
+test('cave en 3D : vue 3D si l’appareil la permet, liste, étagère configurée, déplacement d’une bouteille sans changer le stock', async () => {
   await goto(page, '/cave');
-  await page.getByRole('link', { name: 'Vue 2D' }).click();
-  // Les 2 bouteilles importées plus haut, sans emplacement.
+  await page.getByRole('link', { name: 'Vue 3D' }).click();
   const map = page.getByRole('region', { name: /Plan de la cave : \d+ bouteilles?/ });
+  // La scène 3D (si WebGL est disponible ici) est doublée d'une liste pour le clavier et les lecteurs d'écran.
+  if (await page.getByRole('button', { name: 'Vue 3D', pressed: true }).isVisible().catch(() => false)) {
+    await expect(page.locator('.cellar3d canvas')).toBeVisible();
+    await expect(map.getByRole('button', { name: /Château Labeille 2016, Sans emplacement, bouteille 1 sur 2/ })).toHaveCount(1);
+  }
+  await page.getByRole('button', { name: 'Vue liste' }).click();
+  await expect(page.getByRole('button', { name: 'Vue liste', pressed: true })).toBeVisible();
+  // Quitter la 3D n'est pas une panne : pas de message, et la 3D reste disponible.
+  await expect(page.getByText('La vue 3D s’est interrompue')).toHaveCount(0);
+  // Les 2 bouteilles importées plus haut, sans emplacement.
   await expect(map.getByText('Sans emplacement')).toBeVisible();
-  await map.getByRole('button', { name: /Château Labeille 2016, Sans emplacement, bouteille 1 sur 2/ }).click();
-  const sheet = page.getByRole('dialog', { name: 'Château Labeille 2016' });
-  await expect(sheet.getByText('sans emplacement')).toBeVisible();
-  await sheet.getByRole('button', { name: 'Fermer' }).click();
+
+  // Nouvelle étagère : rangées et casiers, avec aperçu.
   await page.getByRole('button', { name: 'Ajouter une étagère' }).click();
   await page.getByLabel('Nom de l’étagère').fill('Casier du haut');
+  await page.getByRole('button', { name: 'Diminuer : Rangées', exact: true }).click();
+  await page.getByRole('textbox', { name: 'Casiers par rangée', exact: true }).fill('6');
+  await expect(page.getByLabel('Aperçu : 1 rangée de 6 casiers, 6 bouteilles')).toBeVisible();
   await page.getByRole('button', { name: 'Ajouter l’étagère' }).click();
   await toast(page, 'Étagère « Casier du haut » ajoutée');
   await expect(map.getByText(/A · Casier du haut/)).toBeVisible();
+
+  // Déplacer une bouteille sur deux : un lot jumeau à la nouvelle place, le total ne change pas.
+  const before = await map.getAttribute('aria-label');
+  await map.getByRole('button', { name: /Château Labeille 2016, Sans emplacement, bouteille 1 sur 2/ }).click();
+  const sheet = page.getByRole('dialog', { name: 'Château Labeille 2016' });
+  await expect(sheet.getByText(/dont 2 libres/)).toBeVisible();
+  await sheet.getByRole('button', { name: 'Déplacer' }).click();
+  const move = page.getByRole('dialog', { name: 'Déplacer : Château Labeille 2016' });
+  await move.getByLabel('Vers').selectOption({ label: 'A · Casier du haut' });
+  await expect(move.getByRole('textbox', { name: 'Nombre de bouteilles', exact: true })).toHaveValue('1');
+  await move.getByRole('button', { name: 'Confirmer le déplacement' }).click();
+  await toast(page, '1 bouteille déplacée');
+  await expect(map.getByRole('button', { name: /Château Labeille 2016, A · Casier du haut, bouteille 1 sur 1/ })).toBeVisible();
+  await expect(map.getByRole('button', { name: /Château Labeille 2016, Sans emplacement, bouteille 1 sur 1/ })).toBeVisible();
+  await expect(map).toHaveAttribute('aria-label', before!);
   await page.waitForTimeout(400);
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
@@ -165,7 +190,8 @@ test('mode soirée : lancée à l’aveugle, bouteille servie puis révélée, m
   await toast(page, 'Événement créé');
   await page.getByRole('button', { name: 'Proposer une de mes bouteilles' }).click();
   const dialog = page.getByRole('dialog');
-  const lot = await dialog.locator('option', { hasText: 'Château Labeille 2016' }).getAttribute('value');
+  // Deux lots depuis le déplacement de la cave en 3D (le lot d'origine et son jumeau) : le premier suffit.
+  const lot = await dialog.locator('option', { hasText: 'Château Labeille 2016' }).first().getAttribute('value');
   await dialog.getByRole('combobox').selectOption(lot!);
   await dialog.getByRole('button', { name: 'Je l’apporte' }).click();
   await toast(page, 'réservée');

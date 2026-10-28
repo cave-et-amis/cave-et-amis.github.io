@@ -15,6 +15,8 @@ La politique de confidentialité annonce aussi deux règles de Nous (constat R3,
 
 La politique décrit aussi les nouveautés de Cave & Amis 2.0 (photo de profil, profil de goûts et repères de dégustation, alertes de maturité, mode soirée, achats groupés, alerte de baisse de prix, import de plusieurs bouteilles ; migrations 20261102000003 à 20261102000008). Elles sont en ligne depuis le 28/10/2026, et la politique a été publiée le même jour par l'éditeur (version 1, Administration › Documents légaux). Toute nouvelle fonction qui traite des données doit y être ajoutée et publiée avant ou avec elle, jamais après. Les deux mentions « [À VALIDER] » ajoutées pour elles dans la politique (bases légales de la photo de profil et de l'alerte de prix) ont été tranchées par l'éditeur le 28/10/2026 (exécution du contrat) ; les questions 45 à 48 de questions-pour-le-juriste.md les détaillent.
 
+**Version 2 de la politique (préparée le 28/10/2026, pas encore publiée)** : elle ajoute l'historique des déplacements de bouteilles de la cave en 3D (migration 20261102000009). À publier avec la cave en 3D, ou avant : Administration › Documents légaux › Politique de confidentialité › « Nouvelle version », « Charger le projet », résumé « Ajout de l'historique des déplacements de bouteilles (cave en 3D) ». Simple information : aucune acceptation n'est demandée.
+
 ## Ce qu'il faut compléter
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.
