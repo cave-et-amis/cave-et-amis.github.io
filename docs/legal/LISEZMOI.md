@@ -17,6 +17,8 @@ La politique décrit aussi les nouveautés de Cave & Amis 2.0 (photo de profil, 
 
 **Version 2 de la politique (préparée le 28/10/2026, pas encore publiée)** : elle ajoute l'historique des déplacements de bouteilles de la cave en 3D (migration 20261102000009). À publier avec la cave en 3D, ou avant : Administration › Documents légaux › Politique de confidentialité › « Nouvelle version », « Charger le projet », résumé « Ajout de l'historique des déplacements de bouteilles (cave en 3D) ». Simple information : aucune acceptation n'est demandée.
 
+**Version 3 de la politique (préparée le 28/10/2026, pas encore publiée)** : Lia lit les documents d'achat (étiquettes de prix, tickets de caisse, factures, listes de prix ; branche cave3d) ; la lecture d'étiquette depuis une dégustation, une envie ou un achat groupé ; les déplacements entre caves. Sa seule mention « [À VALIDER] » (envoi de la photo entière d'un ticket) a été tranchée par l'éditeur le 28/10/2026, sans juriste : texte validé tel quel ; la question 49 reste dans la liste pour le juriste. À publier avec la lecture des documents, ou avant ; simple information, aucune acceptation demandée ; résumé proposé : « Lecture des documents d'achat par Lia, déplacements entre caves ».
+
 ## Ce qu'il faut compléter
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.
