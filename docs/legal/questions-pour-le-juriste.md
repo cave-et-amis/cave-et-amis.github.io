@@ -137,6 +137,9 @@ Pour chaque question : où elle se trouve, et ce qui est écrit aujourd'hui.
 48. **Profil de goûts et repères de dégustation** (fruité, puissance, boisé, minéralité) : renforcent-ils la question 20 (habitudes de consommation d'alcool et données sensibles) ?
     *Politique, « Votre cave, votre carnet et vos envies » ; registre, T2.*
 
+49. **Lecture d'un ticket de caisse ou d'une facture** par Lia : la photo entière part chez Anthropic, et peut montrer le nom de la personne ou d'un vendeur, la fin d'un numéro de carte ou une adresse. Rien de personnel n'est renvoyé ni gardé (consigne, schéma de réponse, filtre des numéros de carte, photo effacée juste après). Est-ce suffisant, et l'information donnée l'est-elle ?
+    *Politique, « La lecture d'étiquette, le scanner et les prix » ; registre, T7.*
+
 ---
 
 ## Ce que l'éditeur attend
