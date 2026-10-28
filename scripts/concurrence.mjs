@@ -3,7 +3,8 @@
 //
 // Scénarios : deux personnes prennent en même temps les dernières bouteilles
 //  1. d'un achat groupé (set_purchase_part) ;
-//  2. d'un lot, pour deux événements (propose_event_wine avec « je l'apporte »).
+//  2. d'un lot, pour deux événements (propose_event_wine avec « je l'apporte ») ;
+//  3. d'un lot, pour les ranger ailleurs (move_bottles : les 2 dernières bouteilles libres, deux fois).
 // La première passe, la seconde attend le verrou puis est refusée : jamais plus que prévu. Témoin : la même prise de part
 // SANS verrou dépasse le total, ce qui prouve que le test détecte bien le problème.
 import { spawn, spawnSync } from 'node:child_process';
@@ -103,6 +104,31 @@ async function main() {
   await r1;
   check(/over_reservation/.test(r2), `réservations : la seconde est refusée (« ${r2.match(/ERROR:\s*(\w+)/)?.[1] ?? r2.trim()} »)`);
   check(sql(`select reserved from lots where id = '${lot}'`) === '2', 'réservations : 2 bouteilles réservées sur 3, jamais plus');
+
+  // ── 3. Déplacements : un lot de 4 bouteilles dont 2 réservées ; deux sessions rangent ailleurs les 2 libres en même temps. ──
+  const wine3 = as(a, `insert into wines (name) values ('À ranger') returning id;`);
+  const lot3 = as(a, `select (create_lot(jsonb_build_object('wine_id', '${wine3}'::uuid, 'quantity', 4), gen_random_uuid())).id;`);
+  as(a, `select propose_event_wine('${ev()}', '${lot3}', 2, null, true, gen_random_uuid());`);
+  const place = (name) =>
+    as(a, `insert into locations (cellar_id, name) select id, '${name}' from cellars where owner_id = '${a}' order by position, created_at limit 1 returning id;`);
+  const [l1, l2] = [place('Étagère A'), place('Étagère B')];
+  const m1 = session(a, `select move_bottles('${lot3}', 2, '${l1}', gen_random_uuid());\nselect pg_sleep(2);`);
+  await wait(600);
+  const t1 = Date.now();
+  const m2 = await session(a, `select move_bottles('${lot3}', 2, '${l2}', gen_random_uuid());`);
+  const waitedMove = Date.now() - t1;
+  await m1;
+  check(/not_enough_free/.test(m2), `déplacements : le second est refusé (« ${m2.match(/ERROR:\s*(\w+)/)?.[1] ?? m2.trim()} »)`);
+  check(waitedMove > 900, `déplacements : la seconde session a attendu le verrou (${waitedMove} ms)`);
+  check(
+    sql(`select sum(quantity) || '/' || sum(reserved) || '/' || count(*) from lots where wine_id = '${wine3}'`) === '4/2/2',
+    'déplacements : toujours 4 bouteilles (2 réservées), un seul lot jumeau',
+  );
+  check(sql(`select count(*) from bottle_moves where lot_id = '${lot3}'`) === '1', 'déplacements : un seul déplacement enregistré');
+  check(
+    sql(`select count(*) from movements where lot_id in (select id from lots where wine_id = '${wine3}')`) === '1',
+    'déplacements : aucun mouvement de stock ajouté (seule l’entrée du lot)',
+  );
 }
 
 main()

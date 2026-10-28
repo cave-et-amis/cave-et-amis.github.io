@@ -248,7 +248,17 @@ export type TourState = { status: 'active' | 'done' | 'skipped'; step: number };
 
 export type Cellar = { id: string; owner_id: string; name: string; storage: Storage; notes: string | null; position: number; created_at: string };
 
-export type Location = { id: string; cellar_id: string; owner_id: string; name: string; kind: LocationKind; position: number };
+export type Location = {
+  id: string;
+  cellar_id: string;
+  owner_id: string;
+  name: string;
+  kind: LocationKind;
+  position: number;
+  /** Disposition de l'étagère dans la cave visuelle (null : automatique). */
+  rows?: number | null;
+  slots_per_row?: number | null;
+};
 
 export type Wine = {
   id: string;

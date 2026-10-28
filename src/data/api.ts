@@ -416,7 +416,18 @@ export class Api {
   async deleteCellar(id: string) {
     must(await this.sb.from('cellars').delete().eq('id', id));
   }
-  async addLocation(l: Pick<Location, 'cellar_id' | 'name' | 'kind'>) {
+  /**
+   * Déplacer des bouteilles libres d'un lot vers un emplacement de la même cave (null : sans emplacement). Une partie du
+   * lot devient un lot jumeau ; aucun mouvement de stock (le total ne change pas). Idempotent par `requestId`.
+   */
+  async moveBottles(lot: string, quantity: number, location: string | null, requestId: string) {
+    return must(await this.sb.rpc('move_bottles', { p_lot: lot, p_quantity: quantity, p_location: location, p_request: requestId })) as {
+      lot_id: string;
+      moved_lot_id: string;
+      quantity: number;
+    };
+  }
+  async addLocation(l: Pick<Location, 'cellar_id' | 'name' | 'kind'> & Partial<Pick<Location, 'rows' | 'slots_per_row'>>) {
     return must(await this.sb.from('locations').insert(l).select().single()) as Location;
   }
   async updateLocation(id: string, patch: Partial<Location>) {

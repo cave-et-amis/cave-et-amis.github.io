@@ -34,6 +34,8 @@ const DB_MESSAGES: Record<string, string> = {
   group_wishes_full: 'Un groupe compte 100 envies au plus : retirez-en quelques-unes.',
   group_purchases_full: 'Un groupe compte 20 achats ouverts au plus : closez-en un avant d’en proposer un autre.',
   group_purchase_items_full: 'Un achat compte 30 vins au plus.',
+  not_enough_free: 'Pas assez de bouteilles libres : les bouteilles réservées pour un événement ou mises à disposition d’un groupe restent en place.',
+  same_location: 'Ces bouteilles sont déjà à cet emplacement.',
   purchase_full: 'Il ne reste pas assez de bouteilles pour cette part : quelqu’un vient peut-être d’en prendre. La liste est à jour.',
   event_messages_full: 'Cette soirée a atteint 500 messages.',
   owner_only: 'Cette action est réservée à la personne propriétaire de la cave (partage, groupes, événements).',

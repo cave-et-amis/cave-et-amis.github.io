@@ -4128,3 +4128,294 @@ details.help-topic:not([open]) > summary::after {
   padding-top: 10px;
   border-top: 1px solid var(--border);
 }
+
+/* ───────── Cave visuelle en 3D (maquette « Cave à vin 3D élégante ») ───────── */
+.cellar-page {
+  --cave-ink: #f3ece8;
+  --cave-gold: #d8ae62;
+}
+.cellar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cellar-name {
+  font-family: var(--font-title);
+  font-size: 1.3rem;
+}
+.cellar-tabs {
+  display: flex;
+  flex: 1 1 260px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(243, 236, 232, 0.92);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+.cellar-tabs button {
+  flex: 1;
+  border: 0;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: transparent;
+  color: #3b2a2a;
+  font: inherit;
+  font-family: var(--font-title);
+  font-size: 1.02rem;
+  cursor: pointer;
+}
+.cellar-tabs button[aria-pressed='true'] {
+  background: linear-gradient(180deg, #9b2239, #6e1426);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(110, 20, 38, 0.45);
+}
+.cellar-views {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 12px;
+  background: rgba(20, 12, 10, 0.72);
+  border: 1px solid rgba(216, 174, 98, 0.35);
+}
+.cellar-views button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 36px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: rgba(243, 236, 232, 0.8);
+  cursor: pointer;
+}
+.cellar-views button[aria-pressed='true'] {
+  background: linear-gradient(180deg, #9b2239, #6e1426);
+  color: #fff;
+}
+.cellar-views button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+.cellar-views svg {
+  width: 18px;
+  height: 18px;
+}
+.cellar-map.is-3d {
+  position: relative;
+  padding: 0;
+  overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 20%, rgba(60, 34, 20, 0.35), rgba(8, 5, 4, 0.92)), url('/img/cave3d/decor-cave.webp') center / cover;
+  border: 1px solid rgba(216, 174, 98, 0.28);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+}
+.cellar3d {
+  height: clamp(380px, 68vh, 680px);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.cellar3d.ready {
+  opacity: 1;
+}
+.cellar3d canvas {
+  touch-action: none;
+}
+.shelf3d-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 174, 98, 0.35);
+  background: rgba(14, 9, 7, 0.78);
+  color: var(--cave-ink, #f3ece8);
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: zoom-in;
+  transform: translateY(-100%);
+}
+.shelf3d-label span {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: rgba(243, 236, 232, 0.14);
+  letter-spacing: 0;
+}
+.bottle3d-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(14, 9, 7, 0.9);
+  border: 1px solid rgba(216, 174, 98, 0.45);
+  color: #f3ece8;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  transform: translateY(-100%);
+}
+.bottle3d-tip span {
+  color: var(--cave-gold, #d8ae62);
+}
+.cellar3d-back {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 174, 98, 0.45);
+  background: rgba(14, 9, 7, 0.82);
+  color: #f3ece8;
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.cellar3d-back svg {
+  width: 15px;
+  height: 15px;
+}
+.bottle-dot.soon {
+  border-style: dashed;
+  border-color: var(--gold, #bb854c);
+}
+.cellar-legend {
+  list-style: none;
+  margin: 0;
+  padding: 10px 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  border-radius: var(--radius-sm);
+  background: rgba(20, 12, 10, 0.55);
+  color: rgba(243, 236, 232, 0.88);
+}
+.cellar-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.cellar-legend li.legend-ring:first-of-type {
+  margin-left: auto;
+}
+.cellar-legend i {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  box-shadow: inset 0 -3px 4px rgba(0, 0, 0, 0.35), inset 0 2px 2px rgba(255, 255, 255, 0.25);
+}
+.cellar-legend i.c-rouge { background: #7d1527; }
+.cellar-legend i.c-blanc { background: #caa24d; }
+.cellar-legend i.c-rose { background: #e38ea4; }
+.cellar-legend i.c-effervescent { background: #d8b75e; }
+.cellar-legend i.ring {
+  background: transparent;
+  box-shadow: none;
+  border: 2px solid var(--cave-gold, #d8ae62);
+}
+.cellar-legend i.ring.dashed {
+  border-style: dashed;
+}
+.shelf-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 26px 16px;
+  border-radius: var(--radius);
+  border: 2px dashed rgba(216, 174, 98, 0.55);
+  background: linear-gradient(180deg, rgba(48, 28, 18, 0.88), rgba(26, 15, 10, 0.92)), url('/img/bois-casier.webp') center / cover;
+  color: #f3ece8;
+  font: inherit;
+  font-family: var(--font-title);
+  font-size: 1.15rem;
+  cursor: pointer;
+}
+.shelf-add:hover {
+  border-color: var(--cave-gold, #d8ae62);
+}
+.shelf-add-plus {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--cave-gold, #d8ae62);
+  color: var(--cave-gold, #d8ae62);
+}
+.shelf-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(180deg, rgba(48, 28, 18, 0.9), rgba(26, 15, 10, 0.95));
+}
+.shelf-preview-row {
+  display: grid;
+  gap: 3px;
+  padding-bottom: 5px;
+  border-bottom: 3px solid rgba(187, 133, 76, 0.6);
+}
+.shelf-preview-row i {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px dashed rgba(243, 236, 232, 0.35);
+}
+.shelf-label button {
+  margin-left: 6px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cellar3d {
+    transition: none;
+  }
+}
+
+:root[data-theme='sombre'] .page:has(> .cellar-page) {
+  background: linear-gradient(180deg, rgba(10, 6, 5, 0.82), rgba(10, 6, 5, 0.9)), url('/img/fond-cave-flou.webp') center / cover;
+  color: #f3ece8;
+}
+.page:has(> .cellar-page) .cellar-name {
+  color: #f3ece8;
+}
+.page:has(> .cellar-page) .small.faint,
+.page:has(> .cellar-page) .small.muted {
+  color: rgba(243, 236, 232, 0.72);
+}
+
+@media (max-width: 560px) {
+  .cellar3d {
+    height: clamp(320px, 54vh, 520px);
+  }
+}
+
+/* Vue liste de la cave : vraies bouteilles couchées (photos), posées sur une étagère de chêne. */
+.page:has(> .cellar-page) .cellar-list .shelf {
+  padding: 10px 10px 22px;
+  border-bottom: 0;
+  background: url('/img/cave3d/etagere-vide.webp') center bottom / 100% 64px no-repeat;
+}
+.cellar-list .bottle-dot {
+  width: 40px;
+  height: 40px;
+  border-width: 2px;
+  background-size: 150% auto;
+  background-position: center 82%;
+  background-repeat: no-repeat;
+}
+.cellar-list .bottle-dot.c-rouge,
+.cellar-list .bottle-dot.c-autre { background-image: url('/img/cave3d/bouteille-couchee-rouge.webp'); }
+.cellar-list .bottle-dot.c-blanc,
+.cellar-list .bottle-dot.c-orange { background-image: url('/img/cave3d/bouteille-couchee-blanc.webp'); }
+.cellar-list .bottle-dot.c-rose { background-image: url('/img/cave3d/bouteille-couchee-rose.webp'); }
+.cellar-list .bottle-dot.c-effervescent { background-image: url('/img/cave3d/bouteille-couchee-effervescent.webp'); }
+.cellar-list .bottle-dot:not(.ready):not(.soon) {
+  border-color: rgba(0, 0, 0, 0.55);
+}

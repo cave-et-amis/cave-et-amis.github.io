@@ -179,7 +179,7 @@ function ShellInner() {
         back = '/cave';
         page = <WinePage id={seg[2]} />;
       } else if (seg[1] === 'plan') {
-        title = 'Cave en 2D';
+        title = 'Cave en 3D';
         back = '/cave';
         page = <CellarMapPage />;
       } else if (seg[1] === 'import') {
