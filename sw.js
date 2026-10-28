@@ -1,8 +1,11 @@
 /* Cave & Amis — service worker : installation sur l'écran d'accueil et ouverture rapide de l'interface.
    Seuls les fichiers de l'application sont mis en cache, jamais les données : les appels à Supabase
    (autre origine) passent toujours directement par le réseau. */
-const VERSION = 'cave-amis-v1';
-const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png'];
+// v2 : refonte visuelle Cave & Amis 2.0 (images de /img/ en cache ; changer de version les renouvelle).
+const VERSION = 'cave-amis-v2';
+const SHELL = ['./', './index.html', './config.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './apple-touch-icon.png',
+  // Images de l'interface (cave en fond, logo, bouteille par défaut, Lia) : environ 95 Ko, disponibles hors ligne.
+  './img/fond-cave-flou.webp', './img/logo-cave.webp', './img/bouteille-generique.webp', './img/lia-avatar.webp'];
 
 async function cacheBuild() {
   try {
@@ -47,8 +50,8 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  // Fichiers versionnés : cache d'abord.
-  if (url.pathname.includes('/assets/')) {
+  // Fichiers versionnés, et images de l'interface (icônes 3D, décors) : cache d'abord.
+  if (url.pathname.includes('/assets/') || url.pathname.includes('/img/')) {
     event.respondWith(
       caches.match(req).then(
         (hit) =>
