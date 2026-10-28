@@ -97,7 +97,7 @@ Des autres personnes (amis, membres de vos groupes, participants de vos événem
 
 - Pour un mot de passe oublié, la confirmation de votre adresse à l'inscription et le changement d'adresse, Cave & Amis vous envoie un e-mail avec un lien à usage unique, depuis cocon.cave@gmail.com, par le service Brevo. Données : votre adresse e-mail (l'ancienne et la nouvelle pour un changement), votre adresse dans le message, et le lien lui-même. Aucun autre e-mail ne vous est envoyé.
 - À quoi ils servent : protéger l'accès à votre compte.
-- Base légale : l'exécution du contrat (les conditions d'utilisation). [À VALIDER : base légale des e-mails de connexion]
+- Base légale : l'exécution du contrat (les conditions d'utilisation).
 
 ### Les preuves de vos choix
 
@@ -132,7 +132,7 @@ Voir la page « Cookies et stockage sur votre appareil » : aucun cookie, seulem
 - **Anthropic** (Anthropic Ireland, Limited, Dublin, pour les clients de l'Espace économique européen) : intelligence artificielle de Lia (assistant, lecture d'étiquette, scanner, prix). Son contrat de sous-traitance fait partie de ses conditions commerciales : https://www.anthropic.com/legal/data-processing-addendum
 - **Les services de notification** de votre navigateur (Google, Apple, Mozilla ou Microsoft), si vous activez les notifications : ils reçoivent l'adresse d'abonnement de l'appareil et le texte chiffré, qu'ils ne peuvent pas lire.
 - **Open Food Facts** (association loi 1901, Saint-Maur-des-Fossés, France ; serveurs en France) : recherche de produits et de photos officielles par code-barres ou par nom, et affichage des vignettes depuis son site. Selon sa politique, Open Food Facts garde 3 ans les journaux de visite (adresse IP).
-- **Brevo** (BREVO SAS, 17 rue de Salneuve, 75017 Paris, France ; RCS Paris 498 019 298) : envoi des e-mails de connexion (votre adresse e-mail et le contenu du message). Son contrat de sous-traitance est l'annexe 3 de ses conditions d'utilisation. D'après Brevo, ses données sont hébergées chez OVH (France) et Google Cloud (Union européenne). Brevo garde le journal des envois 1 mois, sans le contenu des messages, et ne relie aucune ouverture ni aucun clic à votre adresse. [À VALIDER : informations relevées le 27/10/2026 sur les pages officielles de Brevo par la session Cocon, à relire]
+- **Brevo** (BREVO SAS, 17 rue de Salneuve, 75017 Paris, France ; RCS Paris 498 019 298) : envoi des e-mails de connexion (votre adresse e-mail et le contenu du message). Son contrat de sous-traitance est l'annexe 3 de ses conditions d'utilisation. D'après Brevo, ses données sont hébergées dans l'Union européenne, chez OVH (France et Allemagne) et Google Cloud (Belgique). Brevo garde le journal des envois 1 mois, sans le contenu des messages, et ne relie aucune ouverture ni aucun clic à votre adresse.
 - **Nous (application Cocon)**, si vous reliez vos comptes : même responsable de traitement.
 - **Les messageries que vous choisissez** pour envoyer un lien d'invitation : Cave & Amis ne leur envoie rien lui-même.
 - **Les autorités**, seulement lorsque la loi l'impose.
@@ -146,7 +146,7 @@ Certaines données peuvent être traitées hors de l'Union européenne, avec ces
 - **GitHub** : adhésion au cadre de protection des données UE–États-Unis (« Data Privacy Framework ») et clauses contractuelles types.
 - **Google** (notifications de Chrome et d'Android) et **Microsoft** : adhésion au « Data Privacy Framework ».
 - **Apple** et **Mozilla** : clauses contractuelles types.
-- **Brevo** : d'après Brevo, données hébergées dans l'Union européenne ; son hébergeur Google Cloud adhère au « Data Privacy Framework ». [À VALIDER : absence de transfert hors de l'Union européenne pour Brevo]
+- **Brevo** : d'après Brevo, données hébergées dans l'Union européenne. Sa liste de sous-traitants (annexe 3 de ses conditions, version du 1er octobre 2025) cite aussi, pour la sécurité de son service, Cloudflare, société américaine aux serveurs aux États-Unis et dans l'Union européenne, ainsi que Google Cloud : tous deux avec le « Data Privacy Framework » et des clauses contractuelles types.
 
 Adhésions au « Data Privacy Framework » vérifiées le 27/10/2026 sur la liste officielle : https://www.dataprivacyframework.gov/list
 

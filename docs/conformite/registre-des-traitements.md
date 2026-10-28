@@ -151,7 +151,7 @@ Repris de la politique de confidentialité et des pages officielles consultées 
 | Google, Apple, Mozilla, Microsoft | Transport des notifications chiffrées | Selon le navigateur | Aucun publié pour le Web Push. [À VALIDER] | Google, Microsoft : Data Privacy Framework ; Apple, Mozilla : clauses contractuelles types |
 | Open Food Facts (association, France) | Recherche de produits et photos | France | Sans objet : aucun identifiant de personne envoyé. [À VALIDER : qualification] | Sans objet |
 
-| Brevo (BREVO SAS, Paris) | Envoi des e-mails de connexion, en service depuis le 27/10/2026 | D'après Brevo : OVH (France), Google Cloud (Union européenne) | Annexe 3 de ses conditions d'utilisation | D'après Brevo, pas de transfert ; Google Cloud : Data Privacy Framework. [À VALIDER : relevé par la session Cocon sur les pages officielles le 27/10/2026, à relire] |
+| Brevo (BREVO SAS, Paris) | Envoi des e-mails de connexion, en service depuis le 27/10/2026 | D'après Brevo : OVH (France et Allemagne), Google Cloud (Belgique) | Annexe 3 de ses conditions d'utilisation (version du 1er octobre 2025) | Hébergement dans l'Union européenne ; sous-traitants de son infrastructure : Google Cloud et Cloudflare (sécurité, États-Unis), avec Data Privacy Framework et clauses contractuelles types (liste officielle de ses sous-traitants, relue le 28/10/2026) |
 
 Prestataire prévu, pas encore en place au 27/10/2026 : Cloudflare Turnstile (anti-robots). À ajouter à ce registre le jour de sa mise en service.
 

@@ -31,6 +31,9 @@ Décisions prises le 28/10/2026, pour Cave & Amis 2.0 (même démarche, sans jur
 
 - Photo de profil : base légale « l'exécution du contrat » (choix de l'éditeur, entre exécution du contrat, consentement ou attente d'un juriste).
 - Alerte de baisse de prix (envoi hebdomadaire de la description du vin à Anthropic, sur demande) : base légale « l'exécution du contrat » (même choix).
+- E-mails de connexion (Brevo) : base légale « l'exécution du contrat » (choix de l'éditeur).
+- Informations sur Brevo : relues le 28/10/2026 sur ses pages officielles (mentions légales, centre d'aide « Data storage location », conditions générales version du 1er octobre 2025 et leur annexe 3). Adresse, RCS, forme SAS et annexe 3 confirmées ; hébergement précisé (OVH France et Allemagne, Google Cloud Belgique). Le journal d'un mois vient des réglages du compte Brevo de l'éditeur (27/10/2026).
+- Transferts de Brevo : la phrase « données hébergées dans l'Union européenne » seule était incomplète ; elle cite désormais Cloudflare (sous-traitant de sécurité de Brevo, États-Unis), d'après la liste officielle de ses sous-traitants (décision de l'éditeur : corriger la phrase).
 
 Décisions prises (27/10/2026) :
 
