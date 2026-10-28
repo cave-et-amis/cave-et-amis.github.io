@@ -27,6 +27,11 @@ L'adresse de contact dédiée, commune aux deux applications, est cocon.cave@gma
 
 Le 27/10/2026, l'éditeur a choisi de ne pas attendre un juriste. Les 27 mentions « [À VALIDER] » des quatre textes ont été passées en revue une par une avec lui, risque par risque, et retirées seulement sur sa décision. **Aucun de ces points n'a été vérifié par un juriste** : ce choix ne rend pas l'application conforme. La liste complète reste dans `questions-pour-le-juriste.md`, pour une relecture plus tard.
 
+Décisions prises le 28/10/2026, pour Cave & Amis 2.0 (même démarche, sans juriste ; questions 45 et 46 gardées pour une relecture) :
+
+- Photo de profil : base légale « l'exécution du contrat » (choix de l'éditeur, entre exécution du contrat, consentement ou attente d'un juriste).
+- Alerte de baisse de prix (envoi hebdomadaire de la description du vin à Anthropic, sur demande) : base légale « l'exécution du contrat » (même choix).
+
 Décisions prises (27/10/2026) :
 
 - Mentions légales : anonymat gardé (identité enregistrée chez GitHub et Supabase, selon l'éditeur) ; directeur de la publication « l'éditeur, personne physique » ; GitHub, Inc. et Supabase cités avec « ne publie pas de numéro de téléphone ».
