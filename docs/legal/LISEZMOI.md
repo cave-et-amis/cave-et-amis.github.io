@@ -13,6 +13,8 @@ Ils décrivent aussi la liaison avec l'agenda Nous durcie (migration `2026110100
 
 La politique de confidentialité annonce aussi deux règles de Nous (constat R3, accord de l'éditeur le 27/10/2026) : participants et vins visibles de la seule personne liée, même pour le foyer (lot 2 de Cocon), et effacés 30 jours après la fin de l'événement (lot 4 de Cocon, purge activée par l'éditeur). Au 27/10/2026, ils ne sont pas en ligne : ne publiez pas la politique avant leur mise en ligne dans Cocon, ou retirez ces deux phrases.
 
+La politique décrit aussi les nouveautés de Cave & Amis 2.0 (photo de profil, profil de goûts et repères de dégustation, alertes de maturité, mode soirée, achats groupés, alerte de baisse de prix ; migrations 20261102000003 à 20261102000008). Au 28/10/2026, elles ne sont pas en ligne : publiez cette version en même temps qu'elles, ou avant, jamais après. Les deux mentions « [À VALIDER] » ajoutées pour elles dans la politique (bases légales de la photo de profil et de l'alerte de prix) se tranchent comme les précédentes ; les questions 45 à 48 de questions-pour-le-juriste.md les détaillent.
+
 ## Ce qu'il faut compléter
 
 Chaque emplacement « [À COMPLÉTER : …] » attend une information que seul l'éditeur peut donner, ou qui doit être recopiée depuis la page officielle d'un prestataire. L'application refuse de publier un document qui en contient encore un. Rien n'a été inventé.

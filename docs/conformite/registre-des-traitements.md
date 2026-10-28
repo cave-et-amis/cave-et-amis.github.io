@@ -27,19 +27,19 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 ### T1. Comptes et connexion
 
 - **Finalité** : créer le compte, se connecter, protéger l'accès.
-- **Données** : adresse e-mail, mot de passe haché (par Supabase), prénom affiché, devise, préférences, dates d'inscription et de dernière connexion.
-- **Base légale** : exécution du contrat (conditions d'utilisation).
+- **Données** : adresse e-mail, mot de passe haché (par Supabase), prénom affiché, devise, préférences, dates d'inscription et de dernière connexion ; photo de profil facultative (Cave & Amis 2.0, migration 20261102000005, pas encore en ligne au 28/10/2026) : recadrée et réduite sur l'appareil (métadonnées retirées), jamais analysée ni envoyée à Lia, visible des personnes qui voient déjà le prénom (contacts, participants d'un même événement), jamais d'une personne bloquée.
+- **Base légale** : exécution du contrat (conditions d'utilisation). [À VALIDER : base légale de la photo de profil facultative]
 - **Destinataires** : la personne ; l'administrateur voit l'adresse e-mail de chaque compte ; Supabase (hébergeur) ; Brevo, pour les e-mails de connexion (mot de passe oublié, confirmation d'inscription, changement d'adresse : adresse e-mail et contenu du message), depuis le 27/10/2026.
 - **Transferts hors UE** : voir la section « Transferts ».
-- **Durée** : tant que le compte existe ; journaux d'envoi chez Brevo : 1 mois, sans aperçu du contenu des messages, et sans suivi des ouvertures ni des clics pour les personnes qui n'y ont pas consenti (réglages du compte Brevo commun à Cave et Cocon, faits par l'éditeur le 27/10/2026 : « Règles de conservation des emails » et « Consentement au suivi des pixels par contact » ; par défaut, Brevo garde ces journaux sans limite et suit tous les contacts, d'après ses pages d'aide relevées par la session Cocon).
+- **Durée** : tant que le compte existe ; photo de profil jusqu'à son retrait (l'ancienne effacée aussitôt, sinon à la première purge mensuelle après ses 30 jours, soit environ deux mois au plus) ; journaux d'envoi chez Brevo : 1 mois, sans aperçu du contenu des messages, et sans suivi des ouvertures ni des clics pour les personnes qui n'y ont pas consenti (réglages du compte Brevo commun à Cave et Cocon, faits par l'éditeur le 27/10/2026 : « Règles de conservation des emails » et « Consentement au suivi des pixels par contact » ; par défaut, Brevo garde ces journaux sans limite et suit tous les contacts, d'après ses pages d'aide relevées par la session Cocon).
 
 ### T2. Cave, carnet et envies
 
 - **Finalité** : inventaire, carnet de dégustation, conseils, valeur de la cave.
-- **Données** : caves et emplacements, fiches de vins et photos, lots (quantités, prix, date et lieu d'achat, notes), mouvements, prix de marché, dégustations (date, lieu, occasion, note, commentaires, plat, prix, photo), envies. Elles révèlent des habitudes de consommation d'alcool. [À VALIDER : ces habitudes de consommation sont-elles des données sensibles (article 9 du RGPD), par exemple des données de santé ?]
+- **Données** : caves et emplacements, fiches de vins et photos, lots (quantités, prix, date et lieu d'achat, notes), mouvements, prix de marché, dégustations (date, lieu, occasion, note, commentaires, plat, prix, photo, observations, et repères facultatifs de 1 à 5 : fruité, puissance, boisé, minéralité), envies. Profil de goûts déclaré (ce que la personne aime ou aime moins, budget habituel, note, traits du carnet à ignorer), lisible par elle seule ; les autres traits sont calculés à l'affichage, sans être enregistrés. (Cave & Amis 2.0, migrations 20261102000003 et 20261102000006, pas encore en ligne au 28/10/2026.) Elles révèlent des habitudes de consommation d'alcool. [À VALIDER : ces habitudes de consommation sont-elles des données sensibles (article 9 du RGPD), par exemple des données de santé ?]
 - **Base légale** : exécution du contrat.
 - **Destinataires** : la personne ; ceux à qui elle ouvre sa cave, selon ses réglages ; les personnes associées à une cave gérée à plusieurs ; Supabase.
-- **Durée** : tant que le compte existe ; relevés de prix 24 mois.
+- **Durée** : tant que le compte existe ; relevés de prix 24 mois ; profil de goûts jusqu'à « Effacer mon profil » ou la suppression du compte.
 
 ### T3. Contacts, accès à la cave et invitations
 
@@ -52,15 +52,15 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 ### T4. Groupes et événements
 
 - **Finalité** : organiser des soirées et partager des vins entre proches.
-- **Données** : membres et rôles, bouteilles mises à disposition, notes partagées, envies et votes, activité du groupe (500 dernières actions, avec les prénoms) ; événements : titre, date, lieu (souvent une adresse), description, thème, budget, participants et réponses, menu, vins prévus et réservés.
-- **Base légale** : exécution du contrat.
-- **Destinataires** : les membres du groupe ou les participants de l'événement ; Supabase.
-- **Durée** : tant que le compte existe. Les événements d'un organisateur sont supprimés avec son compte, pour tous.
+- **Données** : membres et rôles, bouteilles mises à disposition, notes partagées, envies et votes, activité du groupe (500 dernières actions, avec les prénoms) ; événements : titre, date, lieu (souvent une adresse), description, thème, budget, participants et réponses, menu, vins prévus et réservés. Cave & Amis 2.0 (migration 20261102000007, pas encore en ligne au 28/10/2026) : mode soirée (messages de 280 caractères au plus, 500 par soirée, et note de 1 à 5 par bouteille) ; achats groupés (titre, budget, note, vins avec prix unitaire et nombre de bouteilles, part de chaque membre avec son prénom ; aucun paiement ni donnée bancaire).
+- **Base légale** : exécution du contrat. [À VALIDER : base légale pour les prénoms, messages et parts des autres membres ou participants]
+- **Destinataires** : les membres du groupe ou les participants de l'événement (messages et notes de soirée : participants seulement, jamais une personne bloquée) ; Supabase.
+- **Durée** : tant que le compte existe. Les événements d'un organisateur sont supprimés avec son compte, pour tous. Messages et notes de soirée : avec l'événement, ou avec le compte de leur auteur. Achats groupés : avec le groupe ; quitter le groupe retire ses parts des achats ouverts ; à la suppression du compte, ses parts sont supprimées et les achats qu'il a proposés restent, sans auteur.
 
 ### T5. Notifications
 
 - **Finalité** : prévenir la personne de ce qui la concerne.
-- **Données** : 200 dernières notifications (type, prénom de la personne à l'origine, date) ; sur les appareils, si activées : adresse d'abonnement, clés de chiffrement, nom d'appareil.
+- **Données** : 200 dernières notifications (type, prénom de la personne à l'origine ou nom du vin, date) ; alertes facultatives de maturité (vin qui entre dans sa période ou vit sa dernière année ; date de chaque alerte gardée pour ne pas la répéter, supprimée avec le vin ou le compte) et de baisse de prix (Cave & Amis 2.0, migrations 20261102000004 et 20261102000008, pas encore en ligne au 28/10/2026) ; sur les appareils, si activées : adresse d'abonnement, clés de chiffrement, nom d'appareil.
 - **Base légale** : exécution du contrat ; autorisation donnée au navigateur pour les notifications sur l'appareil.
 - **Destinataires** : la personne ; le service de notification de son navigateur (Google, Apple, Mozilla ou Microsoft), qui reçoit un texte chiffré qu'il ne peut pas lire ; Supabase. [À VALIDER : rôle de ces services]
 - **Durée** : appareils qui ne répondent plus 90 jours.
@@ -76,10 +76,10 @@ La base légale de chaque ligne est reprise de la politique de confidentialité.
 ### T7. Scanner avant d'acheter, prix de marché et photos officielles
 
 - **Finalité** : identifier un vin en magasin, donner un avis et des prix, proposer une photo officielle.
-- **Données** : 1 à 3 photos (étiquette, contre-étiquette, prix en rayon), code-barres, magasin, prix relevé, budget, occasion ; description du vin pour les prix. Les métadonnées des photos (date, lieu, appareil) sont retirées sur l'appareil avant l'envoi.
+- **Données** : 1 à 3 photos (étiquette, contre-étiquette, prix en rayon), code-barres, magasin, prix relevé, budget, occasion ; description du vin pour les prix. Alerte de baisse de prix (Cave & Amis 2.0, migration 20261102000008, pas encore en ligne au 28/10/2026) : un vin suivi par personne, son prix de référence et le dernier contrôle ; chaque vendredi soir au plus, la description du vin (nom, cuvée, producteur, appellation, région, millésime, contenance) est envoyée automatiquement à Anthropic pour une recherche de prix, sans autre donnée de la personne ; plafond de 2 $ par mois pour toutes les alertes, pris dans le budget de l'assistant. Les métadonnées des photos (date, lieu, appareil) sont retirées sur l'appareil avant l'envoi.
 - **Base légale** : exécution du contrat.
 - **Destinataires** : Anthropic ; Open Food Facts (code-barres ou nom du vin, sans identifiant de personne ; il reçoit l'adresse IP de l'appareil qui affiche ses vignettes) ; Supabase.
-- **Durée** : analyses et visites, avec leurs photos, 30 jours ; photos qui ne servent plus, effacées chaque mois.
+- **Durée** : analyses et visites, avec leurs photos, 30 jours ; photos qui ne servent plus, effacées chaque mois ; vin suivi : jusqu'à l'arrêt du suivi, ou la suppression du vin ou du compte. [À VALIDER : base légale de l'envoi automatique et hebdomadaire pour l'alerte de prix]
 
 ### T8. Suivi de l'assistant, erreurs et limites d'utilisation
 
