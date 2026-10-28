@@ -225,7 +225,7 @@ function ShellInner() {
       page = <ExplorerPage />;
       break;
     case 'statistiques':
-      title = 'Statistiques';
+      title = routeQuery(route).get('onglet') === 'carnet' ? 'Mon carnet' : 'Statistiques';
       page = <StatsPage />;
       break;
     case 'scanner':
@@ -412,7 +412,8 @@ function ShellInner() {
           <PageBoundary key={pathOnly}>
             <Suspense fallback={<InlineLoading />}>{page}</Suspense>
           </PageBoundary>
-        </m.main>        {!['assistant', 'admin', 'reglages', 'scanner', 'legal'].includes(seg[0] ?? '') && (
+        </m.main>        {/* Explorer et Statistiques ont leurs propres boutons d'ajout (et « Noter une dégustation » dans le carnet). */}
+        {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && (
           <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
             <Plus aria-hidden />
             Ajouter

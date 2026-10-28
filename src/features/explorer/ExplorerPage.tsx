@@ -13,7 +13,7 @@ import { useActions } from '../../ui/Shell';
 import { PairingSheet } from '../cellar/PairingSheet';
 
 /** Appellations connues de chaque grande région, pour une première recherche. */
-const IDEAS = ['Pauillac', 'Saint-Émilion', 'Margaux', 'Chablis', 'Meursault', 'Gevrey-Chambertin', 'Sancerre', 'Vouvray', 'Châteauneuf-du-Pape', 'Côte-Rôtie', 'Champagne', 'Alsace', 'Bandol', 'Cahors', 'Jurançon', 'Morgon'];
+const IDEAS = ['Pauillac', 'Saint-Émilion', 'Margaux', 'Chablis', 'Meursault', 'Gevrey-Chambertin', 'Sancerre', 'Vouvray', 'Châteauneuf-du-Pape', 'Côte-Rôtie', 'Champagne', 'Bandol', 'Cahors', 'Jurançon'];
 
 export function ExplorerPage() {
   const actions = useActions();
