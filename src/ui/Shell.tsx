@@ -36,6 +36,8 @@ const EventsPage = lazyPage(() => import('../features/events/EventsPage'), 'Even
 const EventPage = lazyPage(() => import('../features/events/EventPage'), 'EventPage');
 const JournalPage = lazyPage(() => import('../features/journal/JournalPage'), 'JournalPage');
 const TastePage = lazyPage(() => import('../features/journal/TastePage'), 'TastePage');
+const ImportPage = lazyPage(() => import('../features/cellar/ImportPage'), 'ImportPage');
+const CellarMapPage = lazyPage(() => import('../features/cellar/CellarMapPage'), 'CellarMapPage');
 const TastingPage = lazyPage(() => import('../features/journal/TastingPage'), 'TastingPage');
 const AssistantPage = lazyPage(() => import('../features/assistant/AssistantPage'), 'AssistantPage');
 const SettingsPage = lazyPage(() => import('../features/settings/SettingsPage'), 'SettingsPage');
@@ -174,6 +176,14 @@ function ShellInner() {
         title = 'Fiche du vin';
         back = '/cave';
         page = <WinePage id={seg[2]} />;
+      } else if (seg[1] === 'plan') {
+        title = 'Cave en 2D';
+        back = '/cave';
+        page = <CellarMapPage />;
+      } else if (seg[1] === 'import') {
+        title = 'Import';
+        back = '/cave';
+        page = <ImportPage />;
       } else {
         title = 'Ma cave';
         page = <CellarPage />;
@@ -421,7 +431,7 @@ function ShellInner() {
               <Suspense fallback={<InlineLoading />}>{page}</Suspense>
             </PageBoundary>
           </m.main>        {/* Explorer et Statistiques ont leurs propres boutons d'ajout (et « Noter une dégustation » dans le carnet). */}
-          {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && (
+          {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && !(seg[0] === 'cave' && (seg[1] === 'import' || seg[1] === 'plan')) && (
             <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
               <Plus aria-hidden />
               Ajouter

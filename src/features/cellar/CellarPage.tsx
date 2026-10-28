@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, ChartColumn, Download, Search, SlidersHorizontal } from 'lucide-react';
+import { BookOpen, ChartColumn, Download, LayoutGrid, Search, SlidersHorizontal } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { activeFilterCount, applyFilters, buildRows, cellarCsv, EMPTY_FILTERS, sortRows, type Filters, type Sort } from '../../domain/cellar';
 import { currentYear, parseNumber } from '../../domain/format';
@@ -69,6 +69,10 @@ export function CellarPage() {
       </FirstTip>
       {/* Carnet et statistiques : rangés dans Statistiques, accessibles aussi depuis la cave. */}
       <div className="inline cellar-links">
+        <a className="pill-link" href="#/cave/plan">
+          <LayoutGrid aria-hidden />
+          Vue 2D
+        </a>
         <a className="pill-link" href="#/statistiques?onglet=carnet">
           <BookOpen aria-hidden />
           Mon carnet

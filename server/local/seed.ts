@@ -78,6 +78,10 @@ export async function seedDemo(db: PGlite) {
   const jurancon = await wine(alex, { name: 'Jurançon moelleux', appellation: 'Jurançon', region: 'Sud-Ouest', country: 'France', color: 'blanc', wine_type: 'moelleux', grapes: '{Petit manseng}', vintage: 2018 });
   await lot(alex, { wine_id: jurancon, cellar_id: cellar, quantity: 1, purchase_price: 24 });
   await as(alex, `insert into market_prices (wine_id, volume_ml, price_low, price_high, method, note, checked_at) values ($1, 750, 55, 70, 'manual', 'Relevé noté à la main (démo)', now() - interval '20 days')`, [talbot]);
+  // Relevés plus anciens (démo) : la courbe d'évolution du prix a de quoi s'afficher.
+  for (const [low, high, ago] of [[48, 58, 700], [52, 62, 400], [60, 74, 200], [58, 70, 90]] as const) {
+    await as(alex, `insert into market_prices (wine_id, volume_ml, price_low, price_high, method, note, checked_at) values ($1, 750, $2, $3, 'manual', 'Relevé de démonstration', now() - make_interval(days => $4))`, [talbot, low, high, ago]);
+  }
 
   const camilleCellar = (await one<{ id: string }>(camille, `select id from cellars`)).id;
   const meursault = await wine(camille, { name: 'Meursault', appellation: 'Meursault', region: 'Bourgogne', country: 'France', color: 'blanc', wine_type: 'tranquille', grapes: '{Chardonnay}', vintage: 2019 });

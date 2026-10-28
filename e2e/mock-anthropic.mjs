@@ -111,6 +111,19 @@ function label(body) {
   ]);
 }
 
+// Import multiple : trois bouteilles, dont deux identiques et une au millésime incertain.
+function shelf(body) {
+  const b = (name, producer, appellation, vintage, uncertain = []) => ({ name, producer, appellation, region: 'Bordeaux', color: 'rouge', vintage, non_vintage: false, uncertain });
+  return message(body, [
+    text(
+      JSON.stringify({
+        bottles: [b('Château Labeille', 'Château Labeille', 'Pauillac', 2016), b('Château Labeille', 'Château Labeille', 'Pauillac', 2016), b('Clos des Abeilles', '', 'Saint-Julien', 2019, ['vintage'])],
+        notes: 'Une bouteille de dos, illisible.',
+      }),
+    ),
+  ]);
+}
+
 // Scanner : deux cuvées possibles (Lia demande laquelle), prix du rayon lu, millésime incertain, reflet signalé.
 function scan(body) {
   return message(body, [
@@ -242,6 +255,7 @@ createServer(async (req, res) => {
   if (req.method === 'POST' && req.url.startsWith('/v1/messages')) {
     const body = JSON.parse(raw);
     if (body.output_config?.format?.schema?.properties?.price_tag) return send(200, scan(body));
+    if (body.output_config?.format?.schema?.properties?.bottles) return send(200, shelf(body));
     if (body.output_config?.format) return send(200, label(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_assessment')) return send(200, assessment(body));
     if ((body.tools ?? []).some((t) => t.name === 'report_scan_offers')) return send(200, scanOffers(body));

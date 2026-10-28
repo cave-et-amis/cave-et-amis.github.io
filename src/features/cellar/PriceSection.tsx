@@ -3,14 +3,15 @@
  * Un prix de marché indique toujours le vin et le millésime, la contenance, la devise, la date et ses sources.
  * Sans recherche vérifiable : « prix non vérifié ».
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ExternalLink, Search, Trash2 } from 'lucide-react';
 import { useStore } from '../../data/store';
 import type { Lot, MarketPrice, PriceSource, Tasting, Wine } from '../../domain/types';
 import { dateLong, money, moneyRange, parseNumber } from '../../domain/format';
 import { latestPrices } from '../../domain/valuation';
+import { median, offersVsMedian, priceHistory, RANGES, variation, type PriceRange } from '../../domain/priceHistory';
 import { label, PRICE_KINDS, VOLUMES, volumeLabel, wineTitle } from '../../domain/wine';
-import { Button, Field, InlineLoading, Notice, Sheet, useConfirm } from '../../ui/kit';
+import { Button, Field, InlineLoading, Notice, Segmented, Sheet, useConfirm } from '../../ui/kit';
 import { SafeLink } from '../../ui/markdown';
 import { useAiStatus } from './LabelScan';
 
@@ -26,7 +27,19 @@ type CheckResult = {
   checked_at: string;
 };
 
-function Sources({ sources }: { sources: PriceSource[] }) {
+/** Écart à une référence : vert si moins cher, rouge si plus cher ; neutre quand plus cher n'est pas une mauvaise nouvelle. */
+export function DeltaPill({ delta, label, neutral }: { delta: number | null; label: string; neutral?: boolean }) {
+  if (delta === null) return null;
+  const text = `${delta > 0 ? '+' : delta < 0 ? '−' : ''}${Math.abs(delta)} %`;
+  return (
+    <span className={`delta-pill ${neutral ? '' : delta < 0 ? 'down' : delta > 0 ? 'up' : ''}`} title={label}>
+      {text}
+      <span className="sr-only"> {label}</span>
+    </span>
+  );
+}
+
+function Sources({ sources, deltas }: { sources: PriceSource[]; deltas?: Map<string, number | null> }) {
   if (!sources.length) return null;
   return (
     <ul style={{ margin: '6px 0 0', paddingLeft: 18 }} className="small">
@@ -36,7 +49,8 @@ function Sources({ sources }: { sources: PriceSource[] }) {
           <SafeLink href={s.url} label={s.seller || s.title || new URL(s.url).hostname}>
             <ExternalLink aria-hidden style={{ width: 13, height: 13, marginLeft: 3, verticalAlign: -1 }} />
           </SafeLink>
-          {s.price !== undefined && s.currency ? ` — ${money(s.price, s.currency)}` : ''}
+          {s.price !== undefined && s.currency ? ` — ${money(s.price, s.currency)}` : ''}{' '}
+          <DeltaPill delta={deltas?.get(s.url) ?? null} label="par rapport à la médiane des offres de ce relevé" />
         </li>
       ))}
     </ul>
@@ -110,6 +124,15 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
           />
         ))}
         {older.length > 0 && <span className="small faint">{older.length} relevé(s) plus ancien(s) conservé(s).</span>}
+        {latest.map((p) => (
+          <PriceChart
+            key={`c-${p.id}`}
+            prices={prices}
+            volume={p.volume_ml}
+            currency={p.currency}
+            purchase={purchase.filter((l) => l.volume_ml === p.volume_ml && l.currency === p.currency).map((l) => Number(l.purchase_price))}
+          />
+        ))}
         <div className="inline">
           <Button variant="gold" size="sm" icon={<Search />} onClick={() => setLookup(true)}>
             Rechercher le prix actuel
@@ -123,6 +146,80 @@ export function PriceSection({ wine, lots, tastings }: { wine: Wine; lots: Lot[]
       {manual && <ManualPriceSheet wine={wine} volume={lots[0]?.volume_ml ?? 750} onClose={() => setManual(false)} />}
       {lookup && <LookupSheet wine={wine} volumes={[...new Set(lots.map((l) => l.volume_ml))]} onClose={() => setLookup(false)} />}
     </section>
+  );
+}
+
+/** Courbe des relevés (milieu de chaque fourchette), sur 6 mois, 1 an, 3 ans ou tout l'historique. */
+function PriceChart({ prices, volume, currency, purchase }: { prices: MarketPrice[]; volume: number; currency: string; purchase: number[] }) {
+  const [range, setRange] = useState<PriceRange>('tout');
+  const all = useMemo(() => priceHistory(prices, volume, currency, 'tout'), [prices, volume, currency]);
+  const points = useMemo(() => priceHistory(prices, volume, currency, range), [prices, volume, currency, range]);
+  if (all.length < 2) return null;
+  const W = 320;
+  const H = 130;
+  const pad = { l: 34, r: 10, t: 12, b: 22 };
+  const values = points.flatMap((p) => [p.low, p.high]);
+  const lo = Math.floor(Math.min(...values) * 0.95);
+  const hi = Math.ceil(Math.max(...values) * 1.05);
+  const first = points[0];
+  const last = points[points.length - 1];
+  const t0 = first ? new Date(first.at).getTime() : 0;
+  const t1 = last ? new Date(last.at).getTime() : 1;
+  const x = (at: string) => pad.l + (t1 === t0 ? 0.5 : (new Date(at).getTime() - t0) / (t1 - t0)) * (W - pad.l - pad.r);
+  const y = (v: number) => pad.t + (hi === lo ? 0.5 : (hi - v) / (hi - lo)) * (H - pad.t - pad.b);
+  const line = points.map((p) => `${x(p.at)},${y(p.value)}`).join(' ');
+  const change = points.length >= 2 ? variation(last.value, first.value) : null;
+  const vsPurchase = last ? variation(last.value, median(purchase)) : null;
+  const month = (at: string) => new Date(at).toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+  return (
+    <div className="price-chart stack-sm">
+      <div className="between">
+        <span className="strong small">
+          Évolution · {volumeLabel(volume)} · {currency}
+        </span>
+        <span className="inline">
+          <DeltaPill delta={change} label="sur la période affichée" />
+          {vsPurchase !== null && (
+            <span className="small muted">
+              vs achat <DeltaPill delta={vsPurchase} label="par rapport à mon prix d’achat" neutral />
+            </span>
+          )}
+        </span>
+      </div>
+      <Segmented<PriceRange> label="Période" options={RANGES.map((r) => ({ value: r.value, label: r.label }))} value={range} onChange={setRange} />
+      {points.length === 0 ? (
+        <p className="small muted">Aucun relevé sur cette période.</p>
+      ) : (
+        <svg
+          viewBox={`0 0 ${W} ${H}`}
+          role="img"
+          aria-label={`Prix relevés de ${money(Math.min(...points.map((p) => p.value)), currency)} à ${money(Math.max(...points.map((p) => p.value)), currency)} ; dernier relevé : ${money(last.value, currency)}`}
+        >
+          {[lo, (lo + hi) / 2, hi].map((v) => (
+            <g key={v}>
+              <line className="chart-grid" x1={pad.l} x2={W - pad.r} y1={y(v)} y2={y(v)} />
+              <text className="chart-axis" x={pad.l - 4} y={y(v)} textAnchor="end" dominantBaseline="middle">
+                {Math.round(v)}
+              </text>
+            </g>
+          ))}
+          {points.length > 1 && <polygon className="chart-area" points={`${x(first.at)},${H - pad.b} ${line} ${x(last.at)},${H - pad.b}`} />}
+          <polyline className="chart-line" points={line} />
+          {points.map((p) => (
+            <circle key={p.at} className="chart-dot" cx={x(p.at)} cy={y(p.value)} r={p === last ? 4.5 : 3} />
+          ))}
+          <text className="chart-axis" x={pad.l} y={H - 6}>
+            {month(first.at)}
+          </text>
+          {points.length > 1 && (
+            <text className="chart-axis" x={W - pad.r} y={H - 6} textAnchor="end">
+              {month(last.at)}
+            </text>
+          )}
+        </svg>
+      )}
+      <p className="small faint">Milieu de chaque fourchette relevée ; seuls les relevés de même contenance et de même devise sont comparés.</p>
+    </div>
   );
 }
 
@@ -144,7 +241,7 @@ function MarketRow({ p, wine, onDelete }: { p: MarketPrice; wine: Wine; onDelete
       </p>
       {old && <p className="small" style={{ color: 'var(--warn)', fontWeight: 650 }}>Relevé de plus de 6 mois : il peut avoir changé.</p>}
       {p.note && <p className="small">{p.note}</p>}
-      <Sources sources={p.sources} />
+      <Sources sources={p.sources} deltas={new Map(offersVsMedian(p).map((o) => [o.offer.url, o.delta]))} />
     </div>
   );
 }

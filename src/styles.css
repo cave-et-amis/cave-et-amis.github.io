@@ -3698,3 +3698,202 @@ details.help-topic:not([open]) > summary::after {
 .maturity-alert-title {
   font-size: 1.1rem;
 }
+
+/* ───────── Prix (maquette, panneau 9) ───────── */
+.delta-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 650;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.delta-pill.down {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.delta-pill.up {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+}
+.price-chart svg {
+  width: 100%;
+  height: auto;
+}
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.chart-axis {
+  font-size: 9px;
+  fill: var(--ink-3);
+}
+.chart-area {
+  fill: color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.chart-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.chart-dot {
+  fill: var(--surface);
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+
+/* ───────── Import multiple (maquette, panneau 7) ───────── */
+.vf-frame.wide {
+  width: min(100%, 520px);
+  aspect-ratio: 4 / 3;
+}
+.vf-empty {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  background: url('/img/bouteille-generique.webp') 30% 60% / auto 70% no-repeat, url('/img/bouteille-blanc.webp') 52% 60% / auto 70% no-repeat,
+    url('/img/bouteille-rose.webp') 74% 60% / auto 70% no-repeat;
+  opacity: 0.35;
+}
+.import-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.import-list li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 6.5rem;
+  grid-template-areas: 'check fields vintage' 'check status status';
+  gap: 4px 10px;
+  align-items: center;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.import-list li:first-child {
+  border-top: 0;
+}
+.import-list li.off {
+  opacity: 0.55;
+}
+.import-list input[type='checkbox'] {
+  grid-area: check;
+  width: 20px;
+  height: 20px;
+  accent-color: var(--primary);
+}
+.import-fields {
+  grid-area: fields;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.import-vintage {
+  grid-area: vintage;
+}
+.import-status {
+  grid-area: status;
+}
+.import-status:empty {
+  display: none;
+}
+.vf-modes {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.vf-modes button {
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 16px;
+  background: transparent;
+  color: rgba(243, 236, 232, 0.78);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.vf-modes button[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-weight: 650;
+}
+
+/* ───────── Cave en 2D (maquette, panneau 5) ───────── */
+.cellar-map {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: linear-gradient(180deg, rgba(20, 12, 10, 0.72), rgba(20, 12, 10, 0.86)), url('/img/bois-casier.webp') center / cover;
+  color: #f3ece8;
+}
+.cellar-map-empty {
+  margin: 0;
+  color: rgba(243, 236, 232, 0.8);
+}
+.shelf {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid rgba(187, 133, 76, 0.55);
+}
+.shelf-label {
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(243, 236, 232, 0.82);
+}
+.shelf-count {
+  margin-left: 6px;
+  color: var(--gold, #bb854c);
+}
+.shelf-empty {
+  font-size: 0.85rem;
+  color: rgba(243, 236, 232, 0.55);
+}
+.shelf-dots {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.bottle-dot {
+  display: block;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(0, 0, 0, 0.45);
+  box-shadow: inset 0 -3px 5px rgba(0, 0, 0, 0.35), inset 0 2px 3px rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+}
+.bottle-dot.ready {
+  border-color: var(--gold, #bb854c);
+}
+.bottle-dot:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 2px;
+}
+.bottle-dot.c-rouge { background: var(--wine-rouge); }
+.bottle-dot.c-blanc { background: var(--wine-blanc); }
+.bottle-dot.c-rose { background: var(--wine-rose); }
+.bottle-dot.c-orange { background: var(--wine-orange); }
+.bottle-dot.c-effervescent { background: var(--wine-effervescent); }
+.bottle-dot.c-autre { background: var(--wine-autre); }
+.shelf-more {
+  align-self: center;
+  font-size: 0.8rem;
+  color: rgba(243, 236, 232, 0.8);
+}

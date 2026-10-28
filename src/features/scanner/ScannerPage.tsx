@@ -245,6 +245,16 @@ export function ScannerPage() {
         <button type="button" className="vf-shutter" aria-label={`Photographier : ${next.title}`} onClick={() => pick(next.role, 'camera')} disabled={Boolean(busy)}>
           <span aria-hidden />
         </button>
+        {!visitId && (
+          <div className="vf-modes" role="group" aria-label="Nombre de bouteilles">
+            <button type="button" aria-pressed="true">
+              Une
+            </button>
+            <button type="button" aria-pressed="false" onClick={() => go('/cave/import')}>
+              Plusieurs
+            </button>
+          </div>
+        )}
       </section>
 
       <ul className="scan-slots" aria-label="Photos de la bouteille">
