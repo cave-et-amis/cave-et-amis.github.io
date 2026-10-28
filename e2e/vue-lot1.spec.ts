@@ -151,3 +151,84 @@ test('cave en 2D : une pastille par bouteille, rangée par emplacement, aperçu 
   const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
 });
+
+test('mode soirée : lancée à l’aveugle, bouteille servie puis révélée, message et vote', async () => {
+  await goto(page, '/evenements');
+  await page.getByRole('button', { name: 'Organiser un événement' }).click();
+  await page.getByLabel('Titre').fill('Dégustation à l’aveugle');
+  // Dans une heure : le mode soirée s'ouvre à partir de 12 heures avant le début.
+  const soon = new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    .format(new Date(Date.now() + 3600_000))
+    .replace(' ', 'T');
+  await page.getByLabel('Date et heure').fill(soon);
+  await page.getByRole('button', { name: 'Créer' }).click();
+  await toast(page, 'Événement créé');
+  await page.getByRole('button', { name: 'Proposer une de mes bouteilles' }).click();
+  const dialog = page.getByRole('dialog');
+  const lot = await dialog.locator('option', { hasText: 'Château Labeille 2016' }).getAttribute('value');
+  await dialog.getByRole('combobox').selectOption(lot!);
+  await dialog.getByRole('button', { name: 'Je l’apporte' }).click();
+  await toast(page, 'réservée');
+  await page.getByRole('button', { name: 'Ouvrir le mode soirée' }).click();
+  await page.getByRole('button', { name: 'Lancer la soirée' }).click();
+  await toast(page, 'Soirée lancée');
+  const bottle = page.getByRole('region', { name: 'Bouteille servie' });
+  await expect(bottle).toContainText('Bouteille 1 sur 1');
+  await expect(bottle).toContainText(/Bouteille mystère n°\s1/);
+  await page.getByLabel('Votre message').fill('Je pense à un bordeaux ?');
+  await page.getByRole('button', { name: 'Envoyer' }).click();
+  await expect(page.getByRole('region', { name: 'Messages de la soirée' })).toContainText('Je pense à un bordeaux ?');
+  await bottle.getByRole('button', { name: 'Révéler' }).click();
+  await expect(bottle).toContainText('Château Labeille 2016');
+  await page.getByRole('button', { name: 'Votes' }).click();
+  await page.getByRole('group', { name: 'Ma note : Château Labeille 2016' }).getByRole('button', { name: '4 sur 5' }).click();
+  await expect(page.getByText('4/5 · 1 vote')).toBeVisible();
+  await page.waitForTimeout(400);
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+  await page.getByRole('button', { name: 'Terminer la soirée' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Terminer' }).click();
+  await toast(page, 'Soirée terminée');
+  await expect(page.getByText('Terminée', { exact: true })).toBeVisible();
+});
+
+test('défis et achats groupés : progression du carnet, part prise et validée, sans paiement', async () => {
+  await goto(page, '/explorer');
+  await page.getByRole('button', { name: /Défis et découvertes/ }).click();
+  await expect(page.getByText(/Défi du mois/)).toBeVisible();
+  await page.getByRole('button', { name: 'Découvertes' }).click();
+  await expect(page.getByRole('heading', { name: 'Cépages oubliés' })).toBeVisible();
+
+  await goto(page, '/amis?onglet=groupes');
+  await page.getByRole('button', { name: 'Créer un groupe' }).click();
+  const form = page.getByRole('dialog', { name: 'Nouveau groupe' });
+  await form.getByLabel('Nom du groupe').fill('Les achats');
+  await form.getByRole('button', { name: 'Créer le groupe' }).click();
+  await toast(page, 'Groupe créé');
+  await page.getByRole('button', { name: 'Achats' }).click();
+  await page.getByRole('button', { name: 'Proposer un achat groupé' }).click();
+  await page.getByLabel('Titre').fill('Bourgogne');
+  await page.getByLabel('Budget total (facultatif)').fill('100');
+  await page.getByRole('button', { name: 'Proposer au groupe' }).click();
+  await toast(page, 'Achat groupé proposé');
+  await page.getByRole('button', { name: 'Ajouter une bouteille' }).click();
+  await page.getByLabel('Vin', { exact: true }).fill('Domaine du Val');
+  await page.getByLabel('Prix d’une bouteille').fill('30');
+  await page.getByLabel('Nombre de bouteilles à acheter').fill('2');
+  await page.getByRole('button', { name: 'Ajouter à l’achat' }).click();
+  await toast(page, 'Bouteille ajoutée à l’achat');
+  const plus = page.getByRole('button', { name: 'Une bouteille de plus pour moi : Domaine du Val' });
+  await plus.click();
+  await expect(page.getByText('1/2')).toBeVisible();
+  await plus.click();
+  await expect(page.getByText('2/2')).toBeVisible();
+  await expect(plus).toBeDisabled();
+  await expect(page.locator('.purchase-budget')).toContainText('60 € / 100 €');
+  await page.getByRole('button', { name: 'Valider mes parts' }).click();
+  await toast(page, 'Parts validées');
+  await expect(page.getByText('Parts validées : 1 sur 1 participant')).toBeVisible();
+  await expect(page.getByText('Sans paiement dans l’application')).toBeVisible();
+  await page.waitForTimeout(400);
+  const { violations } = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  expect(violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id} : ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`)).toEqual([]);
+});

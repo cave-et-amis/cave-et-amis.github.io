@@ -684,3 +684,35 @@ export type ScanMarket = {
   reason: string | null;
   checked_at: string;
 };
+
+// ───────────── Mode soirée et achats groupés (Cave & Amis 2.0) ─────────────
+
+export type EventLive = { event_id: string; started_by: string | null; blind: boolean; current_wine: string | null; current_since: string; revealed: string[]; started_at: string; ended_at: string | null };
+export type EventMessage = { id: string; user_id: string; author: string; body: string; created_at: string; mine: boolean };
+export type EventVote = { event_wine_id: string; average: number | null; count: number; mine: number | null };
+export type EventLiveState = { live: EventLive | null; messages: EventMessage[]; votes: EventVote[] };
+
+export type PurchasePart = { user_id: string; name: string; bottles: number; validated: boolean; mine: boolean };
+export type PurchaseItem = {
+  id: string;
+  wine_name: string;
+  producer: string | null;
+  vintage: number | null;
+  color: Color | null;
+  unit_price: number;
+  bottles: number;
+  created_by: string | null;
+  parts: PurchasePart[];
+};
+export type GroupPurchase = {
+  id: string;
+  title: string;
+  budget: number | null;
+  note: string | null;
+  status: 'open' | 'closed' | 'cancelled';
+  created_at: string;
+  created_by: string | null;
+  author: string | null;
+  mine: boolean;
+  items: PurchaseItem[];
+};

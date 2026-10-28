@@ -14,6 +14,7 @@
     "typecheck": "tsc -b",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:concurrence": "node scripts/concurrence.mjs",
     "icons": "node scripts/make-icons.mjs",
     "verify": "node scripts/verify.mjs",
     "package:site": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-site.ps1"

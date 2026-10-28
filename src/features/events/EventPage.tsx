@@ -153,6 +153,20 @@ export function EventPage({ id }: { id: string }) {
         )}
       </section>
 
+      {planned && me && (organizer ? active.length > 0 : true) && new Date(event.starts_at).getTime() <= Date.now() + 12 * 3600_000 && (
+        <section className="card stack-sm evening-entry">
+          <span className="eyebrow">Mode soirée</span>
+          <p className="small" style={{ margin: 0 }}>
+            {organizer
+              ? 'Servez les bouteilles une à une, à l’aveugle si vous voulez ; vos invités suivent, échangent et votent.'
+              : 'Suivez la bouteille servie, échangez avec les autres invités et votez.'}
+          </p>
+          <Button size="sm" variant="gold" onClick={() => go(`/evenements/${event.id}/soiree`)}>
+            {organizer ? 'Ouvrir le mode soirée' : 'Rejoindre la soirée'}
+          </Button>
+        </section>
+      )}
+
       {planned && me && !organizer && (
         <section className="card stack-sm" aria-labelledby="h-rsvp">
           <h2 id="h-rsvp" className="section">

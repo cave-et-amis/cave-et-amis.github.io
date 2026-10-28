@@ -5,6 +5,8 @@
  */
 import type { Session, SupabaseClient } from '@supabase/supabase-js';
 import type {
+  EventLiveState,
+  GroupPurchase,
   AccessScope,
   AppNotification,
   Block,
@@ -674,6 +676,52 @@ export class Api {
     return must(await this.sb.rpc('group_notes', { p_group: id })) as GroupNote[];
   }
   /** Envies communes du groupe, les plus suivies d'abord. */
+  // Mode soirée
+  async eventLiveState(event: string) {
+    return must(await this.sb.rpc('event_live_state', { p_event: event })) as EventLiveState | null;
+  }
+  async startEventLive(event: string, blind: boolean) {
+    must(await this.sb.rpc('start_event_live', { p_event: event, p_blind: blind }));
+  }
+  async serveEventWine(event: string, wine: string) {
+    must(await this.sb.rpc('event_live_serve', { p_event: event, p_wine: wine }));
+  }
+  async revealEventWine(event: string, wine: string) {
+    must(await this.sb.rpc('event_live_reveal', { p_event: event, p_wine: wine }));
+  }
+  async endEventLive(event: string) {
+    must(await this.sb.rpc('end_event_live', { p_event: event }));
+  }
+  async postEventMessage(event: string, body: string) {
+    must(await this.sb.rpc('post_event_message', { p_event: event, p_body: body }));
+  }
+  async voteEventWine(wine: string, rating: number | null) {
+    must(await this.sb.rpc('vote_event_wine', { p_wine: wine, p_rating: rating }));
+  }
+
+  // Achats groupés (aucun paiement dans l'application)
+  async groupPurchases(group: string) {
+    return must(await this.sb.rpc('group_purchases_list', { p_group: group })) as GroupPurchase[];
+  }
+  async createGroupPurchase(group: string, p: { title: string; budget: number | null; note: string | null }) {
+    must(await this.sb.rpc('create_group_purchase', { p_group: group, p }));
+  }
+  async addGroupPurchaseItem(purchase: string, p: { wine_name: string; producer: string | null; vintage: number | null; color: string | null; unit_price: number; bottles: number }) {
+    must(await this.sb.rpc('add_group_purchase_item', { p_purchase: purchase, p }));
+  }
+  async removeGroupPurchaseItem(item: string) {
+    must(await this.sb.rpc('remove_group_purchase_item', { p_item: item }));
+  }
+  async setPurchasePart(item: string, bottles: number) {
+    must(await this.sb.rpc('set_purchase_part', { p_item: item, p_bottles: bottles }));
+  }
+  async validatePurchaseParts(purchase: string, on: boolean) {
+    must(await this.sb.rpc('validate_purchase_parts', { p_purchase: purchase, p_on: on }));
+  }
+  async setGroupPurchaseStatus(purchase: string, status: GroupPurchase['status']) {
+    must(await this.sb.rpc('set_group_purchase_status', { p_purchase: purchase, p_status: status }));
+  }
+
   async groupWishes(id: string) {
     return must(await this.sb.rpc('group_wishes_list', { p_group: id })) as GroupWish[];
   }

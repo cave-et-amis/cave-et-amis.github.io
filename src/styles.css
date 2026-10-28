@@ -3897,3 +3897,234 @@ details.help-topic:not([open]) > summary::after {
   font-size: 0.8rem;
   color: rgba(243, 236, 232, 0.8);
 }
+
+/* ───────── Défis et découvertes (maquette, panneau 10) ───────── */
+.challenge-teaser {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.challenge-teaser img {
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+.challenge-teaser > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.challenge {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #1b1015;
+  color: #f3ece8;
+}
+.challenge-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.35;
+}
+.challenge-body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 18px;
+  background: linear-gradient(90deg, rgba(27, 16, 21, 0.92) 0%, rgba(27, 16, 21, 0.75) 65%, rgba(27, 16, 21, 0.4) 100%);
+}
+.challenge-body p {
+  margin: 0;
+}
+.challenge .eyebrow {
+  color: var(--gold, #bb854c);
+}
+.challenge-title {
+  margin: 0;
+  font-family: var(--font-title, inherit);
+  font-size: 1.6rem;
+}
+.challenge-bar {
+  display: flex;
+  gap: 6px;
+}
+.challenge-bar i {
+  width: 28px;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.challenge-bar i.on {
+  background: #ef9fb3;
+}
+.challenge-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.challenge-items li {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  color: rgba(243, 236, 232, 0.88);
+}
+.challenge-items li.done {
+  background: rgba(239, 159, 179, 0.2);
+  border-color: #ef9fb3;
+  color: #fff;
+}
+
+/* ───────── Mode soirée (maquette, panneau 4) ───────── */
+.evening-bottle {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: radial-gradient(120% 90% at 30% 40%, #3a2027 0%, #160d11 70%);
+  color: #f3ece8;
+}
+.evening-bottle img {
+  flex: 0 0 auto;
+  height: 150px;
+  width: auto;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.6));
+}
+.evening-wine {
+  font-family: var(--font-title);
+  font-size: 1.35rem;
+}
+.evening-timer {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 1.7rem;
+  letter-spacing: 0.06em;
+}
+.evening-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.evening-messages li {
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--surface-2);
+  max-width: 88%;
+}
+.evening-messages li.mine {
+  align-self: flex-end;
+  background: var(--primary-soft);
+}
+.evening-send {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.evening-vote {
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.evening-vote:first-child {
+  border-top: 0;
+}
+.rating-picker {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.rating-picker button {
+  min-width: 30px;
+  min-height: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--gold, #bb854c);
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 0;
+}
+.rating-picker button:focus-visible {
+  outline: 2px solid var(--primary);
+  border-radius: 6px;
+}
+
+/* ───────── Achats groupés (maquette, panneau 11) ───────── */
+.purchase-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.purchase-items li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+.purchase-items img {
+  width: 22px;
+  height: 56px;
+  object-fit: contain;
+}
+.purchase-item-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.purchase-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.purchase-stepper {
+  gap: 2px;
+  align-items: center;
+}
+.purchase-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.purchase-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--success);
+}
+.purchase-bar i.over {
+  background: var(--danger);
+}
+.purchase-budget {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}

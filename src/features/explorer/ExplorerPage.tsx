@@ -131,6 +131,15 @@ export function ExplorerPage() {
         </section>
       )}
 
+      <button type="button" className="challenge-teaser" onClick={() => go('/defis')}>
+        <img src="/img/defi-vignoble.webp" alt="" />
+        <span>
+          <span className="eyebrow">Défis et découvertes</span>
+          <strong>Goûter plus varié, mois après mois</strong>
+          <span className="small">Défi du mois, cépages oubliés, tour de France des régions.</span>
+        </span>
+      </button>
+
       <section aria-labelledby="h-explore-more">
         <h2 id="h-explore-more" className="sr-only">
           Autres façons de découvrir

@@ -17,8 +17,9 @@ import { AllocateSheet } from './AllocateSheet';
 import { GroupAvatar, ROLE_LABELS } from './common';
 import { GroupFormSheet } from './GroupFormSheet';
 import { GroupEvenings, GroupNotes, GroupWishes } from './GroupLife';
+import { GroupPurchases } from './GroupPurchases';
 
-type Tab = 'cave' | 'soirees' | 'notes' | 'envies' | 'membres' | 'activite';
+type Tab = 'cave' | 'soirees' | 'notes' | 'envies' | 'achats' | 'membres' | 'activite';
 
 export function GroupPage({ id }: { id: string }) {
   const { snapshot, api, run, wine, lotsOf } = useStore();
@@ -129,6 +130,7 @@ export function GroupPage({ id }: { id: string }) {
           { value: 'soirees', label: 'Soirées' },
           { value: 'notes', label: 'Notes' },
           { value: 'envies', label: 'Envies' },
+          { value: 'achats', label: 'Achats' },
           { value: 'membres', label: 'Membres' },
           { value: 'activite', label: 'Activité' },
         ]}
@@ -139,6 +141,7 @@ export function GroupPage({ id }: { id: string }) {
       {tab === 'soirees' && <GroupEvenings group={group} members={members} />}
       {tab === 'notes' && <GroupNotes group={group} notes={notes} />}
       {tab === 'envies' && <GroupWishes group={group} wishes={wishes} onChange={refresh} />}
+      {tab === 'achats' && <GroupPurchases group={group} />}
       {tab === 'membres' && <GroupMembers group={group} members={members} onChange={refresh} />}
       {tab === 'activite' && <GroupActivityList activity={activity} />}
 

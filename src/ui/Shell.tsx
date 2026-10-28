@@ -37,6 +37,8 @@ const EventPage = lazyPage(() => import('../features/events/EventPage'), 'EventP
 const JournalPage = lazyPage(() => import('../features/journal/JournalPage'), 'JournalPage');
 const TastePage = lazyPage(() => import('../features/journal/TastePage'), 'TastePage');
 const ImportPage = lazyPage(() => import('../features/cellar/ImportPage'), 'ImportPage');
+const EveningPage = lazyPage(() => import('../features/events/EveningPage'), 'EveningPage');
+const ChallengesPage = lazyPage(() => import('../features/explorer/ChallengesPage'), 'ChallengesPage');
 const CellarMapPage = lazyPage(() => import('../features/cellar/CellarMapPage'), 'CellarMapPage');
 const TastingPage = lazyPage(() => import('../features/journal/TastingPage'), 'TastingPage');
 const AssistantPage = lazyPage(() => import('../features/assistant/AssistantPage'), 'AssistantPage');
@@ -204,6 +206,11 @@ function ShellInner() {
       back = '/amis';
       page = <InvitePage code={seg[1] ?? ''} />;
       break;
+    case 'defis':
+      title = 'Défis';
+      back = '/explorer';
+      page = <ChallengesPage />;
+      break;
     case 'notifications':
       title = 'Notifications';
       page = <NotificationsPage />;
@@ -214,7 +221,11 @@ function ShellInner() {
       page = seg[1] ? <GroupPage id={seg[1]} /> : <FriendsPage />;
       break;
     case 'evenements':
-      if (seg[1]) {
+      if (seg[1] && seg[2] === 'soiree') {
+        title = 'Soirée';
+        back = `/evenements/${seg[1]}`;
+        page = <EveningPage id={seg[1]} />;
+      } else if (seg[1]) {
         title = 'Événement';
         back = '/evenements';
         page = <EventPage id={seg[1]} />;
@@ -331,7 +342,7 @@ function ShellInner() {
       );
   }
 
-  const activeTab = '/' + (seg[0] === 'ami' || seg[0] === 'groupes' ? 'amis' : (seg[0] ?? ''));
+  const activeTab = '/' + (seg[0] === 'ami' || seg[0] === 'groupes' ? 'amis' : seg[0] === 'defis' ? 'explorer' : (seg[0] ?? ''));
   // Le carnet est une partie des Statistiques (menu et barre du bas).
   const activeSide = activeTab === '/carnet' ? '/statistiques' : activeTab;
 
@@ -431,7 +442,7 @@ function ShellInner() {
               <Suspense fallback={<InlineLoading />}>{page}</Suspense>
             </PageBoundary>
           </m.main>        {/* Explorer et Statistiques ont leurs propres boutons d'ajout (et « Noter une dégustation » dans le carnet). */}
-          {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques'].includes(seg[0] ?? '') && !(seg[0] === 'cave' && (seg[1] === 'import' || seg[1] === 'plan')) && (
+          {!['assistant', 'admin', 'reglages', 'scanner', 'legal', 'explorer', 'statistiques', 'defis'].includes(seg[0] ?? '') && !(seg[0] === 'cave' && (seg[1] === 'import' || seg[1] === 'plan')) && !(seg[0] === 'evenements' && seg[2] === 'soiree') && (
             <button type="button" className="fab" onClick={actions.add} data-tour="ajouter">
               <Plus aria-hidden />
               Ajouter

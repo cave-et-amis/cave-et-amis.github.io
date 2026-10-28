@@ -114,6 +114,46 @@ export async function seedDemo(db: PGlite) {
   await one(alex, `select propose_event_wine($1, $2, 1, 'Pour le magret', true, gen_random_uuid())`, [event, talbotShared]);
   await one(alex, `select propose_event_wine($1, $2, 1, 'Avec le velouté ?', false, gen_random_uuid())`, [event, meursaultLot]);
 
+  // Mode soirée (démo) : une dégustation à l'aveugle commencée il y a une heure, deux bouteilles d'Alex, quelques messages.
+  const tonight = (
+    await one<{ r: { id: string } }>(alex, `select to_json(create_event($1::jsonb, $2::uuid[])) as r`, [
+      JSON.stringify({ kind: 'degustation', title: 'Dégustation à l’aveugle', starts_at: new Date(Date.now() - 3600_000).toISOString(), place: 'Chez Alex' }),
+      `{${camille},${sam}}`,
+    ])
+  ).r.id;
+  await one(camille, `select respond_event($1, 'yes')`, [tonight]);
+  await one(sam, `select respond_event($1, 'yes')`, [tonight]);
+  const blindWines: string[] = [];
+  for (const name of ['Morgon Côte du Py', 'Jurançon moelleux']) {
+    const l = await one<{ id: string }>(alex, `select l.id from lots l join wines w on w.id = l.wine_id where w.name = $1 limit 1`, [name]);
+    blindWines.push((await one<{ r: { id: string } }>(alex, `select to_json(propose_event_wine($1, $2, 1, null, true, gen_random_uuid())) as r`, [tonight, l.id])).r.id);
+  }
+  await one(alex, `select start_event_live($1, true)`, [tonight]);
+  await one(alex, `select event_live_serve($1, $2)`, [tonight, blindWines[0]]);
+  for (const [who, body] of [
+    [camille, 'Belle surprise !'],
+    [sam, 'Je pense à un gamay ?'],
+    [camille, 'Très fruité, belle longueur.'],
+  ] as const) {
+    await one(who, `select post_event_message($1, $2)`, [tonight, body]);
+  }
+  await one(camille, `select vote_event_wine($1, 4::smallint)`, [blindWines[0]]);
+
+  // Achat groupé (démo), dans un groupe d'Alex et Camille.
+  const copains = (await one<{ id: string }>(alex, `select (create_group('Les copains (démo)', '🍷', null, null, $1::uuid[])).id`, [[camille]])).id;
+  await one(camille, `select respond_group_invite($1, true)`, [copains]);
+  const purchase = (await one<{ r: { id: string } }>(alex, `select to_json(create_group_purchase($1, $2::jsonb)) as r`, [copains, JSON.stringify({ title: 'Bourgogne', budget: 500 })])).r.id;
+  for (const [name, vintage, price, bottles, alexPart, camillePart] of [
+    ['Domaine du Val', 2022, 30, 4, 2, 1],
+    ['Clos Saint-Roch', 2022, 30, 3, 1, 1],
+    ['Côte des Ormes', 2022, 80, 2, 0, 1],
+  ] as const) {
+    const item = (await one<{ r: { id: string } }>(alex, `select to_json(add_group_purchase_item($1, $2::jsonb)) as r`, [purchase, JSON.stringify({ wine_name: name, vintage, unit_price: price, bottles, color: 'rouge' })])).r.id;
+    if (alexPart) await one(alex, `select set_purchase_part($1, $2)`, [item, alexPart]);
+    if (camillePart) await one(camille, `select set_purchase_part($1, $2)`, [item, camillePart]);
+  }
+  await one(camille, `select validate_purchase_parts($1, true)`, [purchase]);
+
   const tasting = async (user: string, t: Record<string, unknown>) => one(user, `select create_tasting($1::jsonb, null, gen_random_uuid())`, [JSON.stringify(t)]);
   await tasting(alex, {
     wine_name: 'Pouilly-Fumé',
