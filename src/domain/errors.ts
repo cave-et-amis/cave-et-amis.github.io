@@ -90,6 +90,9 @@ const AUTH_MESSAGES: Record<string, string> = {
 
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */
 export const AI_MESSAGES: Record<string, string> = {
+  mfa_required: 'Cette action demande votre code de double authentification : déconnectez-vous, puis reconnectez-vous avec votre code.',
+  admin_mfa_required: 'L’administration demande la double authentification : activez-la dans Réglages › Double authentification, puis revenez ici.',
+  admin_rate_limited: 'Plusieurs tests de connexion en peu de temps : réessayez dans quelques minutes.',
   invalid_password: 'Mot de passe incorrect.',
   password_rate_limited: 'Trop d’essais de mot de passe en peu de temps : réessayez dans un quart d’heure.',
   ai_not_configured: 'L’assistant n’est pas encore configuré sur ce serveur. Toutes les autres fonctions restent disponibles.',

@@ -124,7 +124,8 @@ export async function importPhoto(fetchImpl: typeof fetch, user: SupabaseClient,
   let bytes: Uint8Array<ArrayBuffer> | null = null;
   for (const url of [small.replace(/\.\d+\.jpg$/, '.full.jpg'), small]) {
     try {
-      const res = await fetchImpl(url, { headers: { 'User-Agent': USER_AGENT }, signal: AbortSignal.timeout(15_000) });
+      // Pas de redirection suivie : l'hôte vérifié (images Open Food Facts) est celui qui répond (audit du 01/11/2026, R10).
+      const res = await fetchImpl(url, { headers: { 'User-Agent': USER_AGENT }, redirect: 'manual', signal: AbortSignal.timeout(15_000) });
       if (!res.ok) {
         await res.body?.cancel().catch(() => undefined);
         continue;

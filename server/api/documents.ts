@@ -75,9 +75,21 @@ export type DocumentResult = {
 
 const str = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? sanitize(v, max) : null);
 const int = (v: unknown, min: number, max: number) => (Number.isInteger(v) && (v as number) >= min && (v as number) <= max ? (v as number) : null);
-// Un numéro de carte (13 à 19 chiffres, espacés ou non) ne doit jamais ressortir, même glissé dans un texte.
-const CARD = /\b(?:\d[ -]?){13,19}\b/g;
-const scrub = (v: string | null) => (v ? v.replace(CARD, '…').trim() || null : null);
+// Données personnelles qui ne doivent jamais ressortir, même glissées dans un texte (audit du 01/11/2026, V5) : adresse
+// e-mail, IBAN, numéro de téléphone, et toute suite de 8 chiffres ou plus (carte bancaire, client, fidélité), espacés ou
+// non. Les prix, millésimes, contenances et dates (séparées par « / ») restent.
+const PERSONAL = [
+  /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
+  /\b[A-Z]{2}\d{2}(?:[ .-]?[A-Z0-9]){10,30}\b/gi,
+  /(?:\+\d{2,3}[ .-]?|\b0)[1-9](?:[ .-]?\d{2}){4}\b/g,
+  /\b\d(?:[ .-]?\d){7,}\b/g,
+];
+export const scrub = (v: string | null) => {
+  if (!v) return null;
+  let t = v;
+  for (const re of PERSONAL) t = t.replace(re, '…');
+  return t.trim() || null;
+};
 
 /** Contrôle de la réponse : bornes, couleurs et devises connues, date réelle, au plus MAX_LINES lignes avec un nom. */
 export function cleanDocument(raw: unknown, today = new Date()): DocumentResult {
@@ -113,7 +125,9 @@ export function cleanDocument(raw: unknown, today = new Date()): DocumentResult 
     title: scrub(str(r.title, 80)),
     conditions: scrub(str(r.conditions, 300)),
     lines,
-    uncertain: Array.isArray(r.uncertain) ? [...new Set(r.uncertain.filter((u): u is string => typeof u === 'string').map((u) => u.slice(0, 40)))].slice(0, 10) : [],
+    uncertain: Array.isArray(r.uncertain)
+      ? [...new Set(r.uncertain.filter((u): u is string => typeof u === 'string').map((u) => scrub(u.slice(0, 40))).filter((u): u is string => Boolean(u) && u !== '…'))].slice(0, 10)
+      : [],
     notes: scrub(str(r.notes, 300)),
   };
 }

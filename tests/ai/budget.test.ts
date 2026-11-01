@@ -122,17 +122,24 @@ describe('assistant : quotas, budget et erreurs', () => {
     const admin = await env.signUp('Bruno');
     const other = await env.signUp('Claire');
     expect(await call(other.sb, { action: 'admin_test' })).toMatchObject({ ok: false, code: 'forbidden' });
-    env.anthropic.reply({ kind: 'message', content: [text('OK')] });
-    const res = await call(admin.sb, { action: 'admin_test' });
-    expect(res).toMatchObject({ ok: true, key_present: true, key_status: 'ok', test: { ok: true, text: 'OK' } });
-    expect((res.models as { id: string }[]).map((m) => m.id)).toContain('claude-opus-5-5');
-    expect(JSON.stringify(res)).not.toContain(TEST_ANTHROPIC_KEY);
-    // La vue d'ensemble demande la double authentification de l'administrateur (20261102000001).
+    // Sans code activé : ni test de connexion (audit du 01/11/2026, V6), ni vue d'ensemble (20261102000001).
+    expect(await call(admin.sb, { action: 'admin_test' })).toMatchObject({ ok: false, code: 'admin_mfa_required' });
     expect((await admin.sb.rpc('admin_ai_overview')).error?.message).toBe('admin_mfa_required');
     const enrolled = await admin.sb.auth.mfa.enroll({ factorType: 'totp' });
     if (enrolled.error) throw enrolled.error;
     const verified = await admin.sb.auth.mfa.challengeAndVerify({ factorId: enrolled.data.id, code: totp(enrolled.data.totp.secret) });
     if (verified.error) throw verified.error;
+    env.anthropic.reply({ kind: 'message', content: [text('OK')] });
+    const res = await call(admin.sb, { action: 'admin_test' });
+    expect(res).toMatchObject({ ok: true, key_present: true, key_status: 'ok', test: { ok: true, text: 'OK' } });
+    expect((res.models as { id: string }[]).map((m) => m.id)).toContain('claude-opus-5-5');
+    expect(JSON.stringify(res)).not.toContain(TEST_ANTHROPIC_KEY);
+    // Pas de tests en rafale : au plus 10 en 10 minutes.
+    for (let i = 0; i < 9; i++) {
+      env.anthropic.reply({ kind: 'message', content: [text('OK')] });
+      await call(admin.sb, { action: 'admin_test' });
+    }
+    expect(await call(admin.sb, { action: 'admin_test' })).toMatchObject({ ok: false, code: 'admin_rate_limited' });
     const { data: overview, error } = await admin.sb.rpc('admin_ai_overview');
     expect(error).toBeNull();
     expect(JSON.stringify(overview)).not.toContain(TEST_ANTHROPIC_KEY);

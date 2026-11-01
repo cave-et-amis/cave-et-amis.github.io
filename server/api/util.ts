@@ -159,6 +159,10 @@ export const RATE_LIMITS = {
   nous_flush: { max: 20, seconds: 600 },
   // Mot de passe vérifié par le serveur (suppression du compte) : sans contrôle anti-robots, d'où peu d'essais.
   password_check: { max: 5, seconds: 900 },
+  // Test de connexion de l'administration : chaque test coûte un petit appel à Claude, hors des limites de fréquence.
+  admin_test: { max: 10, seconds: 600 },
+  // Analyse du scanner reprise du cache (mêmes photos) : sans coût, mais pas sans fin.
+  scan_cached: { max: 30, seconds: 600 },
 } as const;
 
 /** Compte un appel de la personne ; false : limite atteinte (rien n'est compté). */

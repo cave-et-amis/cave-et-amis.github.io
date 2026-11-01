@@ -50,6 +50,16 @@ const TECHNICAL = new Set(['invalid_key', 'service_unavailable', 'upstream_rate_
 export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
   const opts = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, ...(deps.fetch ? { global: { fetch: deps.fetch } } : {}) };
   const svc = createClient(env.supabaseUrl, env.serviceKey, opts);
+  /** Niveau de la session (aal1 : mot de passe seul ; aal2 : code vérifié), lu dans le jeton déjà validé par getUser. */
+  const aalOf = (token: string): string => {
+    try {
+      const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(part), (c) => c.charCodeAt(0))));
+      return typeof payload.aal === 'string' ? payload.aal : 'aal1';
+    } catch {
+      return 'aal1';
+    }
+  };
   const userClient = (token: string) =>
     createClient(env.supabaseUrl, env.publishableKey, {
       ...opts,
@@ -153,7 +163,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     return (data as { currency?: string } | null)?.currency ?? 'EUR';
   }
 
-  async function handle(action: string, body: Record<string, unknown>, user: SupabaseClient, userId: string): Promise<Record<string, unknown>> {
+  async function handle(action: string, body: Record<string, unknown>, user: SupabaseClient, userId: string, aal = 'aal1'): Promise<Record<string, unknown>> {
     if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
     switch (action) {
       // Notifications push : clé publique du serveur, abonnement de cet appareil, notification d'essai.
@@ -200,19 +210,25 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
 
       case 'read_document': {
         // Étiquette de prix, ticket ou liste de prix : une photo, dans le dossier de la personne. Comptée comme une
-        // lecture d'étiquette. Le type de document est contrôlé ; la photo est effacée par l'appli après la lecture.
+        // lecture d'étiquette. Le type de document est contrôlé ; la photo (un ticket peut montrer un nom, une fin de carte)
+        // est effacée ici même après la lecture, réussie ou non, sans attendre l'appli (audit du 01/11/2026, V5).
         const kind = DOCUMENT_KINDS.find((k) => k === body.kind);
         if (!kind) throw new AiFailure('invalid');
         const s = await settings();
         const image = await readPhoto(user, userId, body.photo_path, s.max_image_bytes);
-        const result = await metered(
-          userId,
-          'label',
-          (m) => m.estimate({ chars: 6_000, images: 1, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
-          (meter) => readDocument({ meter, image, kind }),
-          s.scan_model,
-        );
-        return { result };
+        try {
+          const result = await metered(
+            userId,
+            'label',
+            (m) => m.estimate({ chars: 6_000, images: 1, maxTokens: Math.min(s.max_output_tokens * 2, 6000) }),
+            (meter) => readDocument({ meter, image, kind }),
+            s.scan_model,
+          );
+          return { result };
+        } finally {
+          // readPhoto a vérifié que le chemin est dans le dossier de la personne.
+          await svc.storage.from('photos').remove([String(body.photo_path)]).catch(() => undefined);
+        }
       }
 
       case 'identify_shelf': {
@@ -267,6 +283,8 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         const { data: cached } = await svc.from('scan_cache').select('value').eq('key', key).gt('expires_at', now().toISOString()).maybeSingle();
         let result = (cached as { value: ScanResult } | null)?.value ?? null;
         const fromCache = Boolean(result);
+        // Lecture reprise du cache : gratuite, mais limitée en fréquence (sinon des analyses sans fin, audit du 01/11/2026).
+        if (fromCache && !(await rateOk(svc, 'scan_cached', userId))) throw new AiFailure('rate_limited');
         if (!result) {
           const { data: quota } = await svc.rpc('scan_quota', { p_user: userId });
           const q = quota as { used: number; limit: number } | null;
@@ -368,7 +386,7 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
         return importPhoto(webFetch, user, userId, body.code);
 
       case 'admin_test':
-        return adminTest(user, userId);
+        return adminTest(user, userId, aal);
 
       case 'delete_account': {
         if (body.confirm !== 'SUPPRIMER') throw new AiFailure('invalid');
@@ -405,9 +423,13 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
     }
   }
 
-  async function adminTest(user: SupabaseClient, userId: string) {
+  async function adminTest(user: SupabaseClient, userId: string, aal: string) {
     const { data: isAdmin } = await user.rpc('is_admin');
     if (isAdmin !== true) throw new AiFailure('forbidden');
+    // Comme require_admin côté base (audit du 01/11/2026, V6) : session vérifiée par le code, donc code activé ; et peu de
+    // tests en peu de temps (ai_begin ne limite pas la fréquence de cette action).
+    if (aal !== 'aal2') throw new AiFailure('admin_mfa_required');
+    if (!(await rateOk(svc, 'admin_test', userId))) throw new AiFailure('admin_rate_limited');
     if (!env.anthropicKey) {
       await svc.rpc('ai_set_key_status', { p_status: 'missing', p_models: null });
       return { key_present: false, key_status: 'missing' };
@@ -563,8 +585,16 @@ export function createApiHandler(env: ApiEnv, deps: ApiDeps = {}) {
       return json({ ok: false, code: 'invalid', message: AI_MESSAGES.invalid }, 400, cors);
     }
     const action = String(body.action ?? '');
+    const user = userClient(token);
+    // Double authentification (audit du 01/11/2026, V2) : code activé mais session non vérifiée → refus, comme côté base
+    // (require_user). Sans cela, les écritures faites avec la clé du serveur (abonnement push, comptage des demandes à
+    // Lia…) passaient avec le seul mot de passe. Seule exception : la clé PUBLIQUE des notifications.
+    if (action !== 'push_key') {
+      const { data: mfa, error: mfaErr } = await user.rpc('mfa_ok');
+      if (mfaErr || mfa !== true) return json({ ok: false, code: 'mfa_required', message: AI_MESSAGES.mfa_required }, 200, cors);
+    }
     try {
-      const result = await handle(action, body, userClient(token), userId);
+      const result = await handle(action, body, user, userId, aalOf(token));
       return json({ ok: true, ...result }, 200, cors);
     } catch (e) {
       const f = e instanceof AiFailure ? e : mapAnthropicError(e);

@@ -119,7 +119,11 @@ function base64(bytes: Uint8Array) {
 
 /** Lit la photo avec les droits de la personne (dossier privé) et vérifie taille et format. */
 export async function readPhoto(user: SupabaseClient, userId: string, path: unknown, maxBytes: number) {
-  if (typeof path !== 'string' || !path.startsWith(`${userId}/`) || path.includes('..') || path.length > 300) throw new AiFailure('forbidden');
+  // Forme stricte « <mon id>/<nom simple> » : ni sous-dossier, ni « .. », ni caractère encodé (%2e%2e) ou « \ », qui
+  // pourraient désigner un autre fichier une fois l'adresse interprétée (audit du 01/11/2026, V11).
+  if (typeof path !== 'string' || path.length > 300 || !new RegExp(`^${userId}/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`).test(path) || path.includes('..')) {
+    throw new AiFailure('forbidden');
+  }
   // Lecture en flux, interrompue dès que la taille maximale est dépassée.
   const { data, error } = await user.storage.from('photos').download(path).asStream();
   if (error || !data) throw new AiFailure('not_found');
