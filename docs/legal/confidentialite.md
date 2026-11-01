@@ -166,7 +166,7 @@ Ces durées sont appliquées automatiquement : chaque nuit, et chaque mois pour 
 - **Appareils de notification qui ne répondent plus** : 90 jours.
 - **Photos qui ne servent plus** (plus aucune fiche, dégustation, groupe, analyse ou profil ne les utilise) : effacées chaque mois.
 - **Photo de profil** : tant que vous la gardez. Changée ou retirée, l'ancienne est effacée tout de suite ; si l'effacement échoue, elle part avec les photos qui ne servent plus, à la première purge mensuelle après ses 30 jours, soit environ deux mois au plus.
-- **Messages et notes du mode soirée** : 12 mois après l'événement (ou plus tôt, avec l'événement).
+- **Messages et notes du mode soirée** : effacés 12 mois après la date de l'événement (ou plus tôt, avec l'événement).
 - **Achats groupés** : tant qu'ils sont ouverts ; 12 mois après leur clôture ou leur annulation (ou plus tôt, avec le groupe). Quitter un groupe retire vos parts des achats encore ouverts.
 - **Déplacements de bouteilles** (d'un emplacement ou d'une cave à l'autre) : 24 mois (ou plus tôt, avec le lot).
 - **Vin suivi pour l'alerte de prix** : jusqu'à ce que vous arrêtiez le suivi, ou que le vin ou le compte soit supprimé.
