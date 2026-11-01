@@ -197,10 +197,20 @@ export class Api {
    * Lien de changement d'adresse. « done » : changement fait (session à jour) ; « other » : lien accepté, il reste à ouvrir
    * celui envoyé à l'autre adresse (les deux sont exigés) ; « expired » : lien plus valable.
    */
-  async verifyEmailChange(tokenHash: string): Promise<{ result: 'done'; session: Session } | { result: 'other' | 'expired' }> {
-    const { data, error } = await this.sb.auth.verifyOtp({ type: 'email_change', token_hash: tokenHash });
+  async verifyEmailChange(tokenHash: string, currentUser?: string | null): Promise<{ result: 'done'; session: Session } | { result: 'other' | 'expired' | 'other_account' }> {
+    // Session déjà ouverte ici : le lien est vérifié à part, et n'est appliqué que s'il concerne CE compte. Un lien du
+    // compte de quelqu'un d'autre ne remplace jamais la session (audit du 01/11/2026, V4).
+    const client = currentUser && this.checker ? this.checker() : this.sb;
+    const { data, error } = await client.auth.verifyOtp({ type: 'email_change', token_hash: tokenHash });
     if (error) return { result: 'expired' };
-    return data.session ? { result: 'done', session: data.session } : { result: 'other' };
+    if (!data.session) return { result: 'other' };
+    if (client !== this.sb) {
+      if (data.session.user.id !== currentUser) return { result: 'other_account' };
+      const { data: set, error: setErr } = await this.sb.auth.setSession({ access_token: data.session.access_token, refresh_token: data.session.refresh_token });
+      if (setErr || !set.session) return { result: 'expired' };
+      return { result: 'done', session: set.session };
+    }
+    return { result: 'done', session: data.session };
   }
 
   /**

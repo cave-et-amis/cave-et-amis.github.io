@@ -1,4 +1,4 @@
-// Vérification complète : fonction serveur regroupée, types, tests (règles, base, serveur de l'assistant),
+// Vérification complète : failles connues des dépendances, fonction serveur regroupée, types, tests (règles, base, serveur de l'assistant),
 // export de production et contrôle des secrets, tests d'interface (téléphone et ordinateur).
 // Résultat dans reports/verification.json.
 import { spawnSync } from 'node:child_process';
@@ -7,6 +7,8 @@ import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
 const steps = [
+  // Failles connues des dépendances (base publique npm) : élevées ou critiques bloquent la vérification.
+  ['Failles connues des dépendances (npm audit)', 'npm audit --audit-level=high'],
   ['Fonction serveur regroupée pour Supabase (supabase/functions/cave-api)', 'npm run build:function'],
   ['Vérification des types (TypeScript)', 'npx tsc --noEmit -p tsconfig.json'],
   ['Tests : règles, base de données et droits, serveur de l’assistant (Vitest + PGlite)', 'npx vitest run'],

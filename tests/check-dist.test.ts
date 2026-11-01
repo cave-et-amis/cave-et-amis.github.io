@@ -38,9 +38,21 @@ function check(name: string, extra: Record<string, string>) {
 
 describe('contrôle de l’export (audit, F11)', () => {
   it('accepte un export propre', () => {
-    const res = check('propre', { 'assets/app.js': 'console.log("ok")', 'assets/app.js.map': '{"version":3}', 'icon.svg': '<svg/>' });
+    const res = check('propre', { 'assets/app.js': 'var k=`local-publishable-key`;console.log("ok")', 'icon.svg': '<svg/>' });
     expect(res.stderr).toBe('');
     expect(res.status).toBe(0);
+  });
+
+  it('refuse les cartes des sources, un export pour le serveur local et les comptes de démonstration (audit du 01/11/2026, R5)', () => {
+    const res = check('local', {
+      'assets/app.js': 'const env={BASE_URL:`./`,VITE_LOCAL_API:`54321`};',
+      'assets/app.js.map': '{"version":3}',
+      'assets/demo.js': 'const who="alex@demo.local";',
+    });
+    expect(res.status).toBe(1);
+    expect(res.stderr).toContain('Carte des sources publiée : app.js.map');
+    expect(res.stderr).toContain('Configuration locale ou compte de démonstration dans app.js');
+    expect(res.stderr).toContain('Configuration locale ou compte de démonstration dans demo.js');
   });
 
   it('cherche dans tous les fichiers texte (.mjs, .map, .svg…) : clés privées PEM et JWK, jetons GitHub', () => {

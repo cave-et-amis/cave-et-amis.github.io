@@ -41,6 +41,8 @@ function check(path, name) {
   // codes-barres du scanner (zxing-wasm, pour les navigateurs sans lecteur intégré, comme sur iPhone).
   const studioEngine = /^ort-wasm-simd-threaded-[A-Za-z0-9_-]+\.wasm$/.test(name) || /^zxing_reader-[A-Za-z0-9_-]+\.wasm$/.test(name);
   if (/pglite|\.data$/i.test(name) || (/\.wasm$/i.test(name) && !studioEngine)) problems.push(`Fichier local ou de test inclus : ${name}`);
+  // Cartes des sources : le code source lisible n'a pas à être publié (audit du 01/11/2026, R5).
+  if (/\.map$/i.test(name)) problems.push(`Carte des sources publiée : ${name}`);
   if (BINARY.test(name)) return;
   const text = readFileSync(path, 'utf8');
   if (/sb_secret_[A-Za-z0-9_-]{10,}/.test(text)) problems.push(`Clé secrète Supabase dans ${name}`);
@@ -57,6 +59,11 @@ function check(path, name) {
   if (privateJwk(text)) problems.push(`Clé privée (JWK) dans ${name}`);
   if (/\b(?:gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,})/.test(text)) problems.push(`Jeton GitHub dans ${name}`);
   if (/createFakeSupabase|storage_local\.blobs|demo-cave-2026|mock-anthropic/.test(text)) problems.push(`Code local ou de test dans ${name}`);
+  // Export construit pour le serveur local (VITE_LOCAL_API) ou comptes de démonstration : jamais en ligne.
+  // (La clé « local-publishable-key » existe toujours dans le code, inutilisée : c'est VITE_LOCAL_API qui l'activerait.)
+  if (/VITE_LOCAL_API\s*:\s*[`'"]\s*\d|local-service-key|@demo\.local\b|@exemple\.test\b/.test(text)) {
+    problems.push(`Configuration locale ou compte de démonstration dans ${name}`);
+  }
   if (/api\.anthropic\.com|anthropic-version/.test(text)) problems.push(`Appel direct à l'API Anthropic dans ${name} (doit passer par le serveur)`);
 }
 

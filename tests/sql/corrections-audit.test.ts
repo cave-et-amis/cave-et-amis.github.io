@@ -122,6 +122,49 @@ describe('V9 : achats groupés', () => {
   });
 });
 
+describe('R3 : durées de conservation (migration 20261102000015)', () => {
+  it('soirées après 12 mois, achats clos après 12 mois, déplacements après 24 mois ; l’aperçu annonce exactement la purge', async () => {
+    // Une soirée ancienne et une récente, chacune avec un message et une note.
+    const old = await dinner([claire]);
+    const recent = await dinner([claire]);
+    for (const ev of [old, recent]) {
+      const w = await bring(ev);
+      await one(db, bruno, `select start_event_live($1, false)`, [ev]);
+      await one(db, claire, `select post_event_message($1, 'Santé !')`, [ev]);
+      await one(db, claire, `select vote_event_wine($1, 4::smallint)`, [w]);
+    }
+    await db.query(`update events set starts_at = now() - interval '13 months' where id = $1`, [old]);
+    // Achats : un clos il y a 13 mois, un clos récemment, un ouvert ancien.
+    const g = await group([claire]);
+    const closedOld = await createPurchase(claire, g);
+    const closedRecent = await createPurchase(claire, g);
+    const openOld = await createPurchase(claire, g);
+    await one(db, claire, `select set_group_purchase_status($1, 'closed')`, [closedOld]);
+    await one(db, claire, `select set_group_purchase_status($1, 'cancelled')`, [closedRecent]);
+    await db.query(`update group_purchases set closed_at = now() - interval '13 months' where id = $1`, [closedOld]);
+    await db.query(`update group_purchases set created_at = now() - interval '3 years' where id = $1`, [openOld]);
+    // Déplacements : un de 25 mois, un récent.
+    const cave = (await one<{ id: string }>(db, bruno, `select id from cellars where name = 'Ma cave'`)).id;
+    const haut = (await one<{ id: string }>(db, bruno, `insert into locations (cellar_id, name) values ($1, 'Haut') returning id`, [cave])).id;
+    const bas = (await one<{ id: string }>(db, bruno, `insert into locations (cellar_id, name) values ($1, 'Bas') returning id`, [cave])).id;
+    const { lotId } = await addWine(db, bruno, { name: 'Morgon' }, { quantity: 4, location_id: haut });
+    await one(db, bruno, `select move_bottles($1, 1, $2, $3)`, [lotId, bas, rid()]);
+    await one(db, bruno, `select move_bottles($1, 1, $2, $3)`, [lotId, bas, rid()]);
+    const moves = (await db.query<{ request_id: string }>(`select request_id from bottle_moves order by created_at`)).rows;
+    await db.query(`update bottle_moves set created_at = now() - interval '25 months' where request_id = $1`, [moves[0].request_id]);
+
+    const apercu = readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'conservation-apercu.sql'), 'utf8');
+    const preview = Object.fromEntries((await db.query<{ cle: string; a_effacer: number }>(apercu)).rows.map((r) => [r.cle, r.a_effacer]));
+    const { asService } = await import('../helpers/db.ts');
+    const [res] = await asService<{ r: Record<string, number> }>(db, `select retention_purge() as r`);
+    for (const [key, n] of Object.entries(res.r)) expect(preview[key], key).toBe(n);
+    expect(res.r).toMatchObject({ event_messages: 1, event_votes: 1, group_purchases: 1, bottle_moves: 1 });
+    expect((await db.query(`select 1 from event_messages`)).rows).toHaveLength(1);
+    expect((await db.query<{ id: string }>(`select id from group_purchases order by created_at`)).rows.map((r) => r.id).sort()).toEqual([closedRecent, openOld].sort());
+    expect((await db.query(`select 1 from bottle_moves`)).rows).toHaveLength(moves.length - 1);
+  });
+});
+
 describe('retour arrière', () => {
   it('rend les règles d’avant sans erreur', async () => {
     await db.exec(readFileSync(join(MIGRATIONS_DIR, '..', 'sql', 'retour-20261102000014.sql'), 'utf8'));

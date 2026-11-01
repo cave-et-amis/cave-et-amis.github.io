@@ -13,7 +13,7 @@ Ils décrivent aussi la liaison avec l'agenda Nous durcie (migration `2026110100
 
 La politique de confidentialité annonce aussi deux règles de Nous (constat R3, accord de l'éditeur le 27/10/2026) : participants et vins visibles de la seule personne liée, même pour le foyer (lot 2 de Cocon), et effacés 30 jours après la fin de l'événement (lot 4 de Cocon, purge activée par l'éditeur). Ils sont en ligne dans Cocon depuis la nuit du 27 au 28/10/2026, purge active (confirmé par la session Cocon).
 
-La politique décrit aussi les nouveautés de Cave & Amis 2.0 (photo de profil, profil de goûts et repères de dégustation, alertes de maturité, mode soirée, achats groupés, alerte de baisse de prix, import de plusieurs bouteilles ; migrations 20261102000003 à 20261102000008). Elles sont en ligne depuis le 28/10/2026, et la politique a été publiée le même jour par l'éditeur (version 1, Administration › Documents légaux). Toute nouvelle fonction qui traite des données doit y être ajoutée et publiée avant ou avec elle, jamais après. Les deux mentions « [À VALIDER] » ajoutées pour elles dans la politique (bases légales de la photo de profil et de l'alerte de prix) ont été tranchées par l'éditeur le 28/10/2026 (exécution du contrat) ; les questions 45 à 48 de questions-pour-le-juriste.md les détaillent.
+La politique décrit aussi les nouveautés de Cave & Amis 2.0 (photo de profil, profil de goûts et repères de dégustation, alertes de maturité, mode soirée, achats groupés, alerte de baisse de prix, import de plusieurs bouteilles ; migrations 20261102000003 à 20261102000008). Elles sont en ligne depuis le 28/10/2026, et la politique a été publiée le même jour par l'éditeur (version 1, Administration › Documents légaux). Toute nouvelle fonction qui traite des données doit y être ajoutée et publiée avant ou avec elle, jamais après. Les deux mentions « [À VALIDER] » ajoutées pour elles dans la politique (bases légales de la photo de profil et de l'alerte de prix) ont été tranchées par l'éditeur le 28/10/2026 (exécution du contrat) ; les questions 45 à 48 pour le juriste (dossier privé de l'éditeur) les détaillent.
 
 **Version 2 de la politique (préparée le 28/10/2026, pas encore publiée)** : elle ajoute l'historique des déplacements de bouteilles de la cave en 3D (migration 20261102000009). À publier avec la cave en 3D, ou avant : Administration › Documents légaux › Politique de confidentialité › « Nouvelle version », « Charger le projet », résumé « Ajout de l'historique des déplacements de bouteilles (cave en 3D) ». Simple information : aucune acceptation n'est demandée.
 
@@ -29,7 +29,7 @@ L'adresse de contact dédiée, commune aux deux applications, est cocon.cave@gma
 
 ## Points juridiques : décidés par l'éditeur, sans juriste
 
-Le 27/10/2026, l'éditeur a choisi de ne pas attendre un juriste. Les 27 mentions « [À VALIDER] » des quatre textes ont été passées en revue une par une avec lui, risque par risque, et retirées seulement sur sa décision. **Aucun de ces points n'a été vérifié par un juriste** : ce choix ne rend pas l'application conforme. La liste complète reste dans `questions-pour-le-juriste.md`, pour une relecture plus tard.
+Le 27/10/2026, l'éditeur a choisi de ne pas attendre un juriste. Les 27 mentions « [À VALIDER] » des quatre textes ont été passées en revue une par une avec lui, risque par risque, et retirées seulement sur sa décision. **Aucun de ces points n'a été vérifié par un juriste** : ce choix ne rend pas l'application conforme. La liste complète reste dans les questions pour le juriste (dossier privé de l'éditeur), pour une relecture plus tard.
 
 Décisions prises le 28/10/2026, pour Cave & Amis 2.0 (même démarche, sans juriste ; questions 45 et 46 gardées pour une relecture) :
 
@@ -69,4 +69,4 @@ Ordre conseillé : les mentions légales, la page cookies et la politique de con
 - Les durées de conservation affichées dans l'application (src/domain/legal.ts) et appliquées par la base (retention_purge) doivent rester celles de la politique.
 - Toute nouvelle fonction qui traite des données personnelles (nouveau prestataire, nouvelle donnée, nouvelle durée) doit être ajoutée à la politique de confidentialité, puis publiée comme nouvelle version.
 
-La liste complète des questions, prête à transmettre à un juriste, avec le contexte de l'application : `questions-pour-le-juriste.md` (44 questions au 27/10/2026, qui couvrent aussi les documents de `docs/conformite/`).
+La liste complète des questions pour un juriste et les documents internes (registre des traitements, procédure en cas de violation, routine des demandes) ne sont plus dans ce dépôt public depuis le 01/11/2026 : l'éditeur les garde hors ligne, dans son dossier privé de conformité.

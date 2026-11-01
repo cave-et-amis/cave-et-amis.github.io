@@ -1,7 +1,9 @@
 /**
  * Double authentification à la connexion : un compte qui a activé un code (application d'authentification) et dont la
  * session n'est passée que par le mot de passe (niveau aal1) saisit son code à 6 chiffres avant d'entrer, y compris pour
- * une session reprise au lancement. Ce qui l'exige vraiment (administration, documents légaux) est vérifié par la base.
+ * une session reprise au lancement. Cet écran n'est qu'un confort : la vraie barrière est côté serveur — toutes les
+ * tables (politiques « _mfa_ok »), les fonctions (require_user), les photos (stockage) et la fonction cave-api refusent une
+ * session non vérifiée quand le code est activé (20261102000001, puis audit du 01/11/2026).
  */
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';

@@ -86,6 +86,28 @@ test.describe('inscription : page de confirmation de l’adresse', () => {
     await other.close();
   });
 
+  test('lien piégé : le lien de confirmation d’un autre compte ne remplace pas la session ouverte', async ({ page, browser }) => {
+    // Hugo est connecté ici.
+    const mail = address('Paul');
+    await fillSignup(page, 'Paul', mail);
+    await page.getByRole('button', { name: 'Créer mon compte' }).click();
+    await page.goto(`/?auth=signup&token_hash=${await signupToken(page, mail)}`);
+    await expect(page.getByText('Adresse e-mail confirmée', { exact: false })).toBeVisible();
+    // Quelqu'un d'autre s'inscrit ailleurs et envoie à Paul le lien de SA confirmation (audit du 01/11/2026, V4).
+    const ctx = await browser.newContext({ baseURL: new URL(page.url()).origin, viewport: { width: 390, height: 844 } });
+    const intrus = await ctx.newPage();
+    const piege = address('Intrus');
+    await fillSignup(intrus, 'Intrus', piege);
+    await intrus.getByRole('button', { name: 'Créer mon compte' }).click();
+    await expect(intrus.getByText('Merci pour votre inscription !')).toBeVisible();
+    const token = await signupToken(intrus, piege);
+    await ctx.close();
+    await page.goto(`/?auth=signup&token_hash=${token}`);
+    await expect(page.getByText('Ce lien n’a pas été utilisé : un compte est déjà connecté sur cet appareil', { exact: false })).toBeVisible();
+    expect(page.url()).not.toContain('token_hash');
+    await expect(page.getByRole('button', { name: /Réglages et compte de Paul/ })).toBeVisible();
+  });
+
   test('adresse déjà inscrite : même page, sans dire que le compte existe', async ({ page }) => {
     const mail = address('Nina');
     await fillSignup(page, 'Nina', mail);

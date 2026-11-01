@@ -7,6 +7,11 @@ import { dateLong } from '../../domain/format';
  */
 const KEY = 'cave-amis-invite';
 const MAX_AGE = 30 * 86400_000;
+/**
+ * L'acceptation automatique ne vaut qu'une heure : au-delà, sur un appareil partagé, la personne suivante qui se
+ * connecte n'accepte rien sans clic (audit du 01/11/2026, V7). Le code, lui, reste proposé.
+ */
+export const AUTO_MAX_AGE = 3600_000;
 
 /**
  * « auto » : la personne a choisi de créer son compte (ou de se connecter) depuis la vitrine du lien ; une fois connectée,
@@ -32,7 +37,7 @@ function saved(): { code: string; auto: boolean } | null {
       localStorage.removeItem(KEY);
       return null;
     }
-    return { code: s.code, auto: s.auto === true };
+    return { code: s.code, auto: s.auto === true && Date.now() - s.at <= AUTO_MAX_AGE };
   } catch {
     return null;
   }

@@ -2,7 +2,7 @@
 --
 -- LECTURE SEULE : ce script ne modifie ni ne supprime rien, et ne montre que des nombres (jamais le contenu). À exécuter
 -- dans Supabase › SQL Editor avant de poser les purges (supabase/sql/conservation.sql), puis à tout moment pour
--- contrôler. Mêmes règles que retention_purge (migration 20261102000001_alignement_cocon.sql), que les analyses du
+-- contrôler. Mêmes règles que retention_purge (migrations 20261102000001_alignement_cocon.sql puis 20261102000015), que les analyses du
 -- scanner et les photos supprimées par cave-api, et que rate_purge (migration 20261101000004_durcissements.sql) ; un test
 -- vérifie qu'il annonce exactement ce que la purge efface (tests/sql/documents-legaux.test.ts).
 select cle, donnees, a_effacer from (values
@@ -40,6 +40,16 @@ select cle, donnees, a_effacer from (values
   (14, 'photos', 'Photos de plus de 30 jours que rien ne cite (le 1er du mois, 2 000 par passage ; comptées jusqu''à 5 000)',
     (select count(*)::int from public.retention_orphan_photos(5000))),
   (15, 'admin_audit', 'Journal des actions de l''administrateur (12 mois)',
-    (select count(*)::int from public.admin_audit_log where at < now() - interval '12 months'))
+    (select count(*)::int from public.admin_audit_log where at < now() - interval '12 months')),
+  (16, 'event_messages', 'Messages des soirées (12 mois après l''événement)',
+    (select count(*)::int from public.event_messages m join public.events e on e.id = m.event_id
+       where e.starts_at < now() - interval '12 months')),
+  (17, 'event_votes', 'Notes des soirées (12 mois après l''événement)',
+    (select count(*)::int from public.event_votes v join public.event_wines w on w.id = v.event_wine_id
+       join public.events e on e.id = w.event_id where e.starts_at < now() - interval '12 months')),
+  (18, 'group_purchases', 'Achats groupés clos ou annulés (12 mois après la clôture), avec leurs vins et parts',
+    (select count(*)::int from public.group_purchases where status in ('closed', 'cancelled') and closed_at < now() - interval '12 months')),
+  (19, 'bottle_moves', 'Historique des déplacements de bouteilles (24 mois)',
+    (select count(*)::int from public.bottle_moves where created_at < now() - interval '24 months'))
 ) as t(ordre, cle, donnees, a_effacer)
 order by ordre;

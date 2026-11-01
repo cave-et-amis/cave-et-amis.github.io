@@ -80,9 +80,7 @@ function SourceLinks({ urls }: { urls: string[] }) {
       ({urls.map((u, i) => (
         <span key={u}>
           {i > 0 && ', '}
-          <a href={u} target="_blank" rel="noopener noreferrer">
-            {host(u)}
-          </a>
+          <SafeLink href={u} label={host(u)} />
         </span>
       ))})
     </span>

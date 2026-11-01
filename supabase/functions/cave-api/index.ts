@@ -9,6 +9,9 @@ import Anthropic from "npm:@anthropic-ai/sdk@0.134.0";
 //#region src/domain/errors.ts
 /** Messages de l'assistant (renvoyés par le serveur sous forme de code). */
 var AI_MESSAGES = {
+	mfa_required: "Cette action demande votre code de double authentification : déconnectez-vous, puis reconnectez-vous avec votre code.",
+	admin_mfa_required: "L’administration demande la double authentification : activez-la dans Réglages › Double authentification, puis revenez ici.",
+	admin_rate_limited: "Plusieurs tests de connexion en peu de temps : réessayez dans quelques minutes.",
 	invalid_password: "Mot de passe incorrect.",
 	password_rate_limited: "Trop d’essais de mot de passe en peu de temps : réessayez dans un quart d’heure.",
 	ai_not_configured: "L’assistant n’est pas encore configuré sur ce serveur. Toutes les autres fonctions restent disponibles.",
@@ -206,6 +209,14 @@ var RATE_LIMITS = {
 	password_check: {
 		max: 5,
 		seconds: 900
+	},
+	admin_test: {
+		max: 10,
+		seconds: 600
+	},
+	scan_cached: {
+		max: 30,
+		seconds: 600
 	}
 };
 /** Compte un appel de la personne ; false : limite atteinte (rien n'est compté). */
@@ -2991,7 +3002,7 @@ function base64(bytes) {
 }
 /** Lit la photo avec les droits de la personne (dossier privé) et vérifie taille et format. */
 async function readPhoto(user, userId, path, maxBytes) {
-	if (typeof path !== "string" || !path.startsWith(`${userId}/`) || path.includes("..") || path.length > 300) throw new AiFailure("forbidden");
+	if (typeof path !== "string" || path.length > 300 || !new RegExp(`^${userId}/[A-Za-z0-9][A-Za-z0-9._-]{0,200}$`).test(path) || path.includes("..")) throw new AiFailure("forbidden");
 	const { data, error } = await user.storage.from("photos").download(path).asStream();
 	if (error || !data) throw new AiFailure("not_found");
 	const bytes = await readCapped(data, maxBytes);
@@ -3255,8 +3266,18 @@ var DOCUMENT_SCHEMA = {
 };
 var str$2 = (v, max) => typeof v === "string" && v.trim() ? sanitize(v, max) : null;
 var int$1 = (v, min, max) => Number.isInteger(v) && v >= min && v <= max ? v : null;
-var CARD = /\b(?:\d[ -]?){13,19}\b/g;
-var scrub = (v) => v ? v.replace(CARD, "…").trim() || null : null;
+var PERSONAL = [
+	/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g,
+	/\b[A-Z]{2}\d{2}(?:[ .-]?[A-Z0-9]){10,30}\b/gi,
+	/(?:\+\d{2,3}[ .-]?|\b0)[1-9](?:[ .-]?\d{2}){4}\b/g,
+	/\b\d(?:[ .-]?\d){7,}\b/g
+];
+var scrub = (v) => {
+	if (!v) return null;
+	let t = v;
+	for (const re of PERSONAL) t = t.replace(re, "…");
+	return t.trim() || null;
+};
 /** Contrôle de la réponse : bornes, couleurs et devises connues, date réelle, au plus MAX_LINES lignes avec un nom. */
 function cleanDocument(raw, today = /* @__PURE__ */ new Date()) {
 	const r = raw ?? {};
@@ -3289,7 +3310,7 @@ function cleanDocument(raw, today = /* @__PURE__ */ new Date()) {
 		title: scrub(str$2(r.title, 80)),
 		conditions: scrub(str$2(r.conditions, 300)),
 		lines,
-		uncertain: Array.isArray(r.uncertain) ? [...new Set(r.uncertain.filter((u) => typeof u === "string").map((u) => u.slice(0, 40)))].slice(0, 10) : [],
+		uncertain: Array.isArray(r.uncertain) ? [...new Set(r.uncertain.filter((u) => typeof u === "string").map((u) => scrub(u.slice(0, 40))).filter((u) => Boolean(u) && u !== "…"))].slice(0, 10) : [],
 		notes: scrub(str$2(r.notes, 300))
 	};
 }
@@ -3447,6 +3468,7 @@ async function importPhoto(fetchImpl, user, userId, rawCode) {
 	for (const url of [small.replace(/\.\d+\.jpg$/, ".full.jpg"), small]) try {
 		const res = await fetchImpl(url, {
 			headers: { "User-Agent": USER_AGENT },
+			redirect: "manual",
 			signal: AbortSignal.timeout(15e3)
 		});
 		if (!res.ok) {
@@ -5078,6 +5100,16 @@ function createApiHandler(env, deps = {}) {
 		...deps.fetch ? { global: { fetch: deps.fetch } } : {}
 	};
 	const svc = createClient(env.supabaseUrl, env.serviceKey, opts);
+	/** Niveau de la session (aal1 : mot de passe seul ; aal2 : code vérifié), lu dans le jeton déjà validé par getUser. */
+	const aalOf = (token) => {
+		try {
+			const part = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+			const payload = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(part), (c) => c.charCodeAt(0))));
+			return typeof payload.aal === "string" ? payload.aal : "aal1";
+		} catch {
+			return "aal1";
+		}
+	};
 	const userClient = (token) => createClient(env.supabaseUrl, env.publishableKey, {
 		...opts,
 		global: {
@@ -5191,7 +5223,7 @@ function createApiHandler(env, deps = {}) {
 		const { data } = await user.from("profiles").select("currency").eq("id", userId).maybeSingle();
 		return data?.currency ?? "EUR";
 	}
-	async function handle(action, body, user, userId) {
+	async function handle(action, body, user, userId, aal = "aal1") {
 		if (NOUS_ACTIONS.has(action)) return nous.handleUser(action, body, user, userId);
 		switch (action) {
 			case "push_key": return { public_key: (await push.keys()).publicKey };
@@ -5243,15 +5275,19 @@ function createApiHandler(env, deps = {}) {
 				if (!kind) throw new AiFailure("invalid");
 				const s = await settings();
 				const image = await readPhoto(user, userId, body.photo_path, s.max_image_bytes);
-				return { result: await metered(userId, "label", (m) => m.estimate({
-					chars: 6e3,
-					images: 1,
-					maxTokens: Math.min(s.max_output_tokens * 2, 6e3)
-				}), (meter) => readDocument({
-					meter,
-					image,
-					kind
-				}), s.scan_model) };
+				try {
+					return { result: await metered(userId, "label", (m) => m.estimate({
+						chars: 6e3,
+						images: 1,
+						maxTokens: Math.min(s.max_output_tokens * 2, 6e3)
+					}), (meter) => readDocument({
+						meter,
+						image,
+						kind
+					}), s.scan_model) };
+				} finally {
+					await svc.storage.from("photos").remove([String(body.photo_path)]).catch(() => void 0);
+				}
 			}
 			case "identify_shelf": {
 				const s = await settings();
@@ -5304,6 +5340,7 @@ function createApiHandler(env, deps = {}) {
 				const { data: cached } = await svc.from("scan_cache").select("value").eq("key", key).gt("expires_at", now().toISOString()).maybeSingle();
 				let result = cached?.value ?? null;
 				const fromCache = Boolean(result);
+				if (fromCache && !await rateOk(svc, "scan_cached", userId)) throw new AiFailure("rate_limited");
 				if (!result) {
 					const { data: quota } = await svc.rpc("scan_quota", { p_user: userId });
 					const q = quota;
@@ -5415,7 +5452,7 @@ function createApiHandler(env, deps = {}) {
 			case "photo_import":
 				if (!await rateOk(svc, "off", userId)) throw new AiFailure("photo_rate_limited");
 				return importPhoto(webFetch, user, userId, body.code);
-			case "admin_test": return adminTest(user, userId);
+			case "admin_test": return adminTest(user, userId, aal);
 			case "delete_account": {
 				if (body.confirm !== "SUPPRIMER") throw new AiFailure("invalid");
 				if (typeof body.password !== "string" || !body.password) throw new AiFailure("invalid_password");
@@ -5444,9 +5481,11 @@ function createApiHandler(env, deps = {}) {
 			default: throw new AiFailure("invalid");
 		}
 	}
-	async function adminTest(user, userId) {
+	async function adminTest(user, userId, aal) {
 		const { data: isAdmin } = await user.rpc("is_admin");
 		if (isAdmin !== true) throw new AiFailure("forbidden");
+		if (aal !== "aal2") throw new AiFailure("admin_mfa_required");
+		if (!await rateOk(svc, "admin_test", userId)) throw new AiFailure("admin_rate_limited");
 		if (!env.anthropicKey) {
 			await svc.rpc("ai_set_key_status", {
 				p_status: "missing",
@@ -5728,10 +5767,19 @@ function createApiHandler(env, deps = {}) {
 			}, 400, cors);
 		}
 		const action = String(body.action ?? "");
+		const user = userClient(token);
+		if (action !== "push_key") {
+			const { data: mfa, error: mfaErr } = await user.rpc("mfa_ok");
+			if (mfaErr || mfa !== true) return json({
+				ok: false,
+				code: "mfa_required",
+				message: AI_MESSAGES.mfa_required
+			}, 200, cors);
+		}
 		try {
 			return json({
 				ok: true,
-				...await handle(action, body, userClient(token), userId)
+				...await handle(action, body, user, userId, aalOf(token))
 			}, 200, cors);
 		} catch (e) {
 			const f = e instanceof AiFailure ? e : mapAnthropicError(e);

@@ -118,7 +118,7 @@ export function EveningPage({ id }: { id: string }) {
               Lancez la soirée quand les invités sont là : vous servirez les {wines.length} bouteille{wines.length > 1 ? 's' : ''} confirmée{wines.length > 1 ? 's' : ''} une à une.
             </p>
             {wines.length === 0 && <Notice tone="warn">Aucune bouteille confirmée pour l’instant : confirmez-en au moins une sur la page de l’événement.</Notice>}
-            <Check checked={blind} onChange={setBlind} label="À l’aveugle" hint="Le nom de chaque bouteille reste caché jusqu’à ce que vous la révéliez." />
+            <Check checked={blind} onChange={setBlind} label="À l’aveugle" hint="Le nom de chaque bouteille reste caché à l’écran jusqu’à ce que vous la révéliez. C’est un jeu : ce n’est pas un secret protégé." />
             <Button disabled={wines.length === 0} onClick={() => void act(() => api.startEventLive(event.id, blind), 'Soirée lancée')}>
               Lancer la soirée
             </Button>

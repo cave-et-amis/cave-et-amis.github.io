@@ -18,6 +18,9 @@ export const SIGNUP_EXPIRED =
   'Ce lien de confirmation n’est plus valable : un lien ne sert qu’une fois, et seul le dernier e-mail reçu fonctionne. Connectez-vous : si votre adresse n’est pas encore confirmée, vous pourrez recevoir un nouveau lien.';
 export const SIGNUP_NETWORK =
   'Votre adresse n’a pas pu être confirmée : la connexion a été coupée. Vérifiez votre réseau, puis rouvrez le lien de l’e-mail : il reste valable.';
+/** Lien ouvert alors qu'un compte est déjà connecté ici : il n'est pas utilisé (la session reste celle de ce compte). */
+export const OTHER_SESSION =
+  'Ce lien n’a pas été utilisé : un compte est déjà connecté sur cet appareil. S’il s’agit d’un autre compte, déconnectez-vous d’abord, puis rouvrez le lien depuis l’e-mail.';
 export const EMAIL_CHANGE_EXPIRED =
   'Ce lien de changement d’adresse n’est plus valable : un lien ne sert qu’une fois. Refaites la demande dans Réglages › Mon profil.';
 

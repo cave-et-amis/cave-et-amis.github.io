@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import { useStore } from '../../data/store';
 import { Button, InlineLoading, Notice } from '../../ui/kit';
+import { SafeLink } from '../../ui/markdown';
 
 type Candidate = { code: string; name: string; brand: string | null; thumb: string; exact: boolean; url: string };
 export type OfficialChoice = { path: string; credit: string; code: string; exact: boolean };
@@ -18,10 +19,8 @@ export function PhotoCredit({ credit }: { credit: string | null }) {
     <p className="small muted photo-credit">
       {m ? (
         <>
-          {m[1]} —{' '}
-          <a href={m[2]} target="_blank" rel="noreferrer noopener">
-            voir la source
-          </a>
+          {m[1]} — {/* Mention modifiable par le propriétaire de la fiche : le site est affiché et confirmé avant l'ouverture. */}
+          <SafeLink href={m[2]} label="voir la source" confirmOpen />
         </>
       ) : (
         credit

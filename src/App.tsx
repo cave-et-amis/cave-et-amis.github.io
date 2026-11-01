@@ -5,7 +5,7 @@ import { StoreProvider } from './data/store';
 import { toMessage } from './domain/errors';
 import { isLegalKind, type LegalPending } from './domain/legal';
 import { parseMagicLink, pendingLink, startSession } from './domain/nous';
-import { expiredMessage, parseEmailLink, SIGNUP_NETWORK } from './domain/emailLink';
+import { expiredMessage, OTHER_SESSION, parseEmailLink, SIGNUP_NETWORK } from './domain/emailLink';
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
@@ -107,7 +107,13 @@ function Root({ api, local }: { api: Api; local: boolean }) {
     void (async () => {
       // Lien plus valable (jeton absent, refusé, ou erreur renvoyée par Supabase) : expliqué ensuite.
       let failed = Boolean(mail && !mail.tokenHash);
-      if (mail?.tokenHash && mail.kind === 'recovery') {
+      // Quelqu'un est déjà connecté ici : un lien de récupération ou de confirmation n'ouvre pas une autre session à sa
+      // place (sinon un lien piégé ferait entrer dans le compte d'un tiers, audit du 01/11/2026, V4).
+      const existing = mail?.tokenHash ? await api.getSession().catch(() => null) : null;
+      if (!alive) return;
+      if (existing && mail?.tokenHash && (mail.kind === 'recovery' || mail.kind === 'signup')) {
+        toast(OTHER_SESSION, { tone: 'info' });
+      } else if (mail?.tokenHash && mail.kind === 'recovery') {
         const s = await api.verifyRecovery(mail.tokenHash).catch(() => null);
         if (!alive) return;
         if (s) {
@@ -130,7 +136,7 @@ function Root({ api, local }: { api: Api; local: boolean }) {
           return;
         } else failed = true;
       } else if (mail?.tokenHash && mail.kind === 'email_change') {
-        const r = await api.verifyEmailChange(mail.tokenHash).catch(() => ({ result: 'expired' as const }));
+        const r = await api.verifyEmailChange(mail.tokenHash, existing?.user.id ?? null).catch(() => ({ result: 'expired' as const }));
         if (!alive) return;
         if (r.result === 'done') {
           started = true;
@@ -139,6 +145,7 @@ function Root({ api, local }: { api: Api; local: boolean }) {
           return;
         }
         if (r.result === 'other') toast('Premier lien accepté : ouvrez aussi celui envoyé à votre autre adresse pour terminer le changement.', { tone: 'info' });
+        else if (r.result === 'other_account') toast(OTHER_SESSION, { tone: 'info' });
         else failed = true;
       }
       if (mail && failed) {
