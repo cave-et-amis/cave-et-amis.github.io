@@ -9,7 +9,7 @@ import { expiredMessage, OTHER_SESSION, parseEmailLink, SIGNUP_NETWORK } from '.
 import { AuthScreen, DiscoverScreen, LinkAccountScreen, NewPasswordScreen, Showcase } from './features/auth/AuthScreen';
 import { MfaGate } from './features/auth/MfaGate';
 import { allowAutoAccept, clearPendingInvite, pendingInvite, pendingInviteAuto, savePendingInvite } from './features/friends/invite';
-import { LegalProvider, loadPending, TermsGate } from './features/legal/LegalGate';
+import { LegalProvider, loadPending, ReadGate, sortForReading, TermsGate } from './features/legal/LegalGate';
 import { LegalScreen } from './features/legal/LegalViews';
 import { Shell } from './ui/Shell';
 import { Button, ConfirmProvider, ToastProvider, useToast } from './ui/kit';
@@ -336,11 +336,15 @@ function SignedIn({ api, local, session }: { api: Api; local: boolean; session: 
     );
   }
 
-  // Conditions d'utilisation à accepter : rien d'autre tant qu'elles ne le sont pas (sauf export, suppression, déconnexion).
+  // Documents à accepter (conditions) puis à lire (politique, mentions, cookies) : rien d'autre tant qu'il en reste (sauf
+  // export, suppression du compte, déconnexion). Un document à la fois, dans l'ordre.
   const terms = pending.find((p) => p.mode === 'acceptation');
+  const toRead = sortForReading(pending.filter((p) => p.mode === 'lecture'));
   return (
     <StoreProvider api={api} local={local} userId={session.user.id} email={session.user.email ?? ''} snapshot={snapshot} reload={reload}>
-      <LegalProvider value={{ pending, refresh: refreshLegal }}>{terms ? <TermsGate item={terms} /> : <Shell />}</LegalProvider>
+      <LegalProvider value={{ pending, refresh: refreshLegal }}>
+        {terms ? <TermsGate item={terms} /> : toRead.length ? <ReadGate key={toRead[0].document_id} item={toRead[0]} left={toRead.length} /> : <Shell />}
+      </LegalProvider>
     </StoreProvider>
   );
 }

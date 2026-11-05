@@ -40,6 +40,26 @@ export async function skipWelcome(page: Page) {
   });
 }
 
+/**
+ * Documents à lire avant de continuer (politique, mentions, cookies) : une fois publiés par vos-donnees.spec.ts, chaque
+ * compte les lit à sa connexion suivante. Les parcours qui ne testent pas cet écran les valident (« J'ai lu ») dès qu'il
+ * apparaît, après avoir fait défiler le texte jusqu'au bout, comme une vraie lecture.
+ */
+const reading = new WeakSet<Page>();
+export async function readLegal(page: Page) {
+  if (reading.has(page)) return;
+  reading.add(page);
+  await page.addLocatorHandler(
+    page.getByRole('heading', { name: 'À lire avant de continuer' }),
+    async () => {
+      await page.locator('.legal-scroll').evaluate((el) => (el.scrollTop = el.scrollHeight));
+      await page.getByRole('button', { name: 'J’ai lu' }).click();
+    },
+    // Plusieurs documents à la suite : l'écran reste, le suivant est validé au passage suivant.
+    { noWaitAfter: true },
+  );
+}
+
 /** Case de l'inscription (âge minimum, et conditions d'utilisation quand elles sont publiées), jamais cochée d'avance. */
 export async function confirmAge(page: Page) {
   const box = page.getByRole('checkbox', { name: /J’ai 18 ans ou plus/ });
@@ -47,9 +67,13 @@ export async function confirmAge(page: Page) {
   await box.check();
 }
 
-/** Création de compte ; « welcome » : garder l'accueil et la visite guidée (parcours qui les testent). */
-export async function signUp(page: Page, name: string, path = '/', { welcome = false } = {}) {
+/**
+ * Création de compte ; « welcome » : garder l'accueil et la visite guidée (parcours qui les testent) ; « read » : valider
+ * les documents à lire (sauf parcours qui testent cet écran).
+ */
+export async function signUp(page: Page, name: string, path = '/', { welcome = false, read = true } = {}) {
   if (!welcome) await skipWelcome(page);
+  if (read) await readLegal(page);
   await page.goto(path);
   // Lien d'invitation : la vitrine d'abord, puis la création de compte.
   if (path.includes('#/ami/')) await page.getByRole('button', { name: 'Créer mon compte' }).click();
@@ -63,6 +87,7 @@ export async function signUp(page: Page, name: string, path = '/', { welcome = f
 
 export async function signIn(page: Page, name: string) {
   await skipWelcome(page);
+  await readLegal(page);
   await page.goto('/');
   await page.getByLabel('Adresse e-mail').fill(email(name));
   await page.getByLabel('Mot de passe', { exact: true }).fill(PASSWORD);

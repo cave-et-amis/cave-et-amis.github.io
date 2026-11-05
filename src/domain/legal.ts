@@ -29,8 +29,11 @@ export type LegalDoc = {
   published_at: string;
 };
 
-/** « acceptation » : à accepter avant de continuer ; « information » : nouvelle version à lire. */
-export type LegalPending = { document_id: string; kind: LegalKind; version: number; title: string; summary: string; mode: 'acceptation' | 'information' };
+/**
+ * Document en attente pour la personne connectée : « acceptation » (conditions, case à cocher), « lecture » (à lire
+ * avant de continuer, depuis le 05/11/2026), « information » (ancien simple bandeau, avant la migration 20261102000016).
+ */
+export type LegalPending = { document_id: string; kind: LegalKind; version: number; title: string; summary: string; mode: 'acceptation' | 'lecture' | 'information' };
 
 export type LegalHistory = {
   acceptances: { kind: LegalKind; version: number; title: string; action: 'acceptation' | 'prise_de_connaissance'; context: string; at: string }[];

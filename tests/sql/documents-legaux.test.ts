@@ -85,12 +85,12 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
     expect(await withClaims(bruno, { aal: 'aal2' }, `select kind from admin_legal_stats()`)).toEqual([{ kind: 'cookies' }]);
   });
 
-  it('comptes existants : conditions à accepter, politique à lire ; le silence ne vaut pas acceptation', async () => {
+  it('comptes existants : conditions à accepter, les autres documents à lire ; le silence ne vaut pas acceptation', async () => {
     const cgu1 = await publish('cgu');
     const pol1 = await publish('confidentialite');
     expect(await pending(claire)).toEqual([
       { kind: 'cgu', version: 1, mode: 'acceptation' },
-      { kind: 'confidentialite', version: 1, mode: 'information' },
+      { kind: 'confidentialite', version: 1, mode: 'lecture' },
     ]);
     // Avoir lu n'est pas accepter.
     await accept(claire, cgu1, 'prise_de_connaissance');
@@ -104,9 +104,9 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
     await accept(claire, pol1, 'prise_de_connaissance');
     expect(await pending(claire)).toEqual([]);
 
-    // Changement mineur : simple information ; changement important : nouvelle acceptation.
+    // Changement mineur : à relire ; changement important : nouvelle acceptation.
     const cgu2 = await publish('cgu');
-    expect(await pending(claire)).toEqual([{ kind: 'cgu', version: 2, mode: 'information' }]);
+    expect(await pending(claire)).toEqual([{ kind: 'cgu', version: 2, mode: 'lecture' }]);
     await accept(claire, cgu2, 'prise_de_connaissance');
     expect(await pending(claire)).toEqual([]);
     await publish('cgu', { required: true });
@@ -114,8 +114,17 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
     // Bruno n'a rien accepté : la version 3 (la dernière qui l'exige) suffit, pas besoin des précédentes.
     expect(await pending(bruno)).toEqual([
       { kind: 'cgu', version: 3, mode: 'acceptation' },
-      { kind: 'confidentialite', version: 1, mode: 'information' },
+      { kind: 'confidentialite', version: 1, mode: 'lecture' },
     ]);
+    // Mentions légales et cookies : à lire aussi (décision du 05/11/2026), chaque nouvelle version comprise.
+    const men1 = await publish('mentions');
+    const coo1 = await publish('cookies');
+    expect((await pending(claire)).map((p) => [p.kind, p.mode])).toEqual([['cgu', 'acceptation'], ['cookies', 'lecture'], ['mentions', 'lecture']]);
+    await accept(claire, men1, 'prise_de_connaissance');
+    await accept(claire, coo1, 'prise_de_connaissance');
+    expect((await pending(claire)).map((p) => p.kind)).toEqual(['cgu']);
+    await publish('cookies');
+    expect((await pending(claire)).map((p) => [p.kind, p.version])).toEqual([['cgu', 3], ['cookies', 2]]);
     await expectError(as(db, null, `select * from legal_pending()`), /permission denied/);
 
     const history = await one<{ h: { acceptances: { kind: string; version: number; action: string; context: string }[] } }>(
@@ -124,6 +133,8 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
       `select my_legal_history() as h`,
     );
     expect(history.h.acceptances.map((a) => [a.kind, a.version, a.action])).toEqual([
+      ['cookies', 1, 'prise_de_connaissance'],
+      ['mentions', 1, 'prise_de_connaissance'],
       ['cgu', 2, 'prise_de_connaissance'],
       ['confidentialite', 1, 'prise_de_connaissance'],
       ['cgu', 1, 'acceptation'],
@@ -142,9 +153,9 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
     await expectError(as(db, claire, `select * from admin_legal_stats()`), /forbidden/);
   });
 
-  it('inscription : la version des conditions acceptée et la politique présentée sont notées avec le compte', async () => {
+  it('inscription : conditions acceptées et politique présentée notées ; la politique reste à lire dans l’application', async () => {
     await publish('cgu');
-    await publish('confidentialite');
+    const pol = await publish('confidentialite');
     const lea = '00000000-0000-4000-8000-0000000000aa';
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'lea@exemple.test', $2)`, [
       lea,
@@ -154,7 +165,13 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
       { version: 1, context: 'inscription', action: 'acceptation' },
       { version: 1, context: 'inscription', action: 'prise_de_connaissance' },
     ]);
+    // La case des conditions vaut acceptation ; le lien vers la politique sur le formulaire ne vaut pas lecture.
+    expect(await pending(lea)).toEqual([{ kind: 'confidentialite', version: 1, mode: 'lecture' }]);
+    // « J'ai lu » dans l'application : noté malgré la trace de l'inscription, une seule fois.
+    await accept(lea, pol, 'prise_de_connaissance');
+    await accept(lea, pol, 'prise_de_connaissance');
     expect(await pending(lea)).toEqual([]);
+    expect(await count(`legal_acceptances where user_id = $1 and context = 'connexion'`, [lea])).toBe(1);
     // Une version inconnue n'est jamais notée : la fenêtre s'ouvrira à la connexion.
     const tom = '00000000-0000-4000-8000-0000000000ab';
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'tom@exemple.test', $2)`, [
@@ -162,7 +179,7 @@ describe('documents légaux (modèle commun avec Cocon)', () => {
       JSON.stringify({ display_name: 'Tom', cgu_version: '9', confidentialite_version: 'x' }),
     ]);
     expect(await count(`legal_acceptances where user_id = $1`, [tom])).toBe(0);
-    expect((await pending(tom)).map((p) => p.mode)).toEqual(['acceptation', 'information']);
+    expect((await pending(tom)).map((p) => p.mode)).toEqual(['acceptation', 'lecture']);
     expect(await as(db, tom, `select display_name from profiles where id = auth.uid()`)).toEqual([{ display_name: 'Tom' }]);
   });
 

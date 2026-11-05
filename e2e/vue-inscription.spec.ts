@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { confirmAge, PASSWORD, RUN } from './helpers';
+import { confirmAge, PASSWORD, readLegal, RUN } from './helpers';
 
 // Fichier nommé « vue-… » pour passer après parcours.spec.ts : le premier compte créé devient administrateur.
 // Le serveur local de test (--confirm-email-test) demande la confirmation de l'adresse pour les @confirmation.test,
@@ -11,6 +11,7 @@ const signupToken = async (page: Page, mail: string) =>
 const ageSignupMail = (page: Page, mail: string) => page.request.get(`${API}/__test/age-signup?email=${encodeURIComponent(mail)}`);
 
 async function fillSignup(page: Page, name: string, mail: string) {
+  await readLegal(page);
   await page.goto('/');
   await page.getByRole('button', { name: 'Créer un compte' }).click();
   await page.getByLabel('Votre prénom').fill(name);

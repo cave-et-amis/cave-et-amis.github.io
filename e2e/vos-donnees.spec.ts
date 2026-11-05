@@ -1,8 +1,9 @@
 /**
  * Vos données (priorité 2 de l'audit), sur téléphone : documents lisibles sans compte ; l'administrateur publie (un
  * projet à compléter est refusé, un texte complet est publié) ; fenêtre des conditions pour un compte existant : refus
- * (rien n'est supprimé, export et suppression restent possibles) puis acceptation ; nouvelle politique à lire ;
- * inscription avec la case jamais cochée d'avance et version notée ; « Confidentialité et mes données » : historique,
+ * (rien n'est supprimé, export et suppression restent possibles) puis acceptation ; politique et mentions légales à lire
+ * avant de continuer (« J'ai lu » attend la fin du texte) ; inscription avec la case jamais cochée d'avance et version
+ * notée, puis les documents à lire ; « Confidentialité et mes données » : historique,
  * choix, archive ZIP de toutes ses données ; information sur Lia et Anthropic ; la déconnexion efface le confort local.
  * Fichier nommé pour passer en dernier sur téléphone : publier des conditions concerne tous les comptes de la série.
  */
@@ -53,6 +54,17 @@ function unzip(buf: Buffer) {
   return files;
 }
 
+/** Écran « À lire avant de continuer » : le texte, puis « J'ai lu » une fois arrivé au bout. */
+async function read(page: Page, text: string) {
+  await expect(page.getByRole('heading', { name: 'À lire avant de continuer' })).toBeVisible();
+  await expect(page.getByText(text)).toBeVisible();
+  await page.locator('.legal-scroll').evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await page.getByRole('button', { name: 'J’ai lu' }).click();
+}
+
+/** Mentions de test assez longues pour devoir défiler. */
+const MENTIONS = ['## Éditeur', 'Texte de test des mentions légales.', ...Array.from({ length: 40 }, (_, i) => `Paragraphe ${i + 1} des mentions de test.`)].join('\n\n');
+
 async function publish(page: Page, title: string, text: string) {
   await page.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: title }).getByRole('button', { name: 'Nouvelle version' }).click();
   const sheet = page.getByRole('dialog', { name: `${title} : nouvelle version` });
@@ -86,7 +98,7 @@ test('documents : lisibles sans compte, publiés par l’administrateur, jamais 
   await expect(sheet.getByRole('button', { name: 'Publier' })).toBeDisabled();
   await sheet.getByRole('button', { name: 'Fermer' }).click();
 
-  await publish(bruno, 'Mentions légales', '## Éditeur\n\nTexte de test des mentions légales.');
+  await publish(bruno, 'Mentions légales', MENTIONS);
   await publish(bruno, 'Politique de confidentialité', '## Vos données\n\nTexte de test de la politique.\n\n- Conversations : 12 mois.');
   await publish(bruno, 'Conditions d’utilisation', '## Objet\n\nConditions de test de Cave & Amis.\n\n## Âge minimum\n\nRéservé aux personnes de 18 ans et plus.');
   await expect(bruno.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('0 acceptation');
@@ -96,7 +108,7 @@ test('documents : lisibles sans compte, publiés par l’administrateur, jamais 
   await expect(visitor.getByText(/Version 1 du/)).toBeVisible();
 });
 
-test('compte existant : conditions à accepter ; refuser ne supprime rien ; la politique s’informe sans accord', async ({ browser }) => {
+test('compte existant : conditions à accepter ; refuser ne supprime rien ; les autres documents à lire avant de continuer', async ({ browser }) => {
   const claire = await newPhone(browser);
   await logIn(claire, 'Claire');
   await expect(claire.getByRole('heading', { name: 'Conditions d’utilisation' })).toBeVisible();
@@ -116,22 +128,39 @@ test('compte existant : conditions à accepter ; refuser ne supprime rien ; la p
 
   await box.check();
   await claire.getByRole('button', { name: 'Accepter et continuer' }).click();
-  await expect(claire.getByRole('heading', { name: 'Bonjour Claire' })).toBeVisible();
-  // Nouvelle politique : un simple bandeau, « J'ai lu » le retire.
-  await expect(claire.getByText(/La politique de confidentialité a été mise à jour/)).toBeVisible();
-  await claire.getByRole('button', { name: 'Lire', exact: true }).click();
+  // Puis la politique et les mentions légales, à lire avant de continuer ; on peut toujours partir avec ses données.
+  await expect(claire.getByRole('heading', { name: 'À lire avant de continuer' })).toBeVisible();
+  await expect(claire.getByText('Encore 1 document après celui-ci.')).toBeVisible();
   await expect(claire.getByText('Texte de test de la politique.')).toBeVisible();
+  await expect(claire.getByRole('button', { name: 'Télécharger toutes mes données' })).toBeVisible();
+  await expect(claire.getByRole('button', { name: 'Supprimer mon compte' })).toBeVisible();
+  await expect(claire.getByRole('button', { name: 'Se déconnecter' })).toBeVisible();
   await claire.getByRole('button', { name: 'J’ai lu' }).click();
-  await expect(claire.getByText(/La politique de confidentialité a été mise à jour/)).toHaveCount(0);
+  // Texte long : « J'ai lu » attend la fin du texte, et l'application reste fermée, même rechargée.
+  await expect(claire.getByText('Texte de test des mentions légales.')).toBeVisible();
+  const done = claire.getByRole('button', { name: 'J’ai lu' });
+  await expect(done).toBeDisabled();
+  await expect(claire.getByText('Faites défiler le texte jusqu’au bout pour continuer.')).toBeVisible();
+  await claire.reload();
+  await expect(claire.getByText('Texte de test des mentions légales.')).toBeVisible();
+  await expect(claire.getByRole('heading', { name: 'Bonjour Claire' })).toHaveCount(0);
+  await expect(done).toBeDisabled();
+  await claire.locator('.legal-scroll').evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await done.click();
+  await expect(claire.getByRole('heading', { name: 'Bonjour Claire' })).toBeVisible();
 
   await goto(claire, '/reglages/confidentialite');
   await expect(claire.getByText(/Conditions d’utilisation, version 1 : acceptées le .* \(à la connexion\)/)).toBeVisible();
   await expect(claire.getByText(/Politique de confidentialité, version 1 : lue le .* \(à la connexion\)/)).toBeVisible();
+  await expect(claire.getByText(/Mentions légales, version 1 : lue le .* \(à la connexion\)/)).toBeVisible();
 });
 
 test('inscription : case jamais cochée d’avance, version notée ; mes données : choix, historique, archive complète', async ({ browser }) => {
   const lou = await newPhone(browser);
-  await signUp(lou, 'Lou');
+  await signUp(lou, 'Lou', '/', { read: false });
+  // La case de l'inscription vaut pour les conditions ; la politique et les mentions restent à lire.
+  await read(lou, 'Texte de test de la politique.');
+  await read(lou, 'Texte de test des mentions légales.');
   await expect(lou.getByRole('heading', { name: 'Bonjour Lou' })).toBeVisible();
   await expect(lou.getByRole('heading', { name: 'Conditions d’utilisation' })).toHaveCount(0);
   await goto(lou, '/reglages/confidentialite');
@@ -185,10 +214,9 @@ test('l’administrateur accepte à son tour les conditions qu’il a publiées'
   await expect(bruno.getByRole('heading', { name: 'Conditions d’utilisation' })).toBeVisible();
   await bruno.getByRole('checkbox', { name: /J’ai 18 ans ou plus/ }).check();
   await bruno.getByRole('button', { name: 'Accepter et continuer' }).click();
+  await read(bruno, 'Texte de test de la politique.');
+  await read(bruno, 'Texte de test des mentions légales.');
   await expect(bruno.getByRole('heading', { name: 'Bonjour Bruno' })).toBeVisible();
-  await bruno.getByRole('button', { name: 'Lire', exact: true }).click();
-  await bruno.getByRole('button', { name: 'J’ai lu' }).click();
-  await expect(bruno.getByText(/La politique de confidentialité a été mise à jour/)).toHaveCount(0);
   await goto(bruno, '/admin');
   await expect(bruno.getByRole('region', { name: 'Documents légaux' }).locator('.row', { hasText: 'Conditions d’utilisation' })).toContainText('acceptations');
 });
