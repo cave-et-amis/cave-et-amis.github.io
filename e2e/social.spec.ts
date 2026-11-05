@@ -76,7 +76,7 @@ test('Alice et Paul deviennent amis ; Alice crée un groupe, l’invite et y par
 
 test('Paul rejoint le groupe et voit la bouteille d’Alice ; il n’a pas les droits d’administrateur', async () => {
   await paul.reload();
-  await expect(paul.getByRole('link', { name: 'Amis & Groupes (1 en attente)' })).toBeVisible();
+  await expect(paul.getByRole('tab', { name: 'Amis (1 en attente)' })).toBeVisible();
   await goto(paul, '/amis?onglet=groupes');
   const invitation = paul.locator('.row').filter({ hasText: 'Les soirées entre amis' });
   await expect(invitation).toContainText('Invitation de Alice');

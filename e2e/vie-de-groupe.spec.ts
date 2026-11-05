@@ -35,7 +35,7 @@ const hash = (p: Page) => new URL(p.url()).hash.slice(1);
 /** Recharge et attend que l'application soit prête (barre d'onglets affichée) avant de changer de page. */
 async function reload(p: Page) {
   await p.reload();
-  await expect(p.getByRole('link', { name: /Amis & Groupes/ })).toBeVisible();
+  await expect(p.getByRole('tab', { name: /^Amis/ })).toBeVisible();
 }
 
 test('Lucie et Hugo forment « Les épicuriens » ; Lucie met 2 bouteilles à disposition et organise une soirée du groupe', async () => {

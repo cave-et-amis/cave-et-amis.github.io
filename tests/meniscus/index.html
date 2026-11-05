@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1c0a10">
+<title>Cave &amp; Amis 2.0 — Navigation</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:#1c0a10;color:#f6ece4;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  .app{position:relative;min-height:100%;display:flex;flex-direction:column;max-width:520px;margin:0 auto;overflow:hidden}
+  .bg{position:absolute;inset:0;transition:background .5s;z-index:0}
+  main{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 24px 140px}
+  .tag{font-size:11px;letter-spacing:2px;display:inline-flex;align-items:center;gap:6px;opacity:.85}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:background .3s}
+  h1{font-family:Georgia,"Times New Roman",serif;font-style:italic;font-weight:400;font-size:clamp(38px,11vw,56px);margin:8px 0 4px}
+  .sub{font-size:14px;opacity:.7;margin:0}
+  .stat{margin-top:18px;font-size:12px;padding:6px 14px;border:.5px solid rgba(246,236,228,.3);border-radius:20px}
+  nav{position:fixed;left:0;right:0;bottom:0;z-index:2;padding:0 12px calc(8px + env(safe-area-inset-bottom));max-width:520px;margin:0 auto}
+  @media (prefers-reduced-motion: reduce){.bg{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="bg" id="bg"></div>
+  <main id="view" role="tabpanel" aria-live="polite">
+    <div class="tag"><span class="dot"></span>CAVE &amp; AMIS</div>
+    <h1 id="title">Ma cave</h1>
+    <p class="sub" id="sub">Chaque bouteille a son histoire.</p>
+    <div class="stat" id="stat">—</div>
+  </main>
+  <nav><meniscus-tabbar id="nav" hash-routing></meniscus-tabbar></nav>
+</div>
+<script src="../../src/ui/meniscus/meniscus-tabbar.js"></script>
+<script>
+  const VIEWS = {
+    cave:       { t: 'Ma cave',    s: 'Chaque bouteille a son histoire.', k: 'Tes bouteilles', g: '#5a1426' },
+    amis:       { t: 'Mes amis',   s: 'Ceux avec qui on trinque.',        k: 'Tes amis',       g: '#5c2433' },
+    groupes:    { t: 'Groupes',    s: 'Les tablées qui durent.',          k: 'Tes groupes',    g: '#4a3a12' },
+    evenements: { t: 'Événements', s: 'La prochaine dégustation.',        k: 'Tes événements', g: '#33401a' },
+    profil:     { t: 'Mon profil', s: 'Tes goûts, ton palais.',           k: 'Ton profil',     g: '#4a2e1c' }
+  };
+  const nav = document.getElementById('nav');
+  function show(id, color) {
+    const v = VIEWS[id]; if (!v) return;
+    document.getElementById('title').textContent = v.t;
+    document.getElementById('sub').textContent = v.s;
+    document.getElementById('stat').textContent = v.k;
+    document.getElementById('bg').style.background = `radial-gradient(120% 70% at 50% 25%, ${v.g} 0%, #1c0a10 72%)`;
+    document.documentElement.style.setProperty('--accent', color);
+    document.getElementById('view').setAttribute('aria-labelledby', 'mt-tab-' + id);
+  }
+  nav.addEventListener('tab-change', e => show(e.detail.id, e.detail.tab.color));
+  customElements.whenDefined('meniscus-tabbar').then(() => show(nav.activeId, nav.tabs[nav.activeIndex].color));
+</script>
+</body>
+</html>

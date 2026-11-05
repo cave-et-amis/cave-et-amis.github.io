@@ -32,7 +32,7 @@ test.afterAll(async () => {
 /** Recharge et attend que l'application soit prête (barre d'onglets affichée) avant de changer de page. */
 async function reload(p: Page) {
   await p.reload();
-  await expect(p.getByRole('link', { name: /Amis & Groupes/ })).toBeVisible();
+  await expect(p.getByRole('tab', { name: /^Amis/ })).toBeVisible();
 }
 
 test('vitrine d’un lien d’événement : inscription, puis arrivée directe sur l’événement, sans voir la cave', async () => {
@@ -150,7 +150,7 @@ test('ouvrir sa cave à un contact, masquer la section partagée, masquer une bo
 
 test('demande d’accès acceptée ; « Qui voit ma cave » ; fermer sa cave à tout le monde', async () => {
   await reload(nadia);
-  await expect(nadia.getByRole('link', { name: 'Amis & Groupes (1 en attente)' })).toBeVisible();
+  await expect(nadia.getByRole('tab', { name: 'Amis (1 en attente)' })).toBeVisible();
   await goto(nadia, '/amis?onglet=invitations');
   await expect(nadia.getByRole('heading', { name: 'Demandes à voir ma cave' })).toBeVisible();
   await nadia.getByRole('button', { name: 'Ouvrir ma cave à Omar' }).click();

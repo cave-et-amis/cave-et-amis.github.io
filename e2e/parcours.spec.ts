@@ -427,7 +427,7 @@ test('Amis & Groupes : recherche, demande d’ami, notification, acceptation, bl
   // Déjà invitée au « Dîner test » plus tôt : la demande d'ami s'ajoute aux notifications non lues.
   const bell = claire.getByRole('link', { name: /^Notifications \(\d+ nouvelles?\)$/ });
   await expect(bell).toBeVisible();
-  await expect(claire.getByRole('link', { name: 'Amis & Groupes (1 en attente)' })).toBeVisible();
+  await expect(claire.getByRole('tab', { name: 'Amis (1 en attente)' })).toBeVisible();
   await bell.click();
   await claire.getByText('Bruno souhaite être en contact avec vous').click();
   await expect(claire.getByRole('heading', { name: 'Demandes reçues' })).toBeVisible();

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, ChartColumn, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, Wine } from 'lucide-react';
+import { Bell, BookOpen, BottleWine, Camera, CalendarHeart, ChartColumn, Compass, Heart, PenLine, ScanSearch, Sparkles, UserPlus, Users, Wine } from 'lucide-react';
 import { m } from 'motion/react';
 import { useStore } from '../../data/store';
 import { bottlesByEntryMonth, buildRows, colorBreakdown, dayPick, pastWindow, readyToDrink, type WineRow } from '../../domain/cellar';
@@ -249,6 +249,12 @@ export function Home() {
           <ScanSearch aria-hidden />
           Scanner avant d’acheter
           <span className="hint">En magasin : Lia identifie la bouteille et relève le prix</span>
+        </button>
+        {/* Téléphone et tablette : Explorer n'est plus dans la barre du bas (Lia y a pris sa place). */}
+        <button type="button" className="shortcut shortcut-wide shortcut-explore" onClick={() => go('/explorer')}>
+          <Compass aria-hidden />
+          Explorer
+          <span className="hint">Vins, appellations, défis et idées de dégustation</span>
         </button>
         <div className="shortcuts">
           <button type="button" className="shortcut" onClick={actions.scanLabel}>
