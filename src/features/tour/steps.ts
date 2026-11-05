@@ -77,9 +77,13 @@ export function tourSteps(o: { admin: boolean; assistant: boolean; hasGroups: bo
   return steps;
 }
 
-/** L'élément visible repéré par data-tour (la navigation existe en double : barre du bas et barre latérale). */
+/**
+ * L'élément visible repéré par data-tour (la navigation existe en double : barre du bas et barre latérale). Les onglets de
+ * la barre du bas sont dans le composant <meniscus-tabbar> (shadow DOM) : on y cherche aussi.
+ */
 export function tourTarget(id: string): HTMLElement | null {
-  for (const el of document.querySelectorAll<HTMLElement>(`[data-tour="${id}"]`)) {
+  const inBar = [...document.querySelectorAll('meniscus-tabbar')].flatMap((b) => [...(b.shadowRoot?.querySelectorAll<HTMLElement>(`[data-tour="${id}"]`) ?? [])]);
+  for (const el of [...document.querySelectorAll<HTMLElement>(`[data-tour="${id}"]`), ...inBar]) {
     const r = el.getBoundingClientRect();
     if (r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden') return el;
   }

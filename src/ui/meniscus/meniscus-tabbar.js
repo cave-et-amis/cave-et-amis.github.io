@@ -11,6 +11,13 @@
  *
  * Attributs : active="cave" (id ou index), hash-routing (synchronise avec #cave)
  * API : el.tabs, el.activeIndex, el.activeId, el.select(idOuIndex)
+ *
+ * Ajouts pour l'intégration dans l'application (le reste est le composant livré, inchangé) :
+ * - `badge` (nombre) par onglet : pastille sur l'icône, et « (N en attente) » dans le nom lu par les lecteurs d'écran ;
+ * - `tour` par onglet : attribut data-tour sur le bouton (visite guidée de l'application) ;
+ * - `detail.dragging` dans tab-change : vrai pendant que la goutte est glissée (l'appli ne change d'écran qu'au lâcher) ;
+ * - `image` (adresse) par onglet : icône 3D photoréaliste de l'application à la place du pictogramme au trait, dans le
+ *   bouton et dans la goutte ; si l'image ne se charge pas, le pictogramme `icon` reprend sa place.
  */
 (function () {
   const ICONS = {
@@ -26,6 +33,16 @@
   const svgIcon = (name, size) => {
     const body = ICONS[name] || name || '';
     return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+  };
+
+  /** Icône d'un onglet : l'image 3D si elle existe (pictogramme au trait en secours), sinon le pictogramme. */
+  const visual = (t, size) => {
+    if (!t.image) return document.createRange().createContextualFragment(svgIcon(t.icon, size));
+    const img = document.createElement('img');
+    img.className = 'pic'; img.src = t.image; img.width = size; img.height = size;
+    img.alt = ''; img.draggable = false; img.decoding = 'async';
+    img.addEventListener('error', () => img.replaceWith(document.createRange().createContextualFragment(svgIcon(t.icon, size))), { once: true });
+    return img;
   };
 
   const DEFAULT_TABS = [
@@ -62,6 +79,8 @@
     button.tab .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
     .bead{position:absolute;top:${BAR_TOP - BEAD / 2 + 8}px;left:0;width:${BEAD}px;height:${BEAD}px;margin-left:-${BEAD / 2}px;border-radius:50% 50% 50% 50%/55% 55% 45% 45%;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;transition:background-color .3s,color .3s;will-change:transform,left}
     .bead.drag{cursor:grabbing}
+    img.pic{display:block;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+    .badge{position:absolute;top:6px;left:50%;margin-left:6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--mt-badge,#b0213f);color:var(--mt-badge-ink,#fff);font-size:11px;font-weight:800;line-height:18px;text-align:center;pointer-events:none}
     .label{position:absolute;top:${BAR_TOP + 40}px;left:0;width:100px;margin-left:-50px;text-align:center;font-size:11px;font-weight:600;transition:color .3s;pointer-events:none;white-space:nowrap}
     .wrap:not(.ready) .bead,.wrap:not(.ready) .label,.wrap:not(.ready) button.tab{transition:none}
     @media (prefers-reduced-motion: reduce){.bead,.label,button.tab{transition:none}}
@@ -121,7 +140,11 @@
     get tabs() { return this._tabs.slice(); }
     set tabs(list) {
       if (!Array.isArray(list) || !list.length) throw new TypeError('tabs doit être un tableau non vide');
-      this._tabs = list.map((t, i) => ({ id: String(t.id ?? i), label: t.label ?? String(t.id ?? i), icon: t.icon, color: t.color || '#b0213f', ink: t.ink || '#ffffff' }));
+      this._tabs = list.map((t, i) => ({
+        id: String(t.id ?? i), label: t.label ?? String(t.id ?? i), icon: t.icon, color: t.color || '#b0213f', ink: t.ink || '#ffffff',
+        badge: Number.isInteger(t.badge) && t.badge > 0 ? t.badge : 0, tour: typeof t.tour === 'string' ? t.tour : '',
+        image: typeof t.image === 'string' ? t.image : ''
+      }));
       this._index = Math.min(this._index, this._tabs.length - 1);
       if (this.isConnected) this._render();
     }
@@ -154,7 +177,18 @@
         b.className = 'tab'; b.type = 'button';
         b.setAttribute('role', 'tab'); b.id = 'mt-tab-' + t.id;
         b.dataset.id = t.id;
-        b.innerHTML = svgIcon(t.icon, 22) + `<span class="sr">${t.label}</span>`;
+        if (t.tour) b.dataset.tour = t.tour;
+        b.appendChild(visual(t, t.image ? 30 : 22));
+        const sr = document.createElement('span');
+        sr.className = 'sr';
+        sr.textContent = t.badge ? `${t.label} (${t.badge} en attente)` : t.label;
+        b.appendChild(sr);
+        if (t.badge) {
+          const badge = document.createElement('span');
+          badge.className = 'badge'; badge.setAttribute('aria-hidden', 'true');
+          badge.textContent = t.badge > 9 ? '9+' : String(t.badge);
+          b.appendChild(badge);
+        }
         b.addEventListener('click', () => this.select(i));
         this._list.appendChild(b);
         return b;
@@ -186,7 +220,7 @@
       const t = this._tabs[i];
       this._bead.style.backgroundColor = t.color;
       this._bead.style.color = t.ink;
-      this._bead.innerHTML = svgIcon(t.icon, 22);
+      this._bead.replaceChildren(visual(t, t.image ? 34 : 22));
       this._label.textContent = t.label;
       this._label.style.color = t.color;
       this._btns.forEach((b, j) => {
@@ -196,7 +230,7 @@
       this.style.setProperty('--mt-active', t.color);
       if (changed && !silent) {
         if (this.hasAttribute('hash-routing') && location.hash.slice(1) !== t.id) history.replaceState(null, '', '#' + t.id);
-        this.dispatchEvent(new CustomEvent('tab-change', { bubbles: true, composed: true, detail: { index: i, id: t.id, tab: { ...t }, previousIndex: prev } }));
+        this.dispatchEvent(new CustomEvent('tab-change', { bubbles: true, composed: true, detail: { index: i, id: t.id, tab: { ...t }, previousIndex: prev, dragging: this._dragging } }));
       }
     }
 

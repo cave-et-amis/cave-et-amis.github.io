@@ -33,7 +33,10 @@ def open_page(browser, w=390, h=844, hash="", reduced=False):
     return ctx, page, errors
 
 with sync_playwright() as p:
-    browser = p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+    # Chrome de Linux (environnement d'origine du composant) s'il est là ; sinon Edge (poste Windows du projet).
+    import os
+    exe = os.environ.get("CHROME_PATH", "/usr/bin/google-chrome")
+    browser = p.chromium.launch(executable_path=exe, args=["--no-sandbox"]) if os.path.exists(exe) else p.chromium.launch(channel="msedge")
 
     # 1. Chargement
     ctx, page, errors = open_page(browser)

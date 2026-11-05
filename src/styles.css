@@ -2349,6 +2349,16 @@ details.fold:not([open]) > summary::after {
   border-color: var(--primary);
   background: var(--primary-soft);
 }
+/* Raccourci Explorer : téléphone et tablette seulement (sur ordinateur, Explorer est dans le menu). */
+.shortcut-explore {
+  border-color: var(--border-strong);
+  background: var(--surface);
+}
+@media (min-width: 1024px) {
+  .shortcut-explore {
+    display: none;
+  }
+}
 /* Viseur du scanner (maquette, panneau 2) : toujours sombre, comme un écran d'appareil photo. */
 .viewfinder {
   position: relative;
@@ -4572,4 +4582,57 @@ details.help-topic:not([open]) > summary::after {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* ───────────── Barre du bas « meniscus » (téléphone et tablette) ─────────────
+   Composant <meniscus-tabbar> (src/ui/meniscus) : une goutte glisse sur la barre, qui se creuse sous elle. La barre
+   flotte en bas, au-dessus de la zone sûre de l'iPhone ; elle remplace l'ancienne barre d'onglets (mêmes chemins). */
+:root nav.tabbar.meniscus-nav,
+:root[data-theme] nav.tabbar.meniscus-nav {
+  position: fixed;
+  top: auto;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: auto;
+  height: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  transform: none;
+  padding: 0 12px calc(8px + env(safe-area-inset-bottom));
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  z-index: 30;
+  /* Sous la barre (bas de l'écran, zone sûre) : le fond de l'appli, pour que le contenu ne dépasse pas en dessous. */
+  background: linear-gradient(to bottom, transparent 0 56px, var(--bg) 56px);
+}
+/* Cadre sombre (Clair-obscur, Sombre) : barre bordeaux presque noire, icônes ivoire. */
+meniscus-tabbar {
+  --mt-bar: #1a0c11;
+  --mt-stroke: rgba(246, 236, 228, 0.22);
+  --mt-icon: #ffffff;
+  --mt-badge: #b0213f;
+  --mt-badge-ink: #ffffff;
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.35));
+}
+/* Thème clair : barre crème, icônes et libellé encre (les couleurs claires de goutte seraient illisibles en texte). */
+:root[data-theme='clair'] meniscus-tabbar {
+  --mt-bar: #fffdf9;
+  --mt-stroke: #d4c2a8;
+  --mt-icon: #2b1d1f;
+  --mt-badge: #7b1e34;
+  filter: drop-shadow(0 8px 18px rgba(43, 29, 31, 0.16));
+}
+:root[data-theme='clair'] meniscus-tabbar::part(label) {
+  color: #2b1d1f !important;
+}
+/* La barre occupe 96 px + 8 px : contenu, bouton « Ajouter » et messages se placent au-dessus. */
+@media (max-width: 1023px) {
+  :root,
+  :root[data-theme='sombre'] {
+    --tabbar-h: 104px;
+  }
 }

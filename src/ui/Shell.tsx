@@ -25,6 +25,7 @@ import { lazyPage } from './lazyPage';
 import { PremiumIcon } from './PremiumIcon';
 import { applyTheme, DEFAULT_THEME, isTheme, rememberedTheme, resolveTheme, toggledTheme, type Theme } from './theme';
 import { PageBoundary } from './PageBoundary';
+import { MeniscusNav, type MeniscusTab } from './meniscus/MeniscusNav';
 
 // Pages chargées à leur première visite (l'accueil et la cave restent dans le premier chargement).
 const FriendsPage = lazyPage(() => import('../features/friends/FriendsPage'), 'FriendsPage');
@@ -73,6 +74,44 @@ export function useActions() {
 }
 
 type Tab = { path: string; label: string; /** Libellé court de la barre du bas (téléphone). */ short?: string; icon: ReactNode; badge?: number };
+
+/**
+ * Barre du bas (téléphone et tablette) : cinq onglets avec les icônes 3D de l'application (pictogramme au trait en secours),
+ * une couleur de goutte chacun, dans l'univers du vin. Explorer et
+ * Statistiques sont sur l'accueil (raccourcis) ; Lia reste aussi dans la barre du haut.
+ */
+const SPARKLES =
+  '<path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/>';
+const MENISCUS_TABS: MeniscusTab[] = [
+  { id: 'accueil', label: 'Accueil', icon: 'home', image: '/img/icones/icone-accueil-96.webp', color: '#e0b089', ink: '#3d220c', tour: 'nav-accueil' },
+  { id: 'cave', label: 'Ma cave', icon: 'bottle', image: '/img/icones/icone-cave-96.webp', color: '#b0213f', ink: '#ffffff', tour: 'nav-cave' },
+  { id: 'lia', label: 'Lia (IA)', icon: SPARKLES, image: '/img/icones/icone-lia-96.webp', color: '#e8c766', ink: '#3d2c05', tour: 'nav-assistant' },
+  { id: 'evenements', label: 'Événements', icon: 'glass', image: '/img/icones/icone-evenements-96.webp', color: '#c9d97a', ink: '#2c3608', tour: 'nav-evenements' },
+  { id: 'amis', label: 'Amis', icon: 'users', image: '/img/icones/icone-amis-96.webp', color: '#f2a7b5', ink: '#4a1220', tour: 'nav-amis' },
+];
+const MENISCUS_PATHS: Record<string, string> = { accueil: '/', cave: '/cave', lia: '/assistant', evenements: '/evenements', amis: '/amis' };
+
+/** Onglet de la barre du bas pour une page ; null : page hors des onglets (la goutte reste où elle est). */
+export function meniscusActive(seg: (string | undefined)[]): string | null {
+  switch (seg[0]) {
+    case undefined:
+      return 'accueil';
+    case 'cave':
+    case 'carnet':
+    case 'statistiques':
+      return 'cave';
+    case 'assistant':
+      return 'lia';
+    case 'evenements':
+      return 'evenements';
+    case 'amis':
+    case 'ami':
+    case 'groupes':
+      return 'amis';
+    default:
+      return null;
+  }
+}
 
 /** Repère de la visite guidée pour un onglet (« nav-cave »…). */
 const tourId = (path: string) => `nav-${path.slice(1) || 'accueil'}`;
@@ -355,6 +394,7 @@ function ShellInner() {
   }
 
   const activeTab = '/' + (seg[0] === 'ami' || seg[0] === 'groupes' ? 'amis' : seg[0] === 'defis' ? 'explorer' : (seg[0] ?? ''));
+  const fullScreen = seg[0] === 'scanner' || (seg[0] === 'evenements' && seg[2] === 'soiree');
   // Le carnet est une partie des Statistiques (menu et barre du bas).
   const activeSide = activeTab === '/carnet' ? '/statistiques' : activeTab;
 
@@ -463,28 +503,19 @@ function ShellInner() {
               Ajouter
             </button>
           )}
-          <nav className="tabbar" aria-label="Navigation principale">
-            <div className="tabbar-inner">
-              {tabs.map((t) => (
-                <a
-                  key={t.path}
-                  href={`#${t.path}`}
-                  className="tab"
-                  aria-label={t.badge ? `${t.label} (${t.badge} en attente)` : t.label}
-                  aria-current={activeSide === t.path ? 'page' : undefined}
-                  data-tour={tourId(t.path)}
-                >
-                  {t.icon}
-                  <span>{t.short ?? t.label}</span>
-                  {!!t.badge && (
-                    <span className="badge" aria-hidden>
-                      {t.badge}
-                    </span>
-                  )}
-                </a>
-              ))}
-            </div>
-          </nav>
+          {/* Barre du bas « meniscus » (téléphone et tablette), masquée sur les écrans plein écran (scanner, soirée). */}
+          {!fullScreen && (
+            <nav className="tabbar meniscus-nav" aria-label="Navigation principale">
+              <MeniscusNav
+                tabs={MENISCUS_TABS.map((t) => ({ ...t, badge: t.id === 'amis' ? incomingRequests : t.id === 'evenements' ? pendingRsvp : 0 }))}
+                active={meniscusActive(seg)}
+                onSelect={(id) => {
+                  const path = MENISCUS_PATHS[id];
+                  if (path && route !== path) go(path);
+                }}
+              />
+            </nav>
+          )}
         </div>
         <AddSheet open={sheet?.kind === 'add'} onClose={() => setSheet(null)} />
         {sheet?.kind === 'wine' && <WineFormSheet prefill={sheet.prefill} onClose={() => setSheet(null)} />}
